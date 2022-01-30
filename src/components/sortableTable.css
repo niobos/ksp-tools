@@ -1,0 +1,18 @@
+table.sortableTable th {
+    position: sticky;
+    top: 1px;
+    background-color: #ffffffd0;
+}
+
+table.sortableTable th.sort.asc:after {
+    content: "\25b2";
+    font-size: 0.7em;
+    padding-left: 3px;
+    line-height: 0.7em;
+}
+table.sortableTable th.sort.desc:after {
+    content: "\25bc";
+    font-size: 0.7em;
+    padding-left: 3px;
+    line-height: 0.7em;
+}

@@ -1,0 +1,15 @@
+input[type="text"] {
+    width: 4em;
+}
+
+.zero {
+    color: #f0f0f0;
+}
+
+.number {
+    text-align: right;
+}
+
+.outOfSpec {
+    background-color: #ffdddd;
+}
