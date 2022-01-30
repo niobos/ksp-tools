@@ -1,17 +1,24 @@
 const path = require('path');
+const HtmlMinimizerPlugin = require("html-minimizer-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+
+const pages = {
+    'engines': 'KSP - Engine selection',
+    'electricity': 'KSP - Electricity options',
+};
+const entries = Object.keys(pages).reduce((acc, page) => {acc[page] = `./src/${page}.jsx`; return acc}, {});
+const pluginsHtmlWebpack = Object.keys(pages).map((page) => new HtmlWebpackPlugin({
+    template: 'src/react-template.html',
+    filename: `${page}.html`,
+    chunks: [page],
+    title: pages[page],
+}));
 
 module.exports = (env, argv) => {
     return {
-        entry: {
-            engines: './src/engines.jsx',
-        },
+        entry: entries,
         plugins: [
-            new HtmlWebpackPlugin({
-                template: './src/react-template.html',
-                title: 'KSP - Engine Selection',
-                filename: '[name].html',
-            }),
+            ...pluginsHtmlWebpack,
         ],
         devtool: argv.mode === 'development' ? 'eval-source-map' : false,
         output: {
@@ -47,6 +54,16 @@ module.exports = (env, argv) => {
                         },
                     ],
                 },
+            ],
+        },
+        optimization: {
+            splitChunks: {
+                chunks: 'all',
+            },
+            minimize: argv.mode !== 'development',
+            minimizer: [
+                `...`,
+                new HtmlMinimizerPlugin({}),
             ],
         },
     };

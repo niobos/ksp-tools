@@ -123,7 +123,8 @@ export default function App() {
     const columns = [
         {title: 'Name', value: i => i.name},
         {title: 'Number', classList: 'number', value: i => i.n},
-        {title: <span>Cost [<KspFund/>]</span>, classList: 'number', value: i => i.cost.toFixed(0),
+        {title: <span>Cost [<KspFund/>]</span>, value: i => i.cost.toFixed(0),
+            classList: i => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
             cmp: (a, b) => a.cost - b.cost,
         },
         {title: 'Total Mass [t]', classList: 'number', value: i => i.totalMass.toFixed(2),
@@ -133,7 +134,7 @@ export default function App() {
             cmp: (a, b) => a.engineMass - b.engineMass,
         },
         {title: 'Fuel+tank Mass [t]', value: i => i.fuelTankMass.toFixed(2),
-            classList: i => i.fuelTankMass === 0 ? ['number', 'zero'] : ['number'],
+            classList: i => (i.fuelTankMass === 0 || isNaN(i.fuelTankMass)) ? ['number', 'zero'] : ['number'],
             cmp: (a, b) => a.fuelTankMass - b.fuelTankMass,
         },
         {title: 'Size', value: i => i.size},
@@ -203,6 +204,7 @@ export default function App() {
 
         } else {  // Normal rocket engine or jet engine
             numEngines = Math.ceil(mass * acceleration / engine.thrust[pressureIndex]);  // initial guess
+            if(numEngines === Infinity) numEngines = 1;
             while (true) {
                 fuelTankMass = calcFuelTankMass(
                     dv, engine.isp[pressureIndex],

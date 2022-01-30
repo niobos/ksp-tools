@@ -3,23 +3,23 @@
 WEBPACK_MODE += production
 
 clean:
+	rm -rf dist
 	rm -rf node_modules
 	rm -f deps dev-deps
 
 deps:
 	npm install
-	touch deps
 
 dev-deps:
 	npm install --include=dev
-	touch dev-deps
 
 build: deps
+	rm -rf dist
 	npx webpack --mode=production
 
-output: build
+output: clean build
 	mkdir -p "$(OUTPUTDIR)"
-	cp -a dist "$(OUTPUTDIR)"
+	cp -a dist/. "$(OUTPUTDIR)"
 
 develop: dev-deps
 	npx webpack --mode=development
