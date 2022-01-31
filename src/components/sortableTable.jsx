@@ -18,7 +18,7 @@ export default function SortableTable(props) {
     const [sortDir, setSortDir] = useState(1);
 
     const columns = [];
-    for(let column of props.columns) {
+    for(let column of props.columns || []) {
         if (typeof column === 'string' || React.isValidElement(column)) {
             column = {
                 title: column,
@@ -68,7 +68,7 @@ export default function SortableTable(props) {
     }
 
     const rows = [];
-    const dataSortedIndices = [...Array(props.data.length).keys()].sort((a, b) => {
+    const dataSortedIndices = [...Array((props.data || []).length).keys()].sort((a, b) => {
         if(sortColumnNr === null) {
             return (a - b);
         }
