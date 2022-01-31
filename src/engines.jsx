@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
 import useFragmentState, {jsonParseWithDefault} from "./utils/useFragmentState";
-import {Size, fuelTanks, engines as kspEngines} from "./utils/kspParts";
+import {engines as kspEngines, fuelTanks, Size} from "./utils/kspParts";
 import {bodies as kspBodies} from "./utils/kspBody";
 import {FloatInput} from "./components/formatedInput";
 import KspHierBody from "./components/kspHierBody";
@@ -9,43 +9,10 @@ import Multiselect from "./components/multiselect";
 import {KspFund} from "./components/kspIcon";
 import SortableTable from "./components/sortableTable";
 import Preset from "./components/preset";
+import FuelTank from "./components/fuelTank";
 
 import './engines.css';
-
-function objectMap(object, mapFn) {
-    /* returns a new object with the values at each key mapped using mapFn(value)
-     */
-    return Object.keys(object).reduce(function(result, key) {
-        result[key] = mapFn(object[key])
-        return result
-    }, {})
-}
-
-function fromPreset(valueOrPreset, presets) {
-    let value, preset;
-    if(typeof valueOrPreset === 'string') {  // preset
-        preset = valueOrPreset;
-        value = presets[preset];
-    } else {  // value
-        value = valueOrPreset;
-        preset = "";
-    }
-    return {value, preset};
-}
-
-
-function FuelTank(props) {
-    return <div>
-        Full:Empty ratio: <FloatInput
-            value={props.value.fullEmptyRatio} decimals={2}
-            onChange={(v) => props.onChange({fullEmptyRatio: v, cost: props.value.cost})}
-        /><br/>
-        Cost: <FloatInput value={props.value.cost} decimals={0}
-                          onChange={(v) => props.onChange({fullEmptyRatio: props.value.fullEmptyRatio, cost: v})}
-        /><KspFund/>/t
-    </div>;
-}
-
+import {fromPreset, objectMap} from "./utils/utils";
 
 function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry) {
     /* Calculate the mass of fuel tanks needed to get the desired ∆v
@@ -117,7 +84,7 @@ export default function App() {
         gravity, objectMap(kspBodies, (b) => b.surface_gravity)
     )
     const {value: tankValue, preset: tankPreset} = fromPreset(
-        tank, objectMap(fuelTanks, (ft) => {return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost}})
+        tank, objectMap(fuelTanks, (ft) => {return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost/ft.mass}})
     );
 
     const columns = [
