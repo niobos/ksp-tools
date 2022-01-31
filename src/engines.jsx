@@ -1,14 +1,14 @@
 import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
-import useFragmentState, {jsonParseWithDefault} from "./useFragmentState.js";
-import {Size, fuelTanks, engines as kspEngines} from "./kspParts.ts";
-import {bodies as kspBodies} from "./kspBody.js";
-import {FloatInput} from "./components/formatedInput.jsx";
-import KspHierBody from "./components/kspHierBody.jsx";
-import PresetDropDown from "./components/presetDropDown.jsx";
-import Multiselect from "./components/multiselect.jsx";
-import {KspFund} from "./components/kspIcon.jsx";
-import SortableTable from "./components/sortableTable.jsx";
+import useFragmentState, {jsonParseWithDefault} from "./useFragmentState";
+import {Size, fuelTanks, engines as kspEngines} from "./kspParts";
+import {bodies as kspBodies} from "./kspBody";
+import {FloatInput} from "./components/formatedInput";
+import KspHierBody from "./components/kspHierBody";
+import Multiselect from "./components/multiselect";
+import {KspFund} from "./components/kspIcon";
+import SortableTable from "./components/sortableTable";
+import Preset from "./components/preset";
 
 import './engines.css';
 
@@ -311,8 +311,8 @@ export default function App() {
             <Multiselect items={fuelTypes} value={fuelType} onChange={setFuelType}/>
         </td></tr>
         <tr><td>Fuel tank</td><td>
-            <PresetDropDown items={Object.keys(fuelTanks)}
-                            value={tankPreset} onChange={setTank}
+            <Preset options={Object.keys(fuelTanks).reduce((acc, el) => {acc[el] = el; return acc}, {})}
+                    value={tankPreset} onChange={setTank}
             /><br/>
             <FuelTank value={tankValue} onChange={setTank}/>
         </td></tr>
