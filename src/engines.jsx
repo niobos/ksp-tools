@@ -1,8 +1,8 @@
 import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
-import useFragmentState, {jsonParseWithDefault} from "./useFragmentState";
-import {Size, fuelTanks, engines as kspEngines} from "./kspParts";
-import {bodies as kspBodies} from "./kspBody";
+import useFragmentState, {jsonParseWithDefault} from "./utils/useFragmentState";
+import {Size, fuelTanks, engines as kspEngines} from "./utils/kspParts";
+import {bodies as kspBodies} from "./utils/kspBody";
 import {FloatInput} from "./components/formatedInput";
 import KspHierBody from "./components/kspHierBody";
 import Multiselect from "./components/multiselect";

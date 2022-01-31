@@ -1,5 +1,5 @@
 import React from "react";
-import {bodiesHier} from "../kspBody.js";
+import {bodiesHier} from "../utils/kspBody.js";
 
 export default class KspHierBody extends React.PureComponent {
     static defaultProps = {

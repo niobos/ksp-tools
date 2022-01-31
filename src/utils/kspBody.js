@@ -15,9 +15,9 @@ export function bodiesHierFind(bodyName) {
     /* Returns the hierarchical tree to the body, starting from Kerbol
      */
     if(bodyName === "Kerbol") return [bodyName];
-    if(ksp.planets.includes(bodyName)) return ["Kerbol", bodyName];
+    if(planets.includes(bodyName)) return ["Kerbol", bodyName];
     for(const system in bodiesHier) {
-        if(ksp.bodies_hier[system].includes(bodyName)) {
+        if(bodiesHier[system].includes(bodyName)) {
             const planet = system.substr(0, system.length - 7);  // strip " system"
             return ["Kerbol", planet, bodyName];
         }
