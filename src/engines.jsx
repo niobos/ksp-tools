@@ -196,16 +196,22 @@ export default function App() {
              * => (F - a * m_engine) * n = a * m_payload
              * => n = a * m_payload / (F - a*m_engine)
              */
-            numEngines = Math.ceil(mass * acceleration / (engine.thrust[pressureIndex] - acceleration * engine.mass));
+            numEngines = Math.max(1, Math.ceil(mass * acceleration / (engine.thrust[pressureIndex] - acceleration * engine.mass)));
             fuelTankMass = 0;
             totalMass = mass + engine.mass * numEngines;
             emptyMass = mass + engine.emptied().mass * numEngines;
             actualDv = engine.isp[pressureIndex] * 9.81 * Math.log(totalMass / emptyMass);
 
         } else {  // Normal rocket engine or jet engine
-            numEngines = Math.ceil(mass * acceleration / engine.thrust[pressureIndex]);  // initial guess
-            if(numEngines === Infinity) numEngines = 1;
-            while (true) {
+            function calcNumEngines() {
+                let n = Math.ceil(totalMass * acceleration / engine.thrust[pressureIndex]);  // initial guess
+                if(n === Infinity || isNaN(n) || n === 0) n = 1;
+                return n;
+            }
+            totalMass = mass; // initial guess
+            numEngines = calcNumEngines();
+
+            while(true) {
                 fuelTankMass = calcFuelTankMass(
                     dv, engine.isp[pressureIndex],
                     mass + numEngines * engine.mass,
@@ -225,8 +231,9 @@ export default function App() {
                     actualDv = engine.isp[pressureIndex] * 9.81 * Math.log(tank.fullEmptyRatio);
                 }
 
-                const newNumEngines = Math.ceil(totalMass * acceleration / engine.thrust[pressureIndex]);  // iterate
-                if (newNumEngines === numEngines || newNumEngines > 50) break;
+                const newNumEngines = calcNumEngines();  // iterate
+                if(newNumEngines <= numEngines) break;  // prevent infinite loop
+                if(newNumEngines > 50) break;
                 // else: recalc with new number of engines
                 numEngines = newNumEngines;
             }

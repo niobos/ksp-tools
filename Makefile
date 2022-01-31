@@ -1,6 +1,11 @@
-.DEFAULT_GOAL := output
-
-WEBPACK_MODE += production
+help:
+	@echo 'Targets:'
+	@echo '  clean      Clean all artifacts & dependencies'
+	@echo '  dev-serve  Start a webserver with a development build'
+	@echo '  develop    Build a development build in dist/'
+	@echo '  test       Run tests'
+	@echo '  build      Build a production build in dist/'
+	@echo '  output     Render files for publication in $$(OUTPUTDIR)'
 
 clean:
 	rm -rf dist

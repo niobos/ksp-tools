@@ -25,7 +25,7 @@ describe('Size', () => {
         expect(sizes).toStrictEqual(["TINY", "SMALL", "MEDIUM", "LARGE", "EXTRA_LARGE", "HUGE", "MK2", "MK3", "RADIAL"]);
     });
     it('should provide a short description', () => {
-        expect(Size.TINY.shortDescription).toStrictEqual("Tiny");
+        expect(Size.TINY.shortDescription).toStrictEqual("T");
     });
     it('should provide a long description', () => {
         expect(Size.TINY.longDescription).toStrictEqual("Tiny (.625m)");
