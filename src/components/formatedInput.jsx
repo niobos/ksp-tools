@@ -1,10 +1,18 @@
 import React from "react";
 
+function equalNaNCompatible(a, b) {
+    /* Return true if a === b,
+     * but also if both a and b are NaN
+     */
+    if(isNaN(a) && isNaN(b)) return true;
+    return a === b;
+}
+
 export default class FormattedInput extends React.PureComponent {
     static defaultProps = {
         // value: ...
-        onChange: () => undefined,  // User is changing input: (newValue) => ...
-        onBlur: () => undefined,  // User has done changing input: (finalValue) => ...
+        onChange: (newValue) => undefined,  // User is changing input: (newValue) => ...
+        onBlur: (finalValue) => undefined,  // User has done changing input: (finalValue) => ...
         style: {},  // style passed straight through
         styleFunc: (value) => {},  // style based on value
         className: [],  // additional className's passed straight through
@@ -52,14 +60,18 @@ export default class FormattedInput extends React.PureComponent {
     }
 
     componentDidUpdate(prevProps, prevState) {
-        if (prevProps.value !== this.props.value && this.props.value !== this.state.value) {
+        if(!equalNaNCompatible(prevProps.value, this.props.value)
+            && !equalNaNCompatible(this.props.value, this.state.value)
+        ) {
             //console.log(`[${this._reactInternals.key}] New value pushed down: old_value=`, prevProps.value, " new_value=", this.props.value, " state_value=", this.state.value);
             const value = this.constructor.parseInput(this.props.value, this.props);
             const text = this.constructor.formatValue(value, this.props)
             this.setState({ text, value });
             // will trigger re-render and re-call this method
 
-        } else if (prevState.value !== this.state.value && this.state.value !== this.props.value) {
+        } else if(!equalNaNCompatible(prevState.value, this.state.value)
+            && !equalNaNCompatible(this.state.value, this.props.value)
+        ) {
             //console.log(`[${this._reactInternals.key}] User input changed, propagating: old_value=`, prevState.value, " new_value=", this.state.value, " props_value=", this.props.value);
             this.props.onChange(this.state.value);
         }
