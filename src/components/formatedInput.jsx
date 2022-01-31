@@ -200,3 +200,65 @@ export class SiInput extends FormattedInput {
         return sign*(int_part + frac_part)*Math.pow(10, exp_part);
     }
 }
+
+export class KerbalYdhmsInput extends FormattedInput {
+    static parseInput(text) {
+        const re = /^((?<y>\d+) *y)? *((?<d>\d+) *d)? *((?<h>\d+) *h)? *((?<m>\d+) *m)? *((?<s>\d+(.\d*)?) *s?)?$/;
+        const match = re.exec(text);
+        if(match === null) return undefined;
+        const i = {};
+        for(const unit of ['y', 'd', 'h', 'm']) {
+            i[unit] = parseInt(match.groups[unit]) || 0;
+        }
+        i.s = parseFloat(match.groups.s) || 0.;
+        return (((((i.y*426) + i.d)*6 + i.h)*60 + i.m)*60) + i.s;
+    }
+
+    static formatValueYdhms(sec) {
+        const s = sec % 60; sec = (sec - s) / 60;
+        const m = sec % 60; sec = (sec - m) / 60;
+        const h = sec % 6; sec = (sec - h) / 6;
+        const d = sec % 426; sec = (sec - d) / 426;
+        const y = sec;
+
+        let values = [y, d, h, m, s.toFixed(1)];
+        let units = ['y', 'd', 'h', 'm', 's'];
+        while(values[0] === 0) {
+            values = values.slice(1);
+            units = units.slice(1);
+        }
+        while(values[values.length-1] === 0 || values[values.length-1] === "0.0") {
+            values = values.slice(0, values.length-1);
+            units = units.slice(0, units.length-1);
+        }
+
+        const parts = values.map((v, i) => '' + v + units[i]);
+        return parts.join(' ');
+    }
+
+    static formatValueSingleUnit(sec) {
+        const factors = [60, 60, 6, 426];
+        const units = ['s', 'm', 'h', 'd'];
+        while(sec >= factors[0]) {
+            sec /= factors[0];
+            units.shift();
+            factors.shift();
+        }
+        return sec.toFixed(1) + units[0];
+    }
+
+    static formatValue(sec, props) {
+        if(props === undefined) props = {};
+
+        if(sec === undefined) return "undefined";
+        if(sec === null) return "null";
+        if(isNaN(sec)) return "NaN";
+        if(sec === 0) return "0s";
+
+        if(props.singleUnit) {
+            return this.formatValueSingleUnit(sec);
+        } else {
+            return this.formatValueYdhms(sec);
+        }
+    }
+}
