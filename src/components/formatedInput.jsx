@@ -203,6 +203,8 @@ export class SiInput extends FormattedInput {
 
 export class KerbalYdhmsInput extends FormattedInput {
     static parseInput(text) {
+        if(text === Infinity || text === "∞") return Infinity;
+
         const re = /^((?<y>\d+) *y)? *((?<d>\d+) *d)? *((?<h>\d+) *h)? *((?<m>\d+) *m)? *((?<s>\d+(.\d*)?) *s?)?$/;
         const match = re.exec(text);
         if(match === null) return undefined;
@@ -254,6 +256,7 @@ export class KerbalYdhmsInput extends FormattedInput {
         if(sec === null) return "null";
         if(isNaN(sec)) return "NaN";
         if(sec === 0) return "0s";
+        if(sec === Infinity) return "∞";
 
         if(props.singleUnit) {
             return this.formatValueSingleUnit(sec);
