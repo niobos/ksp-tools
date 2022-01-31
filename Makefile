@@ -10,7 +10,6 @@ help:
 clean:
 	rm -rf dist
 	rm -rf node_modules
-	rm -f deps dev-deps
 
 deps:
 	npm install
