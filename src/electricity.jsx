@@ -434,41 +434,69 @@ export default class App extends React.PureComponent {
             cmp: (a, b) => a.mass - b.mass,
         },
         {
-            title: 'Prod (avail+chrg) [⚡/m]',
-            value: i => `${(i.prodGross * 60).toFixed(1)} (`
-                + `${(i.prodAvail * 60).toFixed(1)} + `
-                + `${(i.prodCharge * 60).toFixed(1)})`,
-            cmp: (a, b) => a.prodGross - b.prodGross,
+            title: 'Max power [⚡/m]', classList: 'number',
+            value: i => (i.maxPower * 60).toFixed(1),
+            cmp: (a, b) => a.maxPower - b.maxPower,
+        },
+        {
+            title: 'Energy [⚡]', classList: 'number',
+            value: i => i.batteryEnergy.toFixed(0),
+            cmp: (a, b) => a.batteryEnergy - b.batteryEnergy,
+        },
+        {
+            title: 'Nominal power [⚡/m]', classList: 'number',
+            value: i => (i.nominalPower * 60).toFixed(1),
+            cmp: (a, b) => a.nominalPower - b.nominalPower,
+        },
+        {
+            title: 'Charge (burst+darkness) [⚡/m]', classList: 'number',
+            value: i => `${((i.burstChargePower+i.darknessChargePower)*60).toFixed(1)} (`
+                + `${(i.burstChargePower*60).toFixed(1)} + `
+                + `${(i.darknessChargePower*60).toFixed(1)})`,
+            cmp: (a, b) => (a.burstChargePower + a.darknessChargePower) - (b.burstChargePower + b.darknessChargePower),
+        },
+        {
+            title: 'Available power [⚡/m]', classList: 'number',
+            value: i => ((i.maxPower-i.burstChargePower-i.darknessChargePower)*60).toFixed(1),
+            cmp: (a, b) => (a.maxPower-a.burstChargePower-a.darknessChargePower) - (b.maxPower-b.burstChargePower-b.darknessChargePower),
         },
     ];
 
     // Only use Z-100 batteries. Other batteries have same energy/mass ratio, but have higher cost/energy ratio
+    static batteryName = "Z-100";
+    static battery = batteries[this.batteryName];
+
     solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue) {
         const solutions = [];
         for (let panelName in electricalGenerators) {
             const panel = electricalGenerators[panelName];
             if (!(panel instanceof SolarPanel)) continue;
 
-            // TODO: optimize batteries by combining shade & burst energy
-            const shadeEnergy = shadeValue.duration * continuousPowerValue;
+            const burstChargePower = burstPowerValue.energy / burstPowerValue.interval;
+            const shadeEnergy = shadeValue.duration * (continuousPowerValue + burstChargePower);
             const lightDuration = shadeValue.interval - shadeValue.duration;
             const shadeChargePower = shadeEnergy / lightDuration;
-            const burstChargePower = burstPowerValue.energy / lightDuration;
-            const chargePower = burstChargePower + shadeChargePower;
-            const neededPower = continuousPowerValue + chargePower;
+            const neededPowerDuringLight = continuousPowerValue + burstChargePower + shadeChargePower;
             const panelPower = (-panel.consumption.el) * this.solarEfficiency;
-            const numDev = Math.ceil(neededPower / panelPower);
-            const numBatteries = Math.ceil((shadeEnergy + burstPowerValue.energy) / batteries['Z-100'].content.el);
+            const numDev = Math.ceil(neededPowerDuringLight / panelPower);
+            const batteryEnergy = shadeEnergy + burstPowerValue.energy;
+            const numBatteries = Math.ceil(batteryEnergy / this.constructor.battery.content.el);
             if (panel.wikiUrl !== undefined) {
                 panelName = <a href={panel.wikiUrl}>{panelName}</a>;
             }
+            let batteryName = this.constructor.batteryName;
+            if(this.constructor.battery.wikiUrl !== undefined) {
+                batteryName = <a href={this.constructor.battery.wikiUrl}>{batteryName}</a>;
+            }
             solutions.push({
-                config: <span>{numDev} × {panelName} + {numBatteries} × Z-100</span>,
+                config: <span>{numDev} × {panelName} + {numBatteries} × {batteryName}</span>,
                 cost: numDev * panel.cost + numBatteries * batteries["Z-100"].cost,
                 mass: numDev * panel.mass + numBatteries * batteries["Z-100"].mass,
-                prodGross: numDev * panelPower,
-                prodAvail: numDev * panelPower - chargePower,
-                prodCharge: chargePower,
+                maxPower: numDev * panelPower,
+                batteryEnergy: batteryEnergy,
+                nominalPower: neededPowerDuringLight,
+                burstChargePower: burstChargePower,
+                darknessChargePower: shadeChargePower,
             });
         }
         return solutions;
@@ -480,8 +508,8 @@ export default class App extends React.PureComponent {
             const cell = electricalGenerators[cellName];
             if (!(cell instanceof FuelCell)) continue;
 
-            const burstCharge = burstPowerValue.energy / burstPowerValue.interval;
-            const neededPower = continuousPowerValue + burstCharge;
+            const burstChargePower = burstPowerValue.energy / burstPowerValue.interval;
+            const neededPower = continuousPowerValue + burstChargePower;
             const numDev = Math.ceil(neededPower / (-cell.consumption.el));
             const numBatteries = Math.max(0, Math.ceil((burstPowerValue.energy - numDev * cell.content.el) / batteries['Z-100'].content.el));
             const totalEnergy = neededPower * this.duration;
@@ -501,14 +529,20 @@ export default class App extends React.PureComponent {
             if (cell.wikiUrl !== undefined) {
                 cellName = <a href={cell.wikiUrl}>{cellName}</a>;
             }
+            let batteryName = this.constructor.batteryName;
+            if(this.constructor.battery.wikiUrl !== undefined) {
+                batteryName = <a href={this.constructor.battery.wikiUrl}>{batteryName}</a>;
+            }
             solutions.push({
                 config:
-                    <span>{numDev} × {cellName} + {numBatteries} × Z-100 + {neededTankMass.toFixed(1)}t fuel tanks</span>,
+                    <span>{numDev} × {cellName} + {numBatteries} × {batteryName} + {neededTankMass.toFixed(1)}t fuel tanks</span>,
                 cost: numDev * cell.cost + numBatteries * batteries["Z-100"].cost + neededFuelMass * fuelTankValue.cost,
                 mass: numDev * cell.mass + numBatteries * batteries["Z-100"].mass + neededFuelMass,
-                prodGross: numDev * (-cell.consumption.el),
-                prodCharge: burstCharge,
-                prodAvail: numDev * (-cell.consumption.el) - burstCharge,
+                maxPower: numDev * (-cell.consumption.el),
+                batteryEnergy: burstPowerValue.energy,
+                nominalPower: neededPower,
+                burstChargePower: burstChargePower,
+                darknessChargePower: 0,
             });
         }
         return solutions;
@@ -525,13 +559,19 @@ export default class App extends React.PureComponent {
         if (dev.wikiUrl !== undefined) {
             genName = <a href={dev.wikiUrl}>{genName}</a>;
         }
+        let batteryName = this.constructor.batteryName;
+        if(this.constructor.battery.wikiUrl !== undefined) {
+            batteryName = <a href={this.constructor.battery.wikiUrl}>{batteryName}</a>;
+        }
         solutions.push({
-            config: <span>{numDev} × {genName} + {numBatteries} × Z-100</span>,
+            config: <span>{numDev} × {genName} + {numBatteries} × {batteryName}</span>,
             cost: numDev * dev.cost + numBatteries * batteries["Z-100"].cost,
             mass: numDev * dev.mass + numBatteries * batteries["Z-100"].mass,
-            prodGross: numDev * (-dev.consumption.el),
-            prodCharge: burstCharge,
-            prodAvail: numDev * (-dev.consumption.el) - burstCharge,
+            maxPower: numDev * (-dev.consumption.el),
+            batteryEnergy: burstPowerValue.energy,
+            nominalPower: continuousPowerValue + burstCharge,
+            burstChargePower: burstCharge,
+            darknessChargePower: 0,
         });
         return solutions;
     }

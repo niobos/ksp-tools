@@ -1,3 +1,15 @@
 input[type="text"] {
     width: 5em;
 }
+
+.zero {
+    color: #f0f0f0;
+}
+
+.number {
+    text-align: right;
+}
+
+.outOfSpec {
+    background-color: #ffdddd;
+}
