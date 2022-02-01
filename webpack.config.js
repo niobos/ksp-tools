@@ -5,6 +5,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const pages = {
     'engines': 'KSP - Engine selection',
     'electricity': 'KSP - Electricity options',
+    'mining': 'KSP - Mining',
 };
 const entries = Object.keys(pages).reduce((acc, page) => {acc[page] = `./src/${page}.jsx`; return acc}, {});
 const pluginsHtmlWebpack = Object.keys(pages).map((page) => new HtmlWebpackPlugin({
