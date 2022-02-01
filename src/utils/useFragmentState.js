@@ -69,3 +69,44 @@ export default function useFragmentState(key, fromString, toString) {
 
     return [value, onSetValue];
 }
+
+export function addStateProperty(obj, attrName, defaultValue) {
+    /* Add a property to access a state variable through the `attrName` getter & setter
+     */
+    if(!('state' in obj)) obj.state = {};
+    obj.state[attrName] = defaultValue;
+    Object.defineProperty(obj, attrName, {
+        get() {
+            return this.state[attrName];
+        },
+        set(newValue) {
+            this.setState({[attrName]: newValue});
+        }
+    })
+}
+
+export function addFragmentStateProperty(obj, attrName, key, fromString, toString) {
+    /* Add a property to access a state variable through the `attrName` getter & setter.
+     * The state is also synced to the URL fragment identifier (hash) under the key `key`.
+     * Conversion from hash is done by `fromString(str)`, conversion to hash by `toString(value)`.
+     */
+    if(typeof fromString !== 'function') {  // defaultValue or undefined
+        const defaultValue = fromString;
+        fromString = jsonParseWithDefault(defaultValue);
+    }
+    if(toString === undefined) {
+        toString = JSON.stringify;
+    }
+
+    if(!('state' in obj)) obj.state = {};
+    obj.state[attrName] = fromString(getValueFromHash(key));
+    Object.defineProperty(obj, attrName, {
+        get() {
+            return this.state[attrName];
+        },
+        set(newValue) {
+            this.setState({[attrName]: newValue});
+            updateHashValue(key, toString(newValue));
+        },
+    });
+}
