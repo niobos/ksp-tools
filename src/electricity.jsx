@@ -449,13 +449,15 @@ export default function App() {
             const panel = electricalGenerators[panelName];
             if(!(panel instanceof SolarPanel)) continue;
 
+            // TODO: optimize batteries by combining shade & burst energy
             const shadeEnergy = shadeValue.duration * continuousPowerValue;
             const lightDuration = shadeValue.interval - shadeValue.duration;
             const shadeChargePower = shadeEnergy / lightDuration;
             const burstChargePower = burstPowerValue.energy / lightDuration;
             const chargePower = burstChargePower + shadeChargePower;
             const neededPower = continuousPowerValue + chargePower;
-            const numDev = Math.ceil(neededPower / (-panel.consumption.el));
+            const panelPower = (-panel.consumption.el) * solarEfficiency;
+            const numDev = Math.ceil(neededPower / panelPower);
             const numBatteries = Math.ceil((shadeEnergy + burstPowerValue.energy) / batteries['Z-100'].content.el);
             if(panel.wikiUrl !== undefined) {
                 panelName = <a href={panel.wikiUrl}>{panelName}</a>;
@@ -464,8 +466,8 @@ export default function App() {
                 config: <span>{numDev} × {panelName} + {numBatteries} × Z-100</span>,
                 cost: numDev * panel.cost + numBatteries * batteries["Z-100"].cost,
                 mass: numDev * panel.mass + numBatteries * batteries["Z-100"].mass,
-                prodGross: numDev * (-panel.consumption.el),
-                prodAvail: numDev * (-panel.consumption.el) - chargePower,
+                prodGross: numDev * panelPower,
+                prodAvail: numDev * panelPower - chargePower,
                 prodCharge: chargePower,
             });
         }
