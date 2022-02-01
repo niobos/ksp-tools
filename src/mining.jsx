@@ -5,56 +5,38 @@ import {FloatInput} from "./components/formatedInput";
 import {addFragmentStateProperty} from "./utils/useFragmentState";
 
 class Mining extends React.PureComponent {
-    constructor(props) {
-        super(props);
-        this.state = {
-            body: 'planet',  // 'planet' for planet or moon; or 'asteroid'
-            oreConcentration: 0.025,  // fraction, not %
-            drill: 1,
-            drillJr: 0,
-        }
+    static defaultValue = {
+        body: 'planet',  // 'planet' for planet or moon; or 'asteroid'
+        oreConcentration: 0.025,  // fraction, not %
+        drill: 1,
+        drillJr: 0,
+    };
+    static defaultProps = {
+        engineerStars: 5,  // -1 (no), 0-5 stars
+        value: this.defaultValue,
+        onChange: (newValue) => null,
     }
 
-    bodyChange(e) {
-        /* onChange is triggered by both old and newly selected radio button
-         * So we need to actually read out the current value
-         */
-        this.setState({
-            body: e.target.value,
-        })
-    }
-
-    componentDidUpdate(prevProps, prevState, snapshot) {
-        const previous = this.calc(prevProps, prevState);
-        const current = this.calc();
-        const prevRate = Resources.create({el: -previous.electricalPower, ore: previous.totalOreProduction});
-        const currentRate = Resources.create({el: -current.electricalPower, ore: current.totalOreProduction});
-        if(!prevRate.equals(currentRate)) this.props.onRateChange(currentRate);
-    }
-
-    calc(props, state) {
-        if(props === undefined) props = this.props;
-        if(state === undefined) state = this.state;
-
-        const baseRateSr = state.body === 'planet' ? 1.5 : 5.0;
-        const baseRateJr = state.body === 'planet' ? 0.3 : 1.0;
-        const oreRateSr = state.oreConcentration * baseRateSr;
-        const oreRateJr = state.oreConcentration * baseRateJr;
-        const oreRate = state.drill * oreRateSr + state.drillJr * oreRateJr;
+    static calc(engineerStars, value) {
+        const baseRateSr = value.body === 'planet' ? 1.5 : 5.0;
+        const baseRateJr = value.body === 'planet' ? 0.3 : 1.0;
+        const oreRateSr = value.oreConcentration * baseRateSr;
+        const oreRateJr = value.oreConcentration * baseRateJr;
+        const oreRate = value.drill * oreRateSr + value.drillJr * oreRateJr;
 
         const thermalEfficiency = 1.00;
-        const engineerMultiplier = 0.25 + 0.20 * props.engineerStars;
+        const engineerMultiplier = 0.25 + 0.20 * engineerStars;
 
         const totalOreProduction = oreRate * thermalEfficiency * engineerMultiplier;
 
-        const electricalPowerSr = state.drill * (
-            state.body === 'planet' ? 15 * thermalEfficiency * engineerMultiplier : 1.5);
-        const electricalPowerJr = state.drillJr * (
-            state.body === 'planet' ? 3 * thermalEfficiency * engineerMultiplier : 1.5);
+        const electricalPowerSr = value.drill * (
+            value.body === 'planet' ? 15 * thermalEfficiency * engineerMultiplier : 1.5);
+        const electricalPowerJr = value.drillJr * (
+            value.body === 'planet' ? 3 * thermalEfficiency * engineerMultiplier : 1.5);
         // TODO: check power consumption on asteroid, not found in docs
         const electricalPower = electricalPowerSr + electricalPowerJr;
 
-        const thermalPower = state.drill * 100 + state.drillJr * 50;
+        const thermalPower = value.drill * 100 + value.drillJr * 50;
 
         return {
             oreRate,
@@ -65,32 +47,38 @@ class Mining extends React.PureComponent {
         }
     }
 
+    updateValue(obj) {
+        this.props.onChange(Object.assign({}, this.props.value, obj));
+    }
+
     render() {
-        const {oreRate, load, totalOreProduction, electricalPower, thermalPower} = this.calc();
+        const value = this.props.value;
+        const {oreRate, load, totalOreProduction, electricalPower, thermalPower}
+            = this.constructor.calc(this.props.engineerStars, value);
 
         return <div>
             <table><tbody>
             <tr><td>Body type:</td><td>
                 <label><input type="radio" name="body_type" value="planet"
-                              defaultChecked={this.state.body === 'planet'}
-                              onChange={(e) => this.bodyChange(e)}
+                              defaultChecked={value.body === 'planet'}
+                              onChange={(e) => this.updateValue({body: e.target.value})}
                 />planet</label>
                 <label><input type="radio" name="body_type" value="asteroid"
-                              defaultChecked={this.state.body === 'asteroid'}
-                              onChange={(e) => this.bodyChange(e)}
+                              defaultChecked={value.body === 'asteroid'}
+                              onChange={(e) => this.updateValue({body: e.target.value})}
                 />asteroid</label></td></tr>
             <tr><td>Ore concentration:</td><td>
-                <FloatInput decimals={2} value={this.state.oreConcentration * 100}
-                            onChange={(v) => this.setState({oreConcentration: v/100})}/>%
+                <FloatInput decimals={2} value={value.oreConcentration * 100}
+                            onChange={(v) => this.updateValue({oreConcentration: v/100})}/>%
             </td></tr>
             <tr><td>Drill-O-Matic</td><td>
-                <input type="number" value={this.state.drill}
-                       onChange={(e) => this.setState({drill: parseInt(e.target.value)})}
+                <input type="number" value={value.drill}
+                       onChange={(e) => this.updateValue({drill: parseInt(e.target.value)})}
                 />
             </td></tr>
             <tr><td>Drill-O-Matic Junior</td><td>
-                <input type="number" value={this.state.drillJr}
-                       onChange={(e) => this.setState({drillJr: parseInt(e.target.value)})}
+                <input type="number" value={value.drillJr}
+                       onChange={(e) => this.updateValue({drillJr: parseInt(e.target.value)})}
                 />
             </td></tr>
             <tr><td>Ore rate</td><td>{oreRate.toFixed(3)} Ore/s</td></tr>
@@ -160,33 +148,21 @@ class ConvertOTronRecipes extends React.PureComponent {
 }
 
 class Converting extends React.PureComponent {
-    constructor(props) {
-        super(props);
-        this.state = {
-            convertOTron250: [{lfox: true, lf: false, ox: false, mono: false}],
-            convertOTron125: [],
-            limitByDrill: true,
-            oreConsumptionLimit: this.props.drillOreRate,
-            electricityLimit: 1000,  // "high enough"
-        }
+    static defaultValue = {
+        convertOTron250: [{lfox: true, lf: false, ox: false, mono: false}],
+        convertOTron125: [],
+        limitByDrill: true,
+        electricityLimit: 1000,  // "high enough"
+    };
+    static defaultProps = {
+        engineerStars: -1,  // -1 (no), 0-5
+        drillOreRate: 1,
+        value: this.defaultValue,
+        onChange: (newValue) => null,
     }
 
-    componentDidUpdate(prevProps, prevState, snapshot) {
-        if(this.state.limitByDrill) {
-            if(this.state.oreConsumptionLimit !== this.props.drillOreRate) {
-                this.setState({oreConsumptionLimit: this.props.drillOreRate});
-            }
-        }
-        const {resources: prevRates} = this.calc(prevProps, prevState);
-        const {resources: currentRates} = this.calc();
-        if(!prevRates.equals(currentRates)) this.props.onRateChange(currentRates);
-    }
-
-    calc(props, state) {
-        if(props === undefined) props = this.props;
-        if(state === undefined) state = this.state;
-
-        const engineerMultiplier = 0.25 + props.engineerStars * 0.20;
+    static calc(engineerStars, drillOreRate, value) {
+        const engineerMultiplier = 0.25 + engineerStars * 0.20;
 
         let maxOreConsumption = 0;
         let maxElectricity = 0;
@@ -194,7 +170,7 @@ class Converting extends React.PureComponent {
         let lfProd = 0;
         let oxProd = 0;
         let monoProd = 0;
-        for(let tron of state.convertOTron250) {
+        for(let tron of value.convertOTron250) {
             let somethingActive = false;
             if(tron.lfox) {
                 maxOreConsumption += 0.5 * engineerMultiplier;
@@ -225,7 +201,7 @@ class Converting extends React.PureComponent {
                 maxThermal += 200;
             }
         }
-        for(let tron of state.convertOTron125) {
+        for(let tron of value.convertOTron125) {
             let somethingActive = false;
             if(tron.lfox) {
                 maxOreConsumption += 2.5 * engineerMultiplier;
@@ -257,10 +233,10 @@ class Converting extends React.PureComponent {
             }
         }
 
-        const oreConsumptionLimit = state.limitByDrill ? props.drillOreRate : state.oreConsumptionLimit;
+        const oreConsumptionLimit = value.limitByDrill ? drillOreRate : value.oreConsumptionLimit;
 
         const factorForOreLimit = Math.min(1, oreConsumptionLimit / maxOreConsumption);
-        const factorForElectricityLimit = Math.min(1, state.electricityLimit / maxElectricity);
+        const factorForElectricityLimit = Math.min(1, value.electricityLimit / maxElectricity);
         let limitFactor, limitedBy = 'none';
         if(factorForOreLimit < factorForElectricityLimit) {
             limitFactor = factorForOreLimit;
@@ -287,38 +263,47 @@ class Converting extends React.PureComponent {
         }
     }
 
+    updateValue(obj) {
+        this.props.onChange(Object.assign({}, this.props.value, obj));
+    }
+
     render() {
+        const value = this.props.value;
         const {maxResources, resources, thermal, oreConsumptionLimit,
-            limitFactor, limitedBy, engineerMultiplier} = this.calc()
+            limitFactor, limitedBy, engineerMultiplier} = this.constructor.calc(
+                this.props.engineerStars,
+                this.props.drillOreRate,
+                value,
+        );
 
         return <div>
             <table border="1"><tbody>
             <tr><td>Convert-O-Tron 250</td><td>
-                <ConvertOTronRecipes trons={this.state.convertOTron250}
-                                     onChange={(t) => this.setState({convertOTron250: t})}
+                <ConvertOTronRecipes trons={value.convertOTron250}
+                                     onChange={t => this.updateValue({convertOTron250: t})}
                 />
             </td></tr>
             <tr><td>Convert-O-Tron 125</td><td>
-                <ConvertOTronRecipes trons={this.state.convertOTron125}
-                                     onChange={(t) => this.setState({convertOTron125: t})}
+                <ConvertOTronRecipes trons={value.convertOTron125}
+                                     onChange={t => this.updateValue({convertOTron125: t})}
                 />
             </td></tr>
             <tr><td>Max input</td><td>
                 {(-maxResources.ore).toFixed(3)} Ore/s
                 {" = "}{((-maxResources.ore)*3600).toFixed(1)} Ore/h
                 {" = "}{((-maxResources.ore)*3600*6).toFixed(1)} Ore/d<br/>
-                {(-maxResources.elec).toFixed(1)} ⚡/s<br/>
+                {(-maxResources.el).toFixed(1)} ⚡/s<br/>
                 {thermal} kW cooling
             </td></tr>
             <tr><td>Limit</td><td>
-                <FloatInput type="number" value={oreConsumptionLimit} disabled={this.state.limitByDrill}
-                            onChange={(v) => this.setState({oreConsumptionLimit: v})}
+                <FloatInput type="number" value={oreConsumptionLimit} disabled={value.limitByDrill}
+                            onChange={(v) => this.updateValue({oreConsumptionLimit: v})}
                 /> Ore/s
-                {" "}<label><input type="checkbox" checked={this.state.limitByDrill}
-                                   onChange={(e) => this.setState({limitByDrill: e.target.checked})}
+                {" "}<label><input type="checkbox" checked={value.limitByDrill}
+                                   onChange={(e) => this.updateValue({limitByDrill: e.target.checked})}
             />Drill output</label><br/>
-                <input type="number" value={this.state.electricityLimit}
-                       onChange={(e) => this.setState({electricityLimit: e.target.value})}
+                <input type="number" value={value.electricityLimit}
+                       onChange={(e) => this.updateValue({electricityLimit: e.target.value})}
                 /> ⚡/s
             </td></tr>
             <tr><td>Limited flow</td><td>
@@ -326,7 +311,7 @@ class Converting extends React.PureComponent {
                 {(-resources.ore).toFixed(3)} Ore/s = {((-resources.ore)*3600).toFixed(1)} Ore/h{limitedBy === 'ore' ? " (limit)" : ""}<br/>
                 {(-resources.el).toFixed(3)} ⚡/s = {((-resources.el)*60).toFixed(1)} ⚡/m{limitedBy === 'elec' ? " (limit)" : ""}<br/>
                 {/*{thermal.toFixed(0)} kW<br/>*/}
-                {resources.lf.toFixed(3)} Lf/s = {(resources.lf*3600).toFixed(1)} Lf/h = {(resources.fuel*3600*6).toFixed(0)} Lf/d<br/>
+                {resources.lf.toFixed(3)} Lf/s = {(resources.lf*3600).toFixed(1)} Lf/h = {(resources.lf*3600*6).toFixed(0)} Lf/d<br/>
                 {resources.ox.toFixed(3)} Ox/s = {(resources.ox*3600).toFixed(1)} Ox/h = {(resources.ox*3600*6).toFixed(0)} Ox/d<br/>
                 {resources.mono.toFixed(3)} Mono/s = {(resources.mono*3600).toFixed(1)} Mono/h = {(resources.mono*3600*6).toFixed(0)} Mono/d<br/>
             </td></tr>
@@ -338,21 +323,21 @@ class Converting extends React.PureComponent {
 class App extends React.PureComponent {
     constructor(props) {
         super(props);
-        this.state = {
-            // pre-calculated from current default values:
-            drillRates: Resources.create({el: -18.8, ore: 0.046875}),
-            convertRates: Resources.create({lf: 0.057, ox: 0.070, el: -4.026, ore: -0.047}),
-        };
-        addFragmentStateProperty(this, 'engineerStars', 'eng', "5");
+        addFragmentStateProperty(this, 'engineerStars', 'eng', 5);
+        addFragmentStateProperty(this, 'mining', 'm', Mining.defaultValue);
+        addFragmentStateProperty(this, 'converting', 'c', Converting.defaultValue);
         addFragmentStateProperty(this, 'fuelCell', 'fc', false);
     }
 
     render() {
-        const elec = - this.state.drillRates.el - this.state.convertRates.el;
-        let fuel = this.state.convertRates.lf;
-        let ox = this.state.convertRates.ox;
+        const drill = Mining.calc(this.engineerStars, this.mining);
+        const convert = Converting.calc(this.engineerStars, drill.totalOreProduction, this.converting);
 
-        if(this.state.fuelCell) {
+        const elec = drill.electricalPower - convert.resources.el;
+        let fuel = convert.resources.lf;
+        let ox = convert.resources.ox;
+
+        if(this.fuelCell) {
             fuel -= elec * 0.00125; // 0.0016875 -> 1.5 (0.001125); 0.02025 -> 18 (0.001125)
             ox -= elec * 0.001375; // 0.0020625 -> 1.5 (0.001375); 0.02475 -> 18 (0.001375)
         }
@@ -360,16 +345,16 @@ class App extends React.PureComponent {
         const engineerRadios = [];
         engineerRadios.push(<label key="-1">
             <input type="radio" name="engineer_stars" value="-1"
-                   defaultChecked={this.engineerStars === '-1'}
-                   onChange={(e) => this.engineerStars = e.target.value}
+                   defaultChecked={this.engineerStars === -1}
+                   onChange={(e) => this.engineerStars = parseInt(e.target.value)}
             />No
         </label>);
         for(let s = 0; s <= 5; s++) {
             engineerRadios.push(<label key={s}>
                 <input type="radio" name="engineer_stars" value={'' + s}
-                       defaultChecked={this.engineerStars === '' + s}
-                       onChange={(e) => this.engineerStars = e.target.value}
-                />{s}
+                       defaultChecked={this.engineerStars === s}
+                       onChange={(e) => this.engineerStars = parseInt(e.target.value)}
+                />{s}{" "}
             </label>);
         }
 
@@ -378,11 +363,14 @@ class App extends React.PureComponent {
             Engineer on board: {engineerRadios}
             <h2>Mining</h2>
             <Mining engineerStars={this.engineerStars}
-                    onRateChange={(rates) => this.setState({drillRates: rates})}
+                    value={this.mining}
+                    onChange={v => this.mining = v}
             />
             <h2>Converting</h2>
             <Converting engineerStars={this.engineerStars}
-                        drillOreRate={this.state.drillRates.ore}
+                        drillOreRate={drill.totalOreProduction}
+                        value={this.converting}
+                        onChange={v => this.converting = v}
                         onRateChange={(rates) => this.setState({convertRates: rates})}
             />
 
@@ -397,7 +385,7 @@ class App extends React.PureComponent {
             <tr><td>Fuel production:</td><td>
                 {fuel.toFixed(3)} Lf/s = {(fuel*3600*6).toFixed(0)} Lf/d<br/>
                 {ox.toFixed(3)} Ox/s = {(ox*3600*6).toFixed(0)} Ox/d<br/>
-                {this.state.convertRates.mono.toFixed(3)} Mono/s = {(this.state.convertRates.mono*3600*6).toFixed(0)} Mono/d<br/>
+                {convert.resources.mono.toFixed(3)} Mono/s = {(convert.resources.mono*3600*6).toFixed(0)} Mono/d<br/>
             </td></tr>
             </tbody></table>
         </div>;
