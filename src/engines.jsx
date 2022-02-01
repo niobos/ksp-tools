@@ -292,4 +292,6 @@ export default function App() {
     </div>;
 }
 
-ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
+if(typeof window === 'object') window.renderApp = function() {
+    ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
+};

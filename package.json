@@ -23,7 +23,17 @@
   },
   "devDependencies": {
     "babel-jest": "^27.4.6",
+    "identity-obj-proxy": "^3.0.0",
     "jest": "^27.4.7",
     "webpack-dev-server": "^4.7.3"
+  },
+  "jest": {
+    "transform": {
+      "\\.[jt]sx?$": "babel-jest"
+    },
+    "moduleNameMapper": {
+      "\\.(svg|png)$": "identity-obj-proxy",
+      "\\.(css|less)$": "identity-obj-proxy"
+    }
   }
 }

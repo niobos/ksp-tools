@@ -40,7 +40,7 @@ function formatPower(power) {
     return `${power.toFixed(1)}⚡/${units[0]}`;
 }
 
-class ContinuousPowerCalc extends AdjustableList {
+export class ContinuousPowerCalc extends AdjustableList {
     static defaultValue = ["Probodobodyne HECS2"];
     static devices = this.generateDeviceMap();
 
@@ -164,7 +164,7 @@ class ContinuousPowerCalc extends AdjustableList {
     }
 }
 
-class BurstPowerCalc extends AdjustableList {
+export class BurstPowerCalc extends AdjustableList {
     static defaultValue = [{dev: "Probodobodyne HECS2", duration: 30, interval: 3600}];
     static devices = this.generateDeviceMap();
 
@@ -282,7 +282,7 @@ class BurstPowerCalc extends AdjustableList {
         }
 
         return <div>
-            Devices requiring power bursts:<br/>
+            Calculate power burst to support:<br/>
             {devices}
             <input type="button" value="+"
                    onClick={() => this.onAdd(this.state.selectedDevice)}
@@ -296,7 +296,7 @@ class BurstPowerCalc extends AdjustableList {
     }
 }
 
-class ShadeCalc extends AdjustableList {
+export class ShadeCalc extends AdjustableList {
     static defaultValue = [{'o': 'Kerbin', 'a': 100000}];
 
     static fromString(s) {
@@ -648,12 +648,12 @@ export default class App extends React.PureComponent {
                  onClick={(e) => this.shadeCalcOpen = !this.shadeCalcOpen}>
                 {this.shadeCalcOpen ? "▾" : "▸"}</div>
             Account for <KerbalYdhmsInput
-            value={shadeValue.duration} singleUnit={true}
-            onChange={v => this.shade = ShadeCalc.custom(v, shadeValue.interval)}
-        /> of shade every <KerbalYdhmsInput
-            value={shadeValue.interval} singleUnit={true}
-            onChange={v => this.shade = ShadeCalc.custom(shadeValue.duration, v)}
-        />
+                value={shadeValue.duration} singleUnit={true}
+                onChange={v => this.shade = ShadeCalc.custom(v, shadeValue.interval)}
+            /> of shade every <KerbalYdhmsInput
+                value={shadeValue.interval} singleUnit={true}
+                onChange={v => this.shade = ShadeCalc.custom(shadeValue.duration, v)}
+            />
             <div style={{
                 display: this.shadeCalcOpen ? "block" : "none",
                 borderLeft: "1px solid black",
@@ -668,4 +668,6 @@ export default class App extends React.PureComponent {
     }
 }
 
-ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
+if(typeof window === 'object') window.renderApp = function() {
+    ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
+};
