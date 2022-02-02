@@ -2,45 +2,43 @@ import Part, {Resources, Size} from "./kspParts";
 
 export default class Antenna extends Part {
     power: number
-    relay: boolean
+    relay: boolean | null  // null for ground stations
     txSpeed: number  // Mit/sec
     // consumption is per Mit
     combinableExponent: number = 0.75
 
-    static combined(antennas: Antenna[], forRelay: boolean = false): Antenna {
+    static combinedPower(antennas: Antenna[], forRelay: boolean = false): number {
         // https://wiki.kerbalspaceprogram.com/wiki/CommNet#Combining_antennae
         let maxPower = 0;
         let sumPower = 0;
         let sumPowerCombi = 0;
-        let sumCost = 0;
-        let sumMass = 0;
         for(const antenna of antennas) {
-            sumCost += antenna.cost;
-            sumMass += antenna.mass;
             if(forRelay && !antenna.relay) continue;
             if(antenna.power > maxPower) maxPower = antenna.power;
             sumPower += antenna.power;
             sumPowerCombi += antenna.power * antenna.combinableExponent;
         }
         const avgCombinabilityExp = sumPowerCombi / sumPower;
-        const combinedPower = maxPower * Math.pow(sumPower / maxPower, avgCombinabilityExp);
+        return maxPower * Math.pow(sumPower / maxPower, avgCombinabilityExp);
+    }
 
-        return Antenna.create({
-            cost: sumCost,
-            mass: sumMass,
-            power: combinedPower,
-            relay: forRelay,
-            // TODO: how does speed change when combining antennas?
-            // TODO: how does consumption change when combining antennas?
-        });
+    static maxRange(powerA: number, powerB: number): number {
+        return Math.sqrt(powerA * powerB)
+    }
+
+    static signalStrength(powerA: number, powerB: number, distance: number) {
+        // https://wiki.kerbalspaceprogram.com/wiki/CommNet#Signal_strength
+        const rel_dist = 1 - distance / this.maxRange(powerA, powerB);
+        if (rel_dist <= 0) return 0;
+        return (3 - 2 * rel_dist) * rel_dist * rel_dist;
     }
 }
 export const antennas = {
-    'KSC DSN Tier 1': Antenna.create({power: 2e9, combinableExponent: 0}),
-    'KSC DSN Tier 2': Antenna.create({power: 50e9, combinableExponent: 0}),
-    'KSC DSN Tier 3': Antenna.create({power: 250e9, combinableExponent: 0}),
-    'Kerbin non-DSN': Antenna.create({power: 36e3, combinableExponent: 0}),
-    'pod built-in': Antenna.create({power: 5e3}),
+    'KSC DSN Tier 1': Antenna.create({power: 2e9,  relay: null, combinableExponent: 0}),
+    'KSC DSN Tier 2': Antenna.create({power: 50e9, relay: null, combinableExponent: 0}),
+    'KSC DSN Tier 3': Antenna.create({power: 250e9, relay: null, combinableExponent: 0}),
+    'Kerbin non-DSN': Antenna.create({power: 36e3, relay: null, combinableExponent: 0}),
+    'pod built-in': Antenna.create({power: 5e3, relay: false}),
     'Communotron 16': Antenna.create({cost: 300, mass: 0.005, size: new Set([Size.TINY]), power: 500e3, relay: false, txSpeed: 3.33, consumption: Resources.create({el: 6}), combinableExponent: 1.0}),
     'Communotron 16-S': Antenna.create({cost: 300, mass: 0.015, size: new Set([Size.RADIAL]), power: 500e3, relay: false, txSpeed: 3.33, consumption: Resources.create({el: 6}), combinableExponent: 0.0}),
     'Communotron DTS-M1': Antenna.create({cost: 900, mass: 0.05, size: new Set([Size.RADIAL]), power: 2e9, relay: false, txSpeed: 5.71, consumption: Resources.create({el: 6})}),

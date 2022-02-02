@@ -2,18 +2,35 @@ const path = require('path');
 const HtmlMinimizerPlugin = require("html-minimizer-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
-const pages = {
+const jsxPages = {
     'engines': 'KSP - Engine selection',
-    'electricity': 'KSP - Electricity options',
-    'mining': 'KSP - Mining',
+    'electricity': 'KSP - Electricity calculator',
+    'mining': 'KSP - Mining calculator',
 };
-const entries = Object.keys(pages).reduce((acc, page) => {acc[page] = `./src/${page}.jsx`; return acc}, {});
-const pluginsHtmlWebpack = Object.keys(pages).map((page) => new HtmlWebpackPlugin({
-    template: 'src/react-template.html',
-    filename: `${page}.html`,
-    chunks: [page],
-    title: pages[page],
-}));
+const tsxPages = {
+    'commnet': 'KSP - CommNet link calculator',
+};
+
+const entries = {};
+const pluginsHtmlWebpack = []
+for(let page in jsxPages) {
+    entries[page] = `./src/${page}.jsx`;
+    pluginsHtmlWebpack.push(new HtmlWebpackPlugin({
+        template: 'src/react-template.html',
+        filename: `${page}.html`,
+        chunks: [page],
+        title: jsxPages[page],
+    }));
+}
+for(let page in tsxPages) {
+    entries[page] = `./src/${page}.tsx`;
+    pluginsHtmlWebpack.push(new HtmlWebpackPlugin({
+        template: 'src/react-template.html',
+        filename: `${page}.html`,
+        chunks: [page],
+        title: tsxPages[page],
+    }));
+}
 
 module.exports = (env, argv) => {
     return {
@@ -27,12 +44,12 @@ module.exports = (env, argv) => {
             path: path.resolve(__dirname, 'dist'),
         },
         resolve: {
-            extensions: ['.js', '.jsx', '.ts']
+            extensions: ['.js', '.jsx', '.ts', '.tsx']
         },
         module: {
             rules: [
                 {
-                    test: /\.(js|jsx|ts)$/,
+                    test: /\.([jt]sx?)$/,
                     use: {
                         loader: 'babel-loader',
                         options: {

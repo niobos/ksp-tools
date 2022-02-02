@@ -1,0 +1,15 @@
+input[type="text"] {
+    width: 4em;
+}
+
+div.endpoint {
+    margin: .5em;
+    padding: .5em;
+    border: 1px solid black;
+}
+
+div.link {
+    margin: 1em;
+    padding: .5em;
+    border: 1px solid black;
+}
