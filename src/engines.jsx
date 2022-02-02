@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
 import useFragmentState, {jsonParseWithDefault} from "./utils/useFragmentState";
-import {engines as kspEngines, fuelTanks, Size} from "./utils/kspParts";
+import {Size} from "./utils/kspParts";
 import {bodies as kspBodies} from "./utils/kspBody";
 import {FloatInput} from "./components/formatedInput";
 import KspHierBody from "./components/kspHierBody";
@@ -10,9 +10,11 @@ import {KspFund} from "./components/kspIcon";
 import SortableTable from "./components/sortableTable";
 import Preset from "./components/preset";
 import FuelTank from "./components/fuelTank";
+import {fuelTanks} from "./utils/kspParts-fuelTanks";
+import {engines as kspEngines} from "./utils/kspParts-engine";
+import {fromPreset, objectMap} from "./utils/utils";
 
 import './engines.css';
-import {fromPreset, objectMap} from "./utils/utils";
 
 function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry) {
     /* Calculate the mass of fuel tanks needed to get the desired ∆v

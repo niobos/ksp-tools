@@ -1,23 +1,18 @@
-import React, {useState} from "react";
+import React from "react";
 import ReactDOM from "react-dom";
 import {FloatInput, KerbalYdhmsInput, SiInput} from "./components/formatedInput";
-import useFragmentState, {addFragmentStateProperty, addStateProperty} from "./utils/useFragmentState";
+import {addFragmentStateProperty, addStateProperty} from "./utils/useFragmentState";
 import Preset from "./components/preset";
 import SortableTable from "./components/sortableTable";
 import AdjustableList from "./components/list";
 import {bodies, planets} from "./utils/kspBody";
 import Orbit, {orbitalDarkness, orbits} from "./utils/kspOrbit";
 import KspHierBody from "./components/kspHierBody";
-import {
-    batteries,
-    electricalGenerators,
-    FuelCell,
-    fuelTanks,
-    probeCores,
-    Resources,
-    SolarPanel
-} from "./utils/kspParts";
+import {Resources} from "./utils/kspParts";
 import FuelTank from "./components/fuelTank";
+import {fuelTanks} from "./utils/kspParts-fuelTanks";
+import {batteries, electricalGenerators, FuelCell, SolarPanel} from "./utils/kspParts-solarPanel";
+import {probeCores} from "./utils/kspParts-other";
 import {fromPreset, objectMap} from "./utils/utils";
 
 import {KspFund} from "./components/kspIcon";
