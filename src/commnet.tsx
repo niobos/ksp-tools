@@ -6,13 +6,16 @@ import Endpoint, {calcCombinedPower} from "./commnet/endpoint";
 import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "./components/list";
 
 import './commnet.css';
-import Antenna from "./utils/kspParts-antenna";
+import Antenna, {antennas as kspAntennas} from "./utils/kspParts-antenna";
 
 export default function App() {
     const [hops, setHops] = useFragmentState('h', [
         {a: ['pod built-in'], d: 100000},
         {a: ['KSC DSN Tier 3']},
     ])
+
+    const anyRelayAntenna = Object.keys(kspAntennas).filter(antennaName => kspAntennas[antennaName].relay === true)[0];
+    const defaultDistance = 12e6;
 
     let totalSignalStrength = 1;
     const hopsJsx = [];
@@ -24,10 +27,11 @@ export default function App() {
         totalSignalStrength *= signalStrength;
 
         const removeButton = <input
-            type="button" value="remove above hop"
+            type="button" value="remove hop below"
             onClick={e => setHops(arrayRemoveElement(hops, hopNr))}
         />;
         hopsJsx.push(<div key={hopNr} className="hop">
+            {hopNr > 0 ? removeButton : ""}
             <Endpoint value={hop.a}
                       onChange={v => setHops(arrayReplaceElement(hops, hopNr, Object.assign({}, hop, {a: v})))}
             />
@@ -35,9 +39,8 @@ export default function App() {
                   powerA={powerA} powerB={powerB}
                   onChange={v => setHops(arrayReplaceElement(hops, hopNr, Object.assign({}, hop, {d: v})))}
             />
-            {hopNr > 0 ? removeButton : ""}
             <input type="button" value="add hop"
-                   onClick={e => setHops(arrayInsertElement(hops, {a: ['HG-5'], d: 12000000}, hopNr+1))}/>
+                   onClick={e => setHops(arrayInsertElement(hops, {a: [anyRelayAntenna], d: defaultDistance}, hopNr+1))}/>
         </div>)
     }
 
@@ -45,7 +48,7 @@ export default function App() {
         <h1>CommNet calculator</h1>
         {hopsJsx}
         <Endpoint value={hops[hops.length-1].a}
-                  onChange={v => setHops(arrayReplaceElement(hops, hops.length-1, v))}
+                  onChange={v => setHops(arrayReplaceElement(hops, hops.length-1, {a: v}))}
                   showGroundstations={true}
         />
         <div className="total">Total signal quality {(totalSignalStrength*100).toFixed(0)}%</div>
