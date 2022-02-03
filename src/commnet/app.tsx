@@ -1,12 +1,12 @@
 import React from "react";  // JSX support
 import ReactDOM from "react-dom";
-import useFragmentState from "./utils/useFragmentState";
-import Link from "./commnet/link";
-import Endpoint, {calcCombinedPower} from "./commnet/endpoint";
-import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "./components/list";
+import useFragmentState from "../utils/useFragmentState";
+import Link from "./link";
+import Endpoint, {calcCombinedPower} from "./endpoint";
+import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../components/list";
 
-import './commnet.css';
-import Antenna, {antennas as kspAntennas} from "./utils/kspParts-antenna";
+import './app.css';
+import Antenna, {antennas as kspAntennas} from "../utils/kspParts-antenna";
 
 export default function App() {
     const [hops, setHops] = useFragmentState('h', [

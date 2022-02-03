@@ -23,7 +23,7 @@ for(let page in jsxPages) {
     }));
 }
 for(let page in tsxPages) {
-    entries[page] = `./src/${page}.tsx`;
+    entries[page] = `./src/${page}/app.tsx`;
     pluginsHtmlWebpack.push(new HtmlWebpackPlugin({
         template: 'src/react-template.html',
         filename: `${page}.html`,
