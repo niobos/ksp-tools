@@ -313,11 +313,11 @@ export class ShadeCalc extends AdjustableList {
             let duration, duty;
             if('o' in shade) {  // orbital darkness
                 const body = bodies[shade.o];
-                duration = orbitalDarkness(body.gravity, body.radius_m, shade.a);
-                duty = duration / Orbit.period_from_sma(body.radius_m + shade.a, body.gravity);
-            } else if('s' in shade) {  // solar night
+                duration = orbitalDarkness(body.gravity, body.radius, shade.a);
+                duty = duration / Orbit.period_from_sma(body.radius + shade.a, body.gravity);
+            } else if('s' in shade) {  // solar nightr
                 const body = bodies[shade.s];
-                duration = body.solar_day_s / 2;
+                duration = body.solarDay / 2;
                 duty = 0.5;
             } else if('d' in shade) {  // custom
                 duration = shade.d;
@@ -349,7 +349,7 @@ export class ShadeCalc extends AdjustableList {
             let shadeJsx;
             if('o' in shade) {  // orbital darkness
                 shadeJsx = <span>Orbital darkness
-                    at {SiInput.formatValue(shade.a)}mAGL
+                    at {SiInput.format(shade.a)}mAGL
                     above {shade.o}
                 </span>;
             } else if('s' in shade) {  // solar night
