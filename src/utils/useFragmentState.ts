@@ -3,13 +3,13 @@
 
 import {useCallback, useState} from 'react';
 
-function getHash() {
+function getHash(): URLSearchParams {
     let hash = window.location.hash;  // strip leading #
-    if(hash.length > 1) hash = hash.substr(1);  // remove leading #
+    if(hash.length > 1) hash = hash.substring(1);  // remove leading #
     return new URLSearchParams(hash);
 }
 
-export function getValueFromHash(key, defaultValue) {
+export function getValueFromHash(key: string, defaultValue?: string): string {
     const params = getHash();
     const value = params.get(key);
     if(value === null || value === undefined) return defaultValue;
@@ -20,13 +20,13 @@ export function getValueFromHash(key, defaultValue) {
     }
 }
 
-export function updateHashValue(key, value) {
+export function updateHashValue(key: string, value: string): void {
     const params = getHash();
     params.set(key, value);
     window.location.hash = params.toString();
 }
 
-export function jsonParseWithDefault(defaultValue) {
+export function jsonParseWithDefault(defaultValue: string): (value: string) => any {
     return (valueFromHash) => {
         if(valueFromHash === null || valueFromHash === undefined) {
             return defaultValue;
@@ -39,7 +39,11 @@ export function jsonParseWithDefault(defaultValue) {
     }
 }
 
-export default function useFragmentState(key, fromString, toString) {
+export default function useFragmentState(
+    key: string,
+    fromString: (value: string) => any,
+    toString: (value: any) => string,
+): [any, (value: any) => void] {
     /* similar to useState() hook, but stores the state in the fragment identifier
      * of the URL as well.
      *
@@ -70,7 +74,11 @@ export default function useFragmentState(key, fromString, toString) {
     return [value, onSetValue];
 }
 
-export function addStateProperty(obj, attrName, defaultValue) {
+type hasState = {
+    state: object
+}
+
+export function addStateProperty(obj: hasState, attrName: string, defaultValue: any): void {
     /* Add a property to access a state variable through the `attrName` getter & setter
      */
     if(!('state' in obj)) obj.state = {};
@@ -85,7 +93,13 @@ export function addStateProperty(obj, attrName, defaultValue) {
     })
 }
 
-export function addFragmentStateProperty(obj, attrName, key, fromString, toString) {
+export function addFragmentStateProperty(
+    obj: hasState,
+    attrName: string,
+    key: string,
+    fromString: (value: string) => any,
+    toString: (value: any) => string,
+): void {
     /* Add a property to access a state variable through the `attrName` getter & setter.
      * The state is also synced to the URL fragment identifier (hash) under the key `key`.
      * Conversion from hash is done by `fromString(str)`, conversion to hash by `toString(value)`.
