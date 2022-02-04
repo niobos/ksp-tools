@@ -55,7 +55,7 @@ export default function Link(props: LinkProps) {
                 setDistA("");
                 setDistB("");
             }}
-        />m (max range {SiInput.formatValue(maxRange)}m)<br/>
+        />m (max range {SiInput.format(maxRange)}m)<br/>
         Distance between <KspHierBody
             customValue="Select body"
             value={distA} onChange={(b) => {

@@ -306,19 +306,27 @@ export class ShadeCalc extends AdjustableList {
         return JSON.stringify(v);
     }
 
+    static calcOrbitalDarkness(body, altitude) {
+        const duration = orbitalDarkness(body.gravity, body.radius, altitude);
+        const duty = duration / Orbit.period_from_sma(body.radius + altitude, body.gravity);
+        return {duration, duty};
+    }
+
+    static calcSolarNight(body) {
+        const duration = body.solarDay / 2;
+        const duty = 0.5;
+        return {duration, duty};
+    }
+
     static calcShade(shades) {
         let maxDuration = 0;
         let maxDuty = 0;
         for(let shade of shades) {
             let duration, duty;
             if('o' in shade) {  // orbital darkness
-                const body = bodies[shade.o];
-                duration = orbitalDarkness(body.gravity, body.radius, shade.a);
-                duty = duration / Orbit.period_from_sma(body.radius + shade.a, body.gravity);
-            } else if('s' in shade) {  // solar nightr
-                const body = bodies[shade.s];
-                duration = body.solarDay / 2;
-                duty = 0.5;
+                ({duration, duty} = this.calcOrbitalDarkness(bodies[shade.o], shade.a));
+            } else if('s' in shade) {  // solar night
+                ({duration, duty} = this.calcSolarNight(bodies[shade.s]));
             } else if('d' in shade) {  // custom
                 duration = shade.d;
                 duty = shade.d === 0 ? 0 : shade.d / shade.i;
@@ -348,12 +356,16 @@ export class ShadeCalc extends AdjustableList {
             const shade = this.props.value[i];
             let shadeJsx;
             if('o' in shade) {  // orbital darkness
+                const body = bodies[shade.o];
+                const {duration} = this.constructor.calcOrbitalDarkness(body, shade.a);
                 shadeJsx = <span>Orbital darkness
                     at {SiInput.format(shade.a)}mAGL
-                    above {shade.o}
+                    above {shade.o} ({KerbalYdhmsInput.formatValueSingleUnit(duration)})
                 </span>;
             } else if('s' in shade) {  // solar night
-                shadeJsx = <span>Solar night on {shade.s}</span>;
+                const body = bodies[shade.s];
+                const {duration} = this.constructor.calcSolarNight(body);
+                shadeJsx = <span>Solar night on {shade.s} ({KerbalYdhmsInput.formatValueSingleUnit(duration)})</span>;
             } else if('d' in shade) {  // custom
                 shadeJsx = <span>
                     <KerbalYdhmsInput
