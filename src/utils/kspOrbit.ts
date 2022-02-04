@@ -1,35 +1,22 @@
+import {Data} from "dataclass";
 import Vector from "./vector";
 import {bodies} from "./kspBody";
 import {find_zero_1d} from "./optimize";
 
-export default class Orbit {
-    constructor({
-        sma = 1,  // semi major axis [m]
-        e = 0,  // eccentricity []
-        argp = 0,  // argument of periapsis [rad]
-        inc = 0,  // inclination [rad]
-        lon_an = 0,  // longitude of ascending node [rad]
-        ma0 = 0,  // mean anomaly at t=0 [rad]
-        gravity = undefined,  // attracting gravity field [m^3 / s^2]
-    } = {}) {
-        this.sma = sma;
-        this.e = e;
-        this.argp = argp;
-        this.inc = inc;
-        this.lon_an = lon_an;
-        this.ma0 = ma0;
-        this.gravity = gravity;
-    }
-
-    clone() {
-        return new Orbit(this);
-    }
+export default class Orbit extends Data {
+    sma: number = 1  // semi major axis [m]
+    e: number = 0  // eccentricity []
+    argp: number = 0  // argument of periapsis [rad]
+    inc: number = 0  // inclination [rad]
+    lon_an: number = 0  // longitude of ascending node [rad]
+    ma0: number = 0  // mean anomaly at t=0 [rad]
+    gravity: number = undefined  // attracting gravity field [m^3 / s^2]
 
     static FromStateVector(
-        pos,  // position Vector()
-        vel,  // velocity Vector()
-        gravity,  // [m^3/s^2]
-        t,  // current time, default 0
+        pos: Vector,  // position Vector()
+        vel: Vector,  // velocity Vector()
+        gravity: number,  // [m^3/s^2]
+        t: number = 0,  // current time, default 0
     ) {
         /* Calculates the orbit in gravity field `gravity`
          * based on a position `pos`, velocity `vel` and time `t` (default t=0).
@@ -43,11 +30,11 @@ export default class Orbit {
         const e = vel.cross_product(h).mul(1/gravity).sub(pos.mul(1/pos.norm));
         const e_len = e.norm;
 
-        let n = (new ksp.Vector(0, 0, 1)).cross_product(h);
+        let n = (new Vector(0, 0, 1)).cross_product(h);
         // if ||n|| == 0, the orbit is in xy-plane
         // => ascending node is undefined
         // pick (1, 0, 0) arbitrarily to avoid divide-by-zero below in arg_p calculation
-        if(n.norm === 0) n = new ksp.Vector(1, 0, 0);
+        if(n.norm === 0) n = new Vector(1, 0, 0);
 
         let ta = e.angle_to(pos)
         const ta_sign = pos.inner_product(vel);
@@ -85,15 +72,15 @@ export default class Orbit {
         let o;
         if(e_len < 0) throw 'BUG: got negative eccentricity';
         else if(e_len < 1) {  // Elliptical
-            o = new Orbit({sma, e: e_len, argp: arg_peri, inc, lon_an, gravity});
+            o = Orbit.create({sma, e: e_len, argp: arg_peri, inc, lon_an, gravity});
             const mm = o.mean_motion
-            o.ma0 = ma - mm * t;
+            o = o.copy({ma0: ma - mm * t});
         } else if(e_len === 1) {  // Parabolic
-            o = new Orbit({sma: undefined, e: 1, argp: arg_peri, inc, lon_an, gravity});
+            o = Orbit.create({sma: undefined, e: 1, argp: arg_peri, inc, lon_an, gravity});
             throw 'not implemented';
         } else {  // Hyperbolic
-            o = new Orbit({sma, e: e_len, argp: arg_peri, inc, lon_an, gravity});
-            o.ma0 = ma - t / Math.sqrt((-sma)*sma*sma / gravity);
+            o = Orbit.create({sma, e: e_len, argp: arg_peri, inc, lon_an, gravity});
+            o = o.copy({ma0: ma - t / Math.sqrt((-sma)*sma*sma / gravity)});
         }
         return {
             'orbit': o,
@@ -206,11 +193,11 @@ export default class Orbit {
     }
 
     get distance_at_periapsis() {
-        const [pe, ap] = this.constructor.apsides_from_sma_e(this.sma, this.e);
+        const [pe, ] = Orbit.apsides_from_sma_e(this.sma, this.e);
         return pe;
     }
     get distance_at_apoapsis() {
-        const [pe, ap] = this.constructor.apsides_from_sma_e(this.sma, this.e);
+        const [, ap] = Orbit.apsides_from_sma_e(this.sma, this.e);
         return ap;
     }
 
@@ -343,7 +330,7 @@ export default class Orbit {
          * Returns NaN for elements where the orbit doesn't reach the given distance
          */
         const cos_ta = (this.semi_latus_rectum / d - 1) / this.e;
-        if(cos >= -1 && cos <= 1) {
+        if(cos_ta >= -1 && cos_ta <= 1) {
             return Math.acos(cos_ta);
         } else {
             return NaN;
@@ -357,8 +344,8 @@ export default class Orbit {
         const burn_xyz = this.prn_to_cartesian(ta, burn.prn);
         const new_vel = vel.add(burn_xyz);
 
-        const new_orbit = Orbit.FromStateVector_(pos, new_vel, this.gravity, burn.t);
-        return new_orbit;
+        const {orbit} = Orbit.FromStateVector(pos, new_vel, this.gravity, burn.t);
+        return orbit;
     }
     do_burn_ta(ta, prn_dv) {
         const pos = this.position_at_ta(ta);
@@ -366,8 +353,8 @@ export default class Orbit {
         const burn_xyz = this.prn_to_cartesian(ta, prn_dv);
         const new_vel = vel.add(burn_xyz);
 
-        const new_orbit = Orbit.FromStateVector_(pos, new_vel, this.gravity);
-        return new_orbit;
+        const {orbit} = Orbit.FromStateVector(pos, new_vel, this.gravity);
+        return orbit;
     }
 
     get normal() {
@@ -419,37 +406,37 @@ export default class Orbit {
 };
 
 export const orbits = {
-    'Moho': new Orbit({gravity: bodies['Kerbol'].gravity,
+    'Moho': Orbit.create({gravity: bodies['Kerbol'].gravity,
         sma: 5_263_138_304, e: 0.2, argp: 15/180*Math.PI, inc: 7/180*Math.PI, lon_an: 70/180*Math.PI, ma0: 3.14}),
-    'Eve': new Orbit({gravity: bodies['Kerbol'].gravity,
+    'Eve': Orbit.create({gravity: bodies['Kerbol'].gravity,
         sma: 9_832_684_544, e: 0.01, argp: 0, inc: 2.1/180*Math.PI, lon_an: 15/180*Math.PI, ma0: 3.14}),
-    'Gilly': new Orbit({gravity: bodies['Eve'].gravity,
+    'Gilly': Orbit.create({gravity: bodies['Eve'].gravity,
         sma: 31_500_000, e: 0.55, argp: 10/180*Math.PI, inc: 12/180*Math.PI, lon_an: 80/180*Math.PI, ma0: 0.9}),
-    'Kerbin': new Orbit({gravity: bodies['Kerbol'].gravity,
+    'Kerbin': Orbit.create({gravity: bodies['Kerbol'].gravity,
         sma: 13_599_840_256, e: 0, argp: 0, inc: 0, lon_an: 0, ma0: 3.14}),
-    'Mun': new Orbit({gravity: bodies['Kerbin'].gravity,
+    'Mun': Orbit.create({gravity: bodies['Kerbin'].gravity,
         sma: 12_000_000, e: 0, argp: 0, inc: 0, lon_an: 0, ma0: 1.7}),
-    'Minmus': new Orbit({gravity: bodies['Kerbin'].gravity,
+    'Minmus': Orbit.create({gravity: bodies['Kerbin'].gravity,
         sma: 47_000_000, e: 0, argp: 38/180*Math.PI, inc: 6, lon_an: 78/180*Math.PI, ma0: 0.9}),
-    'Duna': new Orbit({gravity: bodies['Kerbol'].gravity,
+    'Duna': Orbit.create({gravity: bodies['Kerbol'].gravity,
         sma: 20_726_155_264, e: 0.051, argp: 0, inc: 0.06/180*Math.PI, lon_an: 135.5/180*Math.PI, ma0: 3.14}),
-    'Ike': new Orbit({gravity: bodies['Duna'].gravity,
+    'Ike': Orbit.create({gravity: bodies['Duna'].gravity,
         sma: 3_200_000, e: 0.03, argp: 0, inc: 0.2/180*Math.PI, lon_an: 0, ma0: 1.7}),
-    'Dres': new Orbit({gravity: bodies['Kerbol'].gravity,
+    'Dres': Orbit.create({gravity: bodies['Kerbol'].gravity,
         sma: 40_839_348_203, e: 0.145, argp: 90/180*Math.PI, inc: 5/180*Math.PI, lon_an: 280/180*Math.PI, ma0: 3.14}),
-    'Jool': new Orbit({gravity: bodies['Kerbol'].gravity,
+    'Jool': Orbit.create({gravity: bodies['Kerbol'].gravity,
         sma: 68_773_560_320, e: 0.05, argp: 0, inc: 1.304/180*Math.PI, lon_an: 52/180*Math.PI, ma0: 0.1}),
-    'Laythe': new Orbit({gravity: bodies['Jool'].gravity,
+    'Laythe': Orbit.create({gravity: bodies['Jool'].gravity,
         sma: 27_184_000, e: 0, argp: 0, inc: 0, lon_an: 0, ma0: 3.14}),
-    'Vall': new Orbit({gravity: bodies['Jool'].gravity,
+    'Vall': Orbit.create({gravity: bodies['Jool'].gravity,
         sma: 43_152_000, e: 0, argp: 0, inc: 0, lon_an: 0, ma0: 0.9}),
-    'Tylo': new Orbit({gravity: bodies['Jool'].gravity,
+    'Tylo': Orbit.create({gravity: bodies['Jool'].gravity,
         sma: 68_500_000, e: 0, argp: 0, inc: 0.025/180*Math.PI, lon_an: 0, ma0: 3.14}),
-    'Bop': new Orbit({gravity: bodies['Jool'].gravity,
+    'Bop': Orbit.create({gravity: bodies['Jool'].gravity,
         sma: 128_500_000, e: 0.235, argp: 25/180*Math.PI, inc: 15/180*Math.PI, lon_an: 10/180*Math.PI, ma0: 0.9}),
-    'Pol': new Orbit({gravity: bodies['Jool'].gravity,
+    'Pol': Orbit.create({gravity: bodies['Jool'].gravity,
         sma: 179_890_000, e: 0.171, argp: 15/180*Math.PI, inc: 4.25/180*Math.PI, lon_an: 2/180*Math.PI, ma0: 0.9}),
-    'Eeloo': new Orbit({gravity: bodies['Kerbol'].gravity,
+    'Eeloo': Orbit.create({gravity: bodies['Kerbol'].gravity,
         sma: 90_118_820_000, e: 0.26, argp: 260/180*Math.PI, inc: 6.15/180*Math.PI, lon_an: 50/180*Math.PI, ma0: 3.14}),
 };
 

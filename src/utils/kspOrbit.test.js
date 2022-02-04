@@ -4,7 +4,7 @@ it('should have a dummy test', () => {});
 
 describe('Orbits without gravity', () => {
     it('should have apsides', () => {
-        const o = new Orbit({sma: 1, e: 0});
+        const o = Orbit.create({sma: 1, e: 0});
         expect(o.distance_at_apoapsis).toEqual(1);
         expect(o.distance_at_periapsis).toEqual(1);
         expect(o.period).toEqual(NaN);
