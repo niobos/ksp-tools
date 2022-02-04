@@ -9,6 +9,7 @@ const jsxPages = {
 };
 const tsxPages = {
     'commnet': 'KSP - CommNet link calculator',
+    'orbits': 'KSP - Changing obits',
 };
 
 const entries = {};

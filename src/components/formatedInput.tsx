@@ -11,6 +11,7 @@ function equalNaNCompatible(a: number, b: number): boolean {
 interface FormattedInputProps {
     value: any
     onChange?: (newValue: number) => void
+    onFocus?: () => void
     onBlur?: (finalValue: number) => void
     style?: object
     styleFunc?: (value: number) => object
@@ -34,6 +35,7 @@ export default class FormattedInput<TProps extends FormattedInputProps>
     static defaultProps = {
         // value: ...
         onChange: () => null,  // User is changing input: (newValue) => ...
+        onFocus: () => null,  // user entered the field
         onBlur: () => null,  // User has done changing input: (finalValue) => ...
         style: {},  // style passed straight through
         styleFunc: () => {},  // style based on value
@@ -119,6 +121,7 @@ export default class FormattedInput<TProps extends FormattedInputProps>
             value={this.state.text}
             placeholder={this.props.placeholder}
             onChange={(e) => this.onChange(e)}
+            onFocus={(e) => this.props.onFocus()}
             onBlur={(e) => this.onBlur(e)}
             readOnly={this.props.onChange === undefined}
             disabled={this.props.disabled}

@@ -1,0 +1,11 @@
+input.SiInput {
+    width: 4em;
+}
+
+input.FloatInput {
+    width: 4em;
+}
+
+input.KerbalYdhmsInput {
+    width: 8em;
+}
