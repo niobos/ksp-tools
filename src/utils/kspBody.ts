@@ -26,6 +26,8 @@ export function bodiesHierFind(bodyName: string): string[] | null {
     return null;
 }
 
+const GRAVITATIONAL_CONSTANT = 6.67430e-11;
+
 export default class Body extends Data {
     mass?: number  // kg
     radius?: number  // m
@@ -39,11 +41,11 @@ export default class Body extends Data {
 
     get gravity(): number | null {
         if(this.mass == null) return null;
-        return 6.67430e-11 * this.mass;
+        return GRAVITATIONAL_CONSTANT * this.mass;
     }
     static massFromGravity(gravity: number | null): number | null {
         if(gravity == null) return null;
-        return gravity / 6.67430e-11;
+        return gravity / GRAVITATIONAL_CONSTANT;
     }
 
     get surface_gravity(): number | null {
