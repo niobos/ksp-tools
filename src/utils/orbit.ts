@@ -86,7 +86,7 @@ export default class Orbit {
                 // Calculate true anomaly θ at t=0
                 const ma0 = orbitalPhase.ma0;
                 if(e_norm < 1) {  // elliptical
-                    const E = Orbit._findZeroNewton( // [OMES Algorithm 3.1]
+                    const E = Orbit._findZero( // [OMES Algorithm 3.1]
                         (E) => {
                             return {
                                 f: E - e_norm * Math.sin(E) - ma0,
@@ -108,7 +108,7 @@ export default class Orbit {
                     );  // [OMES 3.29]
 
                 } else {  // hyperbolic
-                    const F = Orbit._findZeroNewton(  // [OMES Algorithm 3.2]
+                    const F = Orbit._findZero(  // [OMES Algorithm 3.2]
                         (F) => {
                             return {
                                 f: e_norm * Math.sinh(F) - F - ma0,
@@ -175,6 +175,9 @@ export default class Orbit {
             o._cache['e'] = orbitalElements.e;
             o._cache['N'] = N;
         }
+        if(orbitalPhase !== undefined && 'ma0' in orbitalPhase) {
+            o._cache['ma0'] = orbitalPhase.ma0;
+        }
         return o
     }
     orbitalElements(): {
@@ -189,59 +192,14 @@ export default class Orbit {
         /* Calculate the orbital elements
          * Note that the return value is redundant in several ways.
          */
-        // [OMES Algorithm 4.1]
-        const r = this.r0.norm;
-        const v = this.v0.norm;
-        const vr = this.v0.inner_product(this.r0) / r;
-
-        const h = this.specificAngularMomentumVector;
-        const h_norm = this.specificAngularMomentum;
-        const inc = this.inclination;
-
-        const Ω = this.longitudeAscendingNode;
-
-        const μ = this.gravity;
-        const e = this.r0.mul(v*v - μ/r)
-            .sub(this.v0.mul(r * vr))
-            .mul(1 / μ);
-        const e_norm = e.norm;
-
-        const ω = this.argumentOfPeriapsis;
-
-        let θ = Math.acos(e.inner_product(this.r0) / (e_norm * r));
-        if(vr < 0) θ = 2*Math.PI - θ;
-
-        let ma0;
-        if(e_norm < 1) {  // elliptic
-            const E = 2 * Math.atan(
-                Math.sqrt((1-e_norm)/(1+e_norm))
-                * Math.tan(θ/2)
-            );  // [OMES 3.10b]
-            const Me = E - e_norm * Math.sin(E);  // [OMES 3.11]
-            ma0 = Me - 2*Math.PI/this.period * this.t0;
-
-        } else if(e_norm == 1) {  // parabolic
-            const Mp = 1/2 * Math.tan(θ/2)
-                + 1/6 * Math.pow(Math.tan(θ/2), 3);  // [OMES 3.27]
-            ma0 = Mp - μ*μ * this.t0 / (h_norm*h_norm*h_norm);
-
-        } else {  // hyperbolic
-            const F = Math.asinh(
-                Math.sqrt(e_norm*e_norm - 1) * Math.sin(θ)
-                / (1 + e_norm * Math.cos(θ))
-            );  // [OMES 3.35]
-            const Mh = e_norm * Math.sinh(F) - F;  // [OMES 3.37]
-            ma0 = Mh - μ*μ / (h_norm*h_norm*h_norm) * Math.pow(e_norm*e_norm - 1, 3/2) * this.t0;  // [OMES 3.31]
-        }
-
         return {
             sma: this.semiMajorAxis,
-            h,
-            e,
-            inc,
-            argp: ω,
-            lon_an: Ω,
-            ma0,
+            h: this.specificAngularMomentumVector,
+            e: this.eccentricityVector,
+            inc: this.inclination,
+            argp: this.argumentOfPeriapsis,
+            lon_an: this.longitudeAscendingNode,
+            ma0: this.meanAnomalyAtEpoch,
         }
     }
 
@@ -296,7 +254,7 @@ export default class Orbit {
     }
     get period(): number | null {
         if(this._cache['period'] === undefined) {
-            if (this.energy < 0) {  // elliptic
+            if (this.eccentricity < 1) {  // elliptic
                 this._cache['period'] = 2 * Math.PI / Math.sqrt(this.gravity) * Math.pow(this.semiMajorAxis, 3 / 2);  // [OMES 2.73]
             } else {  // parabolic, hyperbolic
                 this._cache['period'] = null;
@@ -336,6 +294,23 @@ export default class Orbit {
             sma * (1-e),
             sma * (1+e),
         ];
+    }
+    static periapsisDistanceFromParabolicPeriapsisSpeed(gravity: number, speed: number): number {
+        return 2 * gravity / (speed*speed); // [OMES 2.80]
+    }
+    get turnAngle(): number {
+        // Turn angle for hyperbolic trajectory
+        if(this.energy < 0) {  // elliptic
+            return null;
+        } else {  // parabolic (180º), hyperbolic
+            return 2 * Math.asin(1/this.eccentricity);  // [OMES 2.90]
+        }
+    }
+    get hyperbolicExcessVelocity(): number {
+        if(this.energy < 0) return null
+        else if(this.energy === 0) return 0;
+        // else:
+        return Math.sqrt(this.gravity / (-this.semiMajorAxis));  // [OMES 2.102]
     }
 
     get inclination(): number {
@@ -399,6 +374,43 @@ export default class Orbit {
             this._cache['argp'] = ω;
         }
         return this._cache['argp'];
+    }
+
+    get meanAnomalyAtEpoch(): number {
+        if(this._cache['ma0'] === undefined) {
+            const r = this.r0.norm;
+            const vr = this.v0.inner_product(this.r0) / r;
+            const h_norm = this.specificAngularMomentum;
+            const μ = this.gravity;
+            const e = this.eccentricityVector;
+            const e_norm = this.eccentricity;
+
+            let θ = Math.acos(e.inner_product(this.r0) / (e_norm * r));
+            if (vr < 0) θ = 2 * Math.PI - θ;
+
+            if (e_norm < 1) {  // elliptic
+                const E = 2 * Math.atan(
+                    Math.sqrt((1 - e_norm) / (1 + e_norm))
+                    * Math.tan(θ / 2)
+                );  // [OMES 3.10b]
+                const Me = E - e_norm * Math.sin(E);  // [OMES 3.11]
+                this._cache['ma0'] = Me - 2 * Math.PI / this.period * this.t0;
+
+            } else if (e_norm == 1) {  // parabolic
+                const Mp = 1 / 2 * Math.tan(θ / 2)
+                    + 1 / 6 * Math.pow(Math.tan(θ / 2), 3);  // [OMES 3.27]
+                this._cache['ma0'] = Mp - μ * μ * this.t0 / (h_norm * h_norm * h_norm);
+
+            } else {  // hyperbolic
+                const F = Math.asinh(
+                    Math.sqrt(e_norm * e_norm - 1) * Math.sin(θ)
+                    / (1 + e_norm * Math.cos(θ))
+                );  // [OMES 3.35]
+                const Mh = e_norm * Math.sinh(F) - F;  // [OMES 3.37]
+                this._cache['ma0'] = Mh - μ * μ / (h_norm * h_norm * h_norm) * Math.pow(e_norm * e_norm - 1, 3 / 2) * this.t0;  // [OMES 3.31]
+            }
+        }
+        return this._cache['ma0'];
     }
 
     get distanceAtPeriapsis(): number {
@@ -468,6 +480,13 @@ export default class Orbit {
     }
 
     velocityAtT(t: number): Vector {
+        const {v} = this.stateVectorAtT(t);
+        return v;
+    }
+
+    stateVectorAtT(t: number = 0): {r: Vector, v: Vector} {
+        if(t === this.t0) return {r: this.r0, v: this.v0};
+
         const dt = t - this.t0;
         const {r, χ} = this._rAndχAtDt(dt);
 
@@ -480,7 +499,10 @@ export default class Orbit {
             * (α * χ*χ*χ * Orbit._S(α*χ*χ) - χ);   // 3.66c
         const gp = 1 - χ*χ / r_mag * Orbit._C(α * χ*χ);  // 3.66d
 
-        return this.r0.mul(fp).add(this.v0.mul(gp));  // 3.65
+        return {
+            r: r,
+            v: this.r0.mul(fp).add(this.v0.mul(gp)),  // 3.65
+        };
     }
 
     taAtT(t: number): number {
@@ -489,12 +511,50 @@ export default class Orbit {
         const r_pf = this.globalToPerifocal(r);
         return Math.atan2(r_pf.y, r_pf.x);
     }
-    tAtTa(ta: number): number {
-        /* Calculate the time (parabolic, hyperbolic) or a time (elliptic) when the
-         * true anomaly is `ta`
-         */
-        throw 'not implemented';  // TODO
+    timeSincePeriapsisAtTa(θ: number): number {
+        // Calculate the time since (>0, or until if <0) periapsis.
+        const e = this.eccentricity;
+        if(e < 1) {  // elliptic
+            // [OMES Example 3.1]
+            const E = 2 * Math.atan(Math.sqrt((1-e)/(1+e)) * Math.tan(θ/2));  // [OMES 3.10b]
+            const Me = E - e * Math.sin(E);  // [OMES 3.11]
+            return Me / (2*Math.PI) * this.period;  // [OMES 3.12]
+
+        } else if(e === 1) {  // parabolic
+            const Mp = 1/2 * Math.tan(θ/2) + 1/6 * Math.pow(Math.tan(θ/2), 3);  // [OMES 3.27]
+            const h = this.specificAngularMomentum;
+            const µ = this.gravity;
+            return Mp * h*h*h / (µ*µ);  // from [OMES 3.28]
+
+        } else {  // hyperbolic
+            const F = 2 * Math.atanh(Math.sqrt((e-1)/(e+1)) * Math.tan(θ/2));  // from [OMES 3.41a]
+            const Mh = e * Math.sinh(F) - F;  // [OMES 3.37]
+            const h = this.specificAngularMomentum;
+            const µ = this.gravity;
+            return Mh * h*h*h / (µ*µ) * Math.pow(e*e - 1, -3/2);  // from [OMES 3.31]
+        }
     }
+    tAtTa(θ: number): number {
+        /* Calculate the time (parabolic, hyperbolic) or *a* time (elliptic)
+         * when the true anomaly was θ.
+         */
+        const tp = this.timeSincePeriapsisAtTa(θ);
+        const tp0 = this._timeSincePeriapsisOfT0;
+        return tp - tp0;
+    }
+
+    taAtDistance(r: number): number {
+        /* Calculates a true anomaly where the orbit crosses distance `r`.
+         * For elliptical orbits with apoapsis < `d`, returns NaN.
+         */
+        const µ = this.gravity;
+        const h = this.specificAngularMomentum;
+        const e = this.eccentricity;
+        return Math.acos((h*h / (µ * r) - 1) / e); // from [OMES 2.35]
+    }
+    // ta of nodes vs other orbit  // TODO
+    // dv for inclination change  // TODO
+    // dv for apsis push  // TODO
 
     globalToPerifocal(g: Vector): Vector {
         // [OMES 4.43]
@@ -543,19 +603,6 @@ export default class Orbit {
         );
     }
 
-    _prnUnitVectors(ta: number): [Vector, Vector, Vector] {
-        const pos = this.positionAtTa(ta);
-        let prograde = this.velocityAtTa(ta);
-        let normal = pos.cross_product(prograde);
-        let radialIn = normal.cross_product(prograde);
-
-        // normalize
-        prograde = prograde.mul(1/prograde.norm);
-        normal = normal.mul(1/normal.norm);
-        radialIn = radialIn.mul(1/radialIn.norm);
-
-        return [prograde, normal, radialIn];
-    }
     prnToGlobal(prn: Vector, ta: number): Vector {
         // Convert a (prograde, radial-in, normal) vector at true anomaly `ta` to the global frame of reference
         const [p, r, n] = this._prnUnitVectors(ta);
@@ -595,34 +642,69 @@ export default class Orbit {
         return this._cache['_α'];
     }
 
+    static _factorial(n: number): number {
+        let p = 1;
+        for(; n > 1; n--) {
+            p *= n;
+        }
+        return p;
+    }
     static _S(z: number): number {
-        /* Stumpff function
+        /* Stumpff function c_{3}
          * [OMES] 3.49
          */
-        if(z > 0) {
+        const Z = 1e-7;
+        if(z > Z) {
             const sqrt_z = Math.sqrt(z);
             return (sqrt_z - Math.sin(sqrt_z)) / (sqrt_z*sqrt_z*sqrt_z);
-        } else if(z > 0) {
+        } else if(z < -Z) {
             const sqrt_mz = Math.sqrt(-z);
             return (Math.sinh(sqrt_mz) - sqrt_mz) / (sqrt_mz*sqrt_mz*sqrt_mz);
-        } else {  // z == 0
-            return 1/6;
+        } else {  // z near 0
+            // the above expressions get unstable near 0. Use series-expansion instead
+            let s = 0;
+            for(let k = 0; k < 5; k++) {
+                s += (k%2 ? -1 : 1) * Math.pow(z, k) / Orbit._factorial(2*k+3);
+            }
+            return s;
         }
     }
-
     static _C(z: number): number {
-        /* Stumpff function
+        /* Stumpff function c_{2}
          * [OMES] 3.50
          */
-        if(z > 0) {
+        const Z = 1e-7;
+        if(z > Z) {
             return (1 - Math.cos(Math.sqrt(z))) / z;
-        } else if (z < 0) {
+        } else if (z < -Z) {
             return (Math.cosh(Math.sqrt(-z)) - 1) / (-z);
-        } else {  // z == 0
-            return 1/2;
+        } else {  // z near 0
+            // the above expressions get unstable near 0. Use series-expansion instead
+            let s = 0;
+            for(let k = 0; k < 5; k++) {
+                s += (k%2 ? -1 : 1) * Math.pow(z, k) / Orbit._factorial(2*k+2);
+            }
+            return s;
         }
     }
 
+    static _findZero(
+        ffp: (x: number) => {f: number, fp: number},
+        x0: number,
+        tolerance: number = 1e-6,
+    ): number {
+        try {
+            return Orbit._findZeroNewton(ffp, x0, tolerance);
+        } catch(e) {
+            if(e.error === 'did not converge') {
+                // try to continue with bisecting
+                // Assumes we found a low & high point, will raise otherwise
+                return Orbit._findZeroBisect(x => ffp(x).f, e.xl, e.xh, tolerance);
+            } else {
+                throw e;
+            }
+        }
+    }
     static _findZeroNewton(
         ffp: (x: number) => {f: number, fp: number},
         x0: number,
@@ -631,16 +713,74 @@ export default class Orbit {
         /* Find a zero of function `f(x)` with derivative `fp(x)`
          * iteratively by using Newton's method, starting from an
          * initial guess x0.
-         * Stop iterating once the steps become smaller than `tolerance`
+         * Stop iterating once the steps become smaller than `tolerance`.
+         * May throw if convergence is not achieved
          */
         let x = x0;
         let r = tolerance;  // bootstrap
-        while(Math.abs(r) >= tolerance) {
+        let maxIter = 100;
+        let xl, fxl, xh, fxh;  // keep track of bounds to fall back to bisecting mode
+        while(Math.abs(r) >= tolerance && --maxIter) {
             const {f: fx, fp: fpx} = ffp(x);
+            if(xl === undefined) {  // first run
+                xl = x;
+                fxl = fx;
+            } else if(xh === undefined) {  // runs until we have a different sign: fxl * fxh < 0
+                if(fxl * fx < 0) {  // different sign
+                    if(x < xl) {  // swap l<->h
+                        xh = xl;
+                        fxh = fxl;
+                        xl = x;
+                        fxl = fx;
+                    } else {
+                        xh = x;
+                        fxh = fx;
+                    }
+                }
+            } else {  // narrowing
+                if(fx * fxl > 0 && xl < x) {
+                    xl = x;
+                    fxl = fx;
+                }
+                if(fx * fxh > 0 && x < xh) {
+                    xh = x;
+                    fxh = fx;
+                }
+            }
             r = fx / fpx;
             x = x - r;
         }
+        if(maxIter == 0) {
+            throw {error: 'did not converge', xl, xh};
+        }
         return x;
+    }
+    static _findZeroBisect(
+        f: (x: number) => number,
+        a: number, b: number,
+        tolerance: number = 1e-6,
+    ): number {
+        /* Find zero of function `f(x)` by bisecting between [a;b].
+         * Expects f(a) * f(b) < 0 (i.e. should have a different sign).
+         */
+        let fa = f(a);
+        let fb = f(b);
+        if(!(fa * fb < 0)) throw `Expected f(${a})=${fa} and f(${b})=${fb} to have different sign.`;
+        while(Math.abs(a-b) > tolerance) {
+            const x = (a + b) / 2;
+            const fx = f(x);
+            if(fx === 0) return x;
+            if(fx * fa > 0) {  // same sign
+                a = x;
+                fa = fx;
+            } else if(fx * fb > 0) {  // same sign
+                b = x;
+                fb = fx;
+            } else {
+                throw 'Logic error';
+            }
+        }
+        return (a+b)/2;
     }
 
     _universalAnomalyAtDt(
@@ -654,7 +794,7 @@ export default class Orbit {
         const v_r0 = this.v0.inner_product(this.r0) / this.r0.norm;
         const µ = this.gravity;
         const α = this._α;
-        return Orbit._findZeroNewton(
+        return Orbit._findZero(
             χ => {
                 const c1 = r_0 * v_r0 / Math.sqrt(µ) * χ;
                 const χχ = χ*χ;
@@ -687,6 +827,28 @@ export default class Orbit {
 
         return {r, χ};
     }
+
+    _prnUnitVectors(ta: number): [Vector, Vector, Vector] {
+        const pos = this.positionAtTa(ta);
+        let prograde = this.velocityAtTa(ta);
+        let normal = pos.cross_product(prograde);
+        let radialIn = normal.cross_product(prograde);
+
+        // normalize
+        prograde = prograde.mul(1/prograde.norm);
+        normal = normal.mul(1/normal.norm);
+        radialIn = radialIn.mul(1/radialIn.norm);
+
+        return [prograde, normal, radialIn];
+    }
+
+    get _timeSincePeriapsisOfT0(): number {
+        if(this._cache['tp0'] === undefined) {
+            const θ0 = this.taAtT(this.t0);
+            this._cache['tp0'] = this.timeSincePeriapsisAtTa(θ0);
+        }
+        return this._cache['tp0'];
+    }
 }
 
 export function orbitalDarkness(gravity: number, bodyRadius: number, orbitAlt: number): number {
@@ -694,4 +856,5 @@ export function orbitalDarkness(gravity: number, bodyRadius: number, orbitAlt: n
 
     // https://wiki.kerbalspaceprogram.com/wiki/Orbit_darkness_time
     return 2 * r * r / Math.sqrt(r * gravity) * Math.asin(bodyRadius / r);
+    // See also [OMES example 3.3]
 }

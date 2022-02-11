@@ -1,5 +1,5 @@
 import React, {useState} from "react";  // JSX
-import {SiInput, FloatInput, KerbalYdhmsInput} from "../components/formatedInput";
+import {FloatInput, DegreesInput} from "../components/formatedInput";
 import Apside from "./apside";
 import Body from "../utils/kspBody";
 import {default as kspOrbit, orbits as kspOrbits} from "../utils/kspOrbit";
@@ -13,7 +13,7 @@ interface OrbitProps {
 }
 
 export function fromString(s: string): kspOrbit {
-    if(s === "" || s === undefined) return kspOrbit.create({
+    if(s === "" || s === undefined) return kspOrbit.FromKepler({
         sma: 800_000,
         e: 0.125,
     });
@@ -163,6 +163,38 @@ export default function Orbit(props: OrbitProps) {
             onChange={s => fromApsideSpeed(2, apsis2, s, value, onChange, editingApside, setEditingApside)}
             onBlur={() => setEditingApside(null)}
     />m/s</span>
+    </td></tr>
+    <tr><td>Argument of Periapsis</td><td>
+        <DegreesInput value={value.argp}
+                      onChange={argp => onChange(value.copy({argp}))}
+        />º
+    </td></tr>
+    <tr><td>Inclination</td><td>
+        <DegreesInput value={value.inc}
+                      onChange={inc => onChange(value.copy({inc}))}
+                      onBlur={inc => {
+                     if(inc > Math.PI) {
+                         // Correct inclination to be <=180º by swapping ascending & descending node
+                         // Note: since argp is measured from the AN, we need to correct that as well
+                         onChange(value.copy({
+                             inc: 2*Math.PI - inc,
+                             lon_an: value.lon_an < Math.PI ? value.lon_an + Math.PI : value.lon_an - Math.PI,
+                             argp: value.argp < Math.PI ? value.argp + Math.PI : value.argp - Math.PI,
+                         }))
+                     }
+                 }}
+        />º
+    </td></tr>
+    <tr><td>Longitude of Ascending Node</td><td>
+        <DegreesInput value={value.lon_an}
+                      onChange={lon_an => onChange(value.copy({lon_an}))}
+        />º
+    </td></tr>
+    <tr><td>Mean anomaly at epoch</td><td>
+        <DegreesInput value={value.ma0}
+                      placeholder={"any"} emptyValue={null}
+                      onChange={ma0 => onChange(value.copy({ma0}))}
+        />º
     </td></tr>
     </tbody></table>;
 }

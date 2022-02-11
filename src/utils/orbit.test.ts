@@ -1,6 +1,125 @@
 import Orbit from "./orbit";
 import Vector from "./vector";
 
+const earthGravity = 5.972161874653522e24 * 6.67430e-11;
+const earthRadius = 6378e3;
+
+describe('OMES examples', () => {
+    describe('example 2.9', () => {
+        const r0 = new Vector(8182.4e3, -6865.9e3, 0);
+        const v0 = new Vector(0.47572e3, 8.8116e3, 0);
+        const o = Orbit.FromStateVector(
+            earthGravity,
+            r0,
+            v0,
+        );
+        expect(o.specificAngularMomentumVector.x).toBeCloseTo(0);
+        expect(o.specificAngularMomentumVector.y).toBeCloseTo(0);
+        expect(o.specificAngularMomentumVector.z/1e6).toBeCloseTo(75366, 0);
+        expect(o.positionAtT(0).norm/1e3).toBeCloseTo(10681, 0);  // TYPO in [OMES]
+        const vr0 = v0.inner_product(r0) / r0.norm;
+        expect(vr0 / 1e3).toBeCloseTo(-5.2996);
+        const dta = 120/180*Math.PI;
+        const ta0 = o.taAtT(0);
+        const r = o.positionAtTa(ta0 + dta);
+        const v = o.velocityAtTa(ta0 + dta);
+        expect(r.x / 1e3).toBeCloseTo(1454.9, 1-1);  // rounding
+        expect(r.y / 1e3).toBeCloseTo(8251.6, 1-1);  // Needed more rounding to match
+        expect(r.z).toBeCloseTo(0);
+        expect(v.x / 1e3).toBeCloseTo(-8.1323, 4-1);  // Needed more rounding
+        expect(v.y / 1e3).toBeCloseTo(5.6785, 4-1);  // Needed more rounding
+        expect(v.z).toBeCloseTo(0);
+    });
+
+    describe('example 3.1', () => {
+        const {sma, e} = Orbit.smaEFromApsides(9600e3, 21000e3);
+        expect(e).toBeCloseTo(0.37255);
+        const o = Orbit.FromOrbitalElements(earthGravity, {sma, e});
+        expect(o.specificAngularMomentum / 1e6).toBeCloseTo(72472, 0);
+        expect(o.period).toBeCloseTo(18834, 0);
+        const t = o.timeSincePeriapsisAtTa(120/180*Math.PI);
+        expect(t).toBeCloseTo(4077, 0);
+    });
+
+    describe('example 3.2', () => {
+        const {sma, e} = Orbit.smaEFromApsides(9600e3, 21000e3);
+        const o = Orbit.FromOrbitalElements(earthGravity, {sma, e}, {ta: 0, t0: 0});
+        const ta = o.taAtT(3*3600);
+        expect(ta).toBeCloseTo((193.2-360)/180*Math.PI);
+    });
+
+    describe('example 3.4', () => {
+        const vp = 10e3;
+        const rp = Orbit.periapsisDistanceFromParabolicPeriapsisSpeed(earthGravity, vp);
+        expect(rp / 1e3).toBeCloseTo(7972, 0);
+        const o = Orbit.FromOrbitalElements(earthGravity, {sma: 2*rp, e: 1}, {ta: 0, t0: 0});
+        expect(o.specificAngularMomentum / 1e6).toBeCloseTo(79720, 0);
+        const r = o.positionAtT(6*3600);
+        expect(r.norm / 1e3).toBeCloseTo(86977, 0);  // different rounding
+    });
+
+    describe('example 3.5', () => {
+        const o = Orbit.FromStateVector(earthGravity,
+            new Vector(300e3 + earthRadius, 0, 0),
+            new Vector(0, 15e3, 0),
+            0,
+        );
+        expect(o.specificAngularMomentum / 1e6).toBeCloseTo(100170);
+        expect(o.eccentricity).toBeCloseTo(2.7696);
+        const asymptoteAngle = (Math.PI - o.turnAngle)/2;
+        expect(asymptoteAngle + o.turnAngle).toBeCloseTo(111.17/180*Math.PI);
+        expect(o.distanceAtTa(100/180*Math.PI) / 1e3).toBeCloseTo(48497, 0);
+
+        const t100 = o.tAtTa(100/180*Math.PI);
+        expect(t100).toBeCloseTo(4141, 0);
+
+        // const h = o.specificAngularMomentum;
+        // const e = o.eccentricity
+        // const Mh = earthGravity*earthGravity / (h*h*h) * Math.pow(e*e - 1, 3/2) * (t100 + 3*3600);
+        // expect(Mh).toBeCloseTo(40.690);
+        // const X = o._universalAnomalyAtDt(t100 + 3*3600);
+        // expect(X).toBeCloseTo(Math.sqrt(-o.semiMajorAxis) * 3.4631);
+
+        const ta = o.taAtT(t100 + 3*3600);
+        expect(ta / Math.PI * 180).toBeCloseTo(107.78);
+        const {r, v} = o.stateVectorAtT(t100 + 3*3600);
+        expect(r.norm / 1e3).toBeCloseTo(163181, 0);  // rounding
+        expect(v.norm / 1e3).toBeCloseTo(10.51);
+    });
+
+    describe('example 3.6 variant', () => {
+        const v0 = (new Vector(3.075127035515813e3, 9.515369410025642e3, 0)).rotated(new Vector(0, 0, 1), 30/180*Math.PI);
+        const r0 = (new Vector(10_000e3, 0, 0)).rotated(new Vector(0, 0, 1), 30/180*Math.PI);
+        const o = Orbit.FromStateVector(
+            earthGravity,
+            r0,
+            v0,
+        );
+        expect(o.specificAngularMomentum / 1e6).toBeCloseTo(95154, 0);
+        expect(o.eccentricity).toBeCloseTo(1.4682);
+        expect(o.semiMajorAxis/1e3).toBeCloseTo(-19656, 0);  // rounding
+        const X = o._universalAnomalyAtDt(3600);
+        expect(X).toBeCloseTo(128.51 * Math.sqrt(1e3), 1);
+
+        const ta1 = o.taAtT(3600);
+        expect(ta1).toBeCloseTo(100.04/180*Math.PI);
+    });
+
+    describe('example 3.7', () => {
+        const o = Orbit.FromStateVector(earthGravity,
+            new Vector(7000e3, -12124e3, 0),
+            new Vector(2.6679e3, 4.6210e3, 0),
+        );
+        const {r, v} = o.stateVectorAtT(60*60);
+        expect(r.x / 1e3).toBeCloseTo(-3297.8, 1);  // rounding
+        expect(r.y / 1e3).toBeCloseTo(7413.4, 1);  // rounding
+        expect(r.z).toBeCloseTo(0);
+        expect(v.x / 1e3).toBeCloseTo(-8.2977);
+        expect(v.y / 1e3).toBeCloseTo(-0.96309);
+        expect(v.z).toBeCloseTo(0);
+    });
+});
+
 describe('orbit', () => {
     it('should be calculated from orbital elements (elliptical)', () => {
         const o = Orbit.FromOrbitalElements(
@@ -86,7 +205,7 @@ describe('Laws of physics', () => {
         ['circular', Orbit.FromStateVector(1, new Vector(1, 0, 0), new Vector(0, 1, 0))],
         ['elliptical', Orbit.FromStateVector(2, new Vector(1, 0, 0), new Vector(0, 1, 0))],
         ['parabolic', Orbit.FromStateVector(1, new Vector(2, 0, 0), new Vector(0, 1, 0))],
-        ['hyperbolic', Orbit.FromStateVector(1, new Vector(2, 0, 0), new Vector(0, 2, 0))],
+        ['hyperbolic', Orbit.FromStateVector(1, new Vector(2, 0, 0), new Vector(0, 1.1, 0))],
     ])('%p', (name, o) => {
         it('should converse angular momentum', () => {
             const h = o.specificAngularMomentumVector;
@@ -109,6 +228,26 @@ describe('Laws of physics', () => {
                 const s = o.speedAtTa(ta);
                 const E2 = s*s / 2 - o.gravity/d;
                 expect(E2).toBeCloseTo(E);
+            }
+        });
+
+        it('should survive round-trips', () => {
+            const {r, v} = o.stateVectorAtT(0);
+            for(let ta = -2; ta < 2; ta+=0.1) {
+                const t = o.tAtTa(ta);
+                const ta2 = o.taAtT(t);
+                expect(ta2).toBeCloseTo(ta);
+
+                const {r: r2, v: v2} = o.stateVectorAtT(t);
+                const r2_ = o.positionAtTa(ta);
+                const v2_ = o.velocityAtTa(ta);
+                expect(r2.sub(r2_).norm).toBeCloseTo(0);
+                expect(v2.sub(v2_).norm).toBeCloseTo(0);
+
+                const o2 = Orbit.FromStateVector(o.gravity, r2, v2, t);
+                const {r: r3, v: v3} = o2.stateVectorAtT(0);
+                expect(r3.sub(r).norm).toBeCloseTo(0);
+                expect(v3.sub(v).norm).toBeCloseTo(0);
             }
         });
     });

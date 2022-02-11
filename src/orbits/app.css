@@ -1,8 +1,4 @@
-input.SiInput {
-    width: 4em;
-}
-
-input.FloatInput {
+input.SiInput, input.FloatInput, input.DegreesInput {
     width: 4em;
 }
 
