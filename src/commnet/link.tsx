@@ -28,13 +28,13 @@ function maybeChange(
     let maxDistA;
     if(locA[common] === undefined) maxDistA = 0;
     else {
-        maxDistA = orbits[locA[common]].distance_at_ta(Math.PI);
+        maxDistA = orbits[locA[common]].distanceAtApoapsis;
     }
 
     let maxDistB;
     if(locB[common] === undefined) maxDistB = 0;
     else {
-        maxDistB = orbits[locB[common]].distance_at_ta(Math.PI);
+        maxDistB = orbits[locB[common]].distanceAtApoapsis;
     }
 
     onChange(maxDistA + maxDistB);

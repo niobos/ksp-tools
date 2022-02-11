@@ -6,7 +6,7 @@ import Preset from "./components/preset";
 import SortableTable from "./components/sortableTable";
 import AdjustableList from "./components/list";
 import {bodies, planets} from "./utils/kspBody";
-import Orbit, {orbitalDarkness, orbits} from "./utils/kspOrbit";
+import {orbits} from "./utils/kspOrbit";
 import KspHierBody from "./components/kspHierBody";
 import {Resources} from "./utils/kspParts";
 import FuelTank from "./components/fuelTank";
@@ -17,12 +17,13 @@ import {fromPreset, objectMap} from "./utils/utils";
 
 import {KspFund} from "./components/kspIcon";
 import './electricity.css';
+import Orbit, {orbitalDarkness} from "./utils/orbit";
 
 function solarPanelEfficiencyFromKerbolDistance(d) {
-    return 1 / Math.pow(d/orbits.Kerbin.sma, 2);
+    return 1 / Math.pow(d/orbits.Kerbin.semiMajorAxis, 2);
 }
 function kerbolDistanceFromSolarPanelEfficiency(e) {
-    return Math.sqrt(1/e) * orbits.Kerbin.sma;
+    return Math.sqrt(1/e) * orbits.Kerbin.semiMajorAxis;
 }
 
 function formatPower(power) {
@@ -308,7 +309,7 @@ export class ShadeCalc extends AdjustableList {
 
     static calcOrbitalDarkness(body, altitude) {
         const duration = orbitalDarkness(body.gravity, body.radius, altitude);
-        const duty = duration / Orbit.period_from_sma(body.radius + altitude, body.gravity);
+        const duty = duration / Orbit.periodFromSma(body.radius + altitude, body.gravity);
         return {duration, duty};
     }
 
@@ -684,7 +685,7 @@ export default class App extends React.PureComponent {
             value={kerbolDistanceFromSolarPanelEfficiency(this.solarEfficiency)}
             onChange={d => this.solarEfficiency = solarPanelEfficiencyFromKerbolDistance(d)}
         />m <Preset options={planets.reduce((acc, p) => {
-            acc[p] = orbits[p].sma;
+            acc[p] = orbits[p].semiMajorAxis;
             return acc
         }, {})}
                     value={kerbolDistanceFromSolarPanelEfficiency(this.solarEfficiency)}

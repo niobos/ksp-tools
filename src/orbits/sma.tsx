@@ -1,6 +1,6 @@
 import React, {useState} from "react";
 import {KerbalYdhmsInput, SiInput} from "../components/formatedInput";
-import {default as kspOrbit} from "../utils/kspOrbit";
+import {default as kspOrbit} from "../utils/orbit";
 
 interface SmaProps {
     value: number
@@ -17,7 +17,7 @@ export default function Sma(props: SmaProps) {
         periodStyle = {};
     }
 
-    let period = kspOrbit.period_from_sma(props.value, props.gravity);
+    let period = kspOrbit.periodFromSma(props.gravity, props.value);
     if(editingPeriod != null) {
         period = editingPeriod;
     }
@@ -28,7 +28,7 @@ export default function Sma(props: SmaProps) {
         />m<span style={periodStyle}>{" => "}period of <KerbalYdhmsInput
             value={period}
             onFocus={() => setEditingPeriod(period)}
-            onChange={p => onChange(kspOrbit.sma_from_period(p, props.gravity))}
+            onChange={p => onChange(kspOrbit.smaFromPeriod(props.gravity, p))}
             onBlur={() => setEditingPeriod(null)}
         /></span>
     </span>;

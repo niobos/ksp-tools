@@ -13,7 +13,6 @@ import Orbit, {
 } from "./orbit";
 import Preset from "../components/preset";
 import {bodiesHier, bodiesHierFind, planets} from "../utils/kspBody";
-import {orbits as kspOrbits} from "../utils/kspOrbit";
 
 import "./app.css";
 

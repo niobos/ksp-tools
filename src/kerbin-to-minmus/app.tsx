@@ -7,8 +7,8 @@ import {orbits} from "../utils/kspOrbit";
 function App() {
     const [time, setTime] = useFragmentState('t', 0);
 
-    const minmusInclination = orbits.Minmus.inc;
-    const minmusLAN = orbits.Minmus.lon_an;
+    const minmusInclination = orbits.Minmus.inclination;
+    const minmusLAN = orbits.Minmus.longitudeAscendingNode;
     const currentLongitude = orbits.Kerbin
     const orbitCrossingT = "TODO";
 
