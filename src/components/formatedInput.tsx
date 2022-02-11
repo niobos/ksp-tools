@@ -81,7 +81,7 @@ export default class FormattedInput<TProps extends FormattedInputProps>
             text: formattedText,
             value: value,
         });
-        this.props.onBlur(this.state.value);
+        this.props.onBlur(value);
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -143,7 +143,7 @@ export class FloatInput<TProps extends FloatInputProps>
     parseInput(rawText: string): number {
         const f = parseFloat(rawText);
         if(isNaN(f)) return 0;  // Needed to parse "." when starting to type ".5"
-        return parseFloat(rawText);
+        return f;
     }
 
     formatValue(value: number): string {
@@ -248,12 +248,9 @@ export class SiInput
 interface KerbalYdhmsInputProps extends FormattedInputProps {
     singleUnit?: boolean
 }
-
 export class KerbalYdhmsInput
         extends FormattedInput<KerbalYdhmsInputProps> {
-    parseInput(rawText): number {
-        if(rawText === Infinity || rawText === "∞") return Infinity;
-
+    static parseToYdhms(rawText): number[] {
         const re = /^((?<y>\d+) *y)? *((?<d>\d+) *d)? *((?<h>\d+) *h)? *((?<m>\d+) *m)? *((?<s>\d+(.\d*)?) *s?)?$/;
         const match = re.exec(rawText);
         if(match === null) return undefined;
@@ -262,16 +259,26 @@ export class KerbalYdhmsInput
             i[unit] = parseInt(match.groups[unit]) || 0;
         }
         i.s = parseFloat(match.groups.s) || 0.;
-        return (((((i.y*426) + i.d)*6 + i.h)*60 + i.m)*60) + i.s;
+        return [i.y, i.d, i.h, i.m, i.s];
     }
 
-    static formatValueYdhms(sec: number): string {
+    parseInput(rawText): number {
+        if(rawText === Infinity || rawText === "∞") return Infinity;
+
+        const [y, d, h, m, s] = KerbalYdhmsInput.parseToYdhms(rawText);
+        return (((((y*426) + d)*6 + h)*60 + m)*60) + s;
+    }
+
+    static splitValueYdhms(sec: number): number[] {
         const s = sec % 60; sec = (sec - s) / 60;
         const m = sec % 60; sec = (sec - m) / 60;
         const h = sec % 6; sec = (sec - h) / 6;
         const d = sec % 426; sec = (sec - d) / 426;
         const y = sec;
+        return [y, d, h, m, s];
+    }
 
+    static formatYdhms(y: number, d: number, h: number, m: number, s: number): string {
         let values = [y, d, h, m, s.toFixed(1)];
         let units = ['y', 'd', 'h', 'm', 's'];
         while(values[0] === 0) {
@@ -308,7 +315,70 @@ export class KerbalYdhmsInput
         if(this.props.singleUnit) {
             return (this.constructor as typeof KerbalYdhmsInput).formatValueSingleUnit(sec);
         } else {
-            return (this.constructor as typeof KerbalYdhmsInput).formatValueYdhms(sec);
+            const [y, d, h, m, s] = (this.constructor as typeof KerbalYdhmsInput).splitValueYdhms(sec);
+            return (this.constructor as typeof KerbalYdhmsInput).formatYdhms(y, d, h, m, s);
         }
+    }
+}
+
+interface KerbalDateInputProps extends FormattedInputProps {
+}
+export class KerbalDateInput extends FormattedInput<KerbalDateInputProps> {
+    // The game uses 1-based years & days
+    parseInput(rawText: string): number {
+        const reSecOnly = /^\d+$/;  // interpret raw numbers as seconds since epoch
+        const matchSecOnly = reSecOnly.exec(rawText);
+        if(matchSecOnly !== null) return parseFloat(rawText);
+
+        // interpret anything with a suffix to be Y1D1-format
+        const re = /^([Yy] *(?<y>\d+)) *([Dd] *(?<d>\d+)) *((?<h>\d+)(:(?<m>\d+)(:(?<s>\d+))?)?)?$/;
+        const match = re.exec(rawText);
+        if(match === undefined) return undefined;
+        let y = parseInt(match.groups['y']) || 1;
+        let d = parseInt(match.groups['d']) || 1;
+        const h = parseInt(match.groups['h']) || 0;
+        const m = parseInt(match.groups['m']) || 0;
+        const s = parseInt(match.groups['s']) || 0;
+
+        y -= 1;  // game uses 1-based Y & D
+        d -= 1;
+
+        return (((((y*426) + d)*6 + h)*60 + m)*60) + s;
+    }
+
+    formatValue(sec: number): string {
+        let [y, d, h, m, s] = KerbalYdhmsInput.splitValueYdhms(sec);
+        y += 1;
+        d += 1;
+
+        let mZeroPadded = '00' + m;
+        mZeroPadded = mZeroPadded.substring(mZeroPadded.length - 2);
+        return `Y${y} D${d} ${h}:${mZeroPadded}`;
+    }
+}
+
+interface DegreesInputProps extends FormattedInputProps {
+    emptyValue?: number | null
+}
+
+export class DegreesInput extends FormattedInput<DegreesInputProps> {
+    static defaultProps = {
+        ...FormattedInput.defaultProps,
+        emptyValue: 0,  // value when input is empty
+    }
+
+    formatValue(value: number | null): string {
+        if(value == null) return "";
+        return (value / Math.PI * 180).toFixed(1);
+    }
+
+    parseInput(rawText: string | number): number {
+        if(typeof rawText === 'number') return rawText;
+        if(rawText === "" || rawText === undefined) return this.props.emptyValue;
+
+        const f = parseFloat(rawText);
+        if(isNaN(f)) return undefined;
+        const rad = f / 180. * Math.PI;
+        return rad % (2 * Math.PI);
     }
 }

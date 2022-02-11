@@ -41,8 +41,8 @@ export function jsonParseWithDefault(defaultValue: string): (value: string) => a
 
 export default function useFragmentState(
     key: string,
-    fromString: (value: string) => any,
-    toString: (value: any) => string,
+    fromString: any | ((value: string) => any),
+    toString?: (value: any) => string,
 ): [any, (value: any) => void] {
     /* similar to useState() hook, but stores the state in the fragment identifier
      * of the URL as well.
