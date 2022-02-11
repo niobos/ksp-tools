@@ -23,7 +23,7 @@ export function getValueFromHash(key: string, defaultValue?: string): string {
 export function updateHashValue(key: string, value: string): void {
     const params = getHash();
     params.set(key, value);
-    window.location.hash = params.toString();
+    history.replaceState({}, '', '#' + params.toString());
 }
 
 export function jsonParseWithDefault(defaultValue: string): (value: string) => any {

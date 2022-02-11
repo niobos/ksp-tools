@@ -104,7 +104,6 @@ export default class FormattedInput<TProps extends FormattedInputProps>
 
     render() {
         const style = {
-            textAlign: 'right',
         };
         Object.assign(style, this.props.style);
         Object.assign(style, this.props.styleFunc(this.state.value));
@@ -333,7 +332,7 @@ export class KerbalDateInput extends FormattedInput<KerbalDateInputProps> {
         // interpret anything with a suffix to be Y1D1-format
         const re = /^([Yy] *(?<y>\d+)) *([Dd] *(?<d>\d+)) *((?<h>\d+)(:(?<m>\d+)(:(?<s>\d+))?)?)?$/;
         const match = re.exec(rawText);
-        if(match === undefined) return undefined;
+        if(match === null) return undefined;
         let y = parseInt(match.groups['y']) || 1;
         let d = parseInt(match.groups['d']) || 1;
         const h = parseInt(match.groups['h']) || 0;
@@ -346,7 +345,7 @@ export class KerbalDateInput extends FormattedInput<KerbalDateInputProps> {
         return (((((y*426) + d)*6 + h)*60 + m)*60) + s;
     }
 
-    formatValue(sec: number): string {
+    static formateDate(sec: number): string {
         let [y, d, h, m, s] = KerbalYdhmsInput.splitValueYdhms(sec);
         y += 1;
         d += 1;
@@ -354,6 +353,9 @@ export class KerbalDateInput extends FormattedInput<KerbalDateInputProps> {
         let mZeroPadded = '00' + m;
         mZeroPadded = mZeroPadded.substring(mZeroPadded.length - 2);
         return `Y${y} D${d} ${h}:${mZeroPadded}`;
+    }
+    formatValue(sec: number): string {
+        return KerbalDateInput.formateDate(sec);
     }
 }
 
