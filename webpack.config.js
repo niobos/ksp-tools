@@ -46,7 +46,7 @@ module.exports = (env, argv) => {
             path: path.resolve(__dirname, 'dist'),
         },
         resolve: {
-            extensions: ['.js', '.jsx', '.ts', '.tsx']
+            extensions: ['.tsx', '.ts', '.jsx', '.js']
         },
         module: {
             rules: [
