@@ -309,7 +309,7 @@ export class ShadeCalc extends AdjustableList {
 
     static calcOrbitalDarkness(body, altitude) {
         const duration = orbitalDarkness(body.gravity, body.radius, altitude);
-        const duty = duration / Orbit.periodFromSma(body.radius + altitude, body.gravity);
+        const duty = duration / Orbit.periodFromSma(body.gravity, body.radius + altitude);
         return {duration, duty};
     }
 
