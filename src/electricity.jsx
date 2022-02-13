@@ -12,7 +12,7 @@ import {Resources} from "./utils/kspParts";
 import FuelTank from "./components/fuelTank";
 import {fuelTanks} from "./utils/kspParts-fuelTanks";
 import {batteries, electricalGenerators, FuelCell, SolarPanel} from "./utils/kspParts-solarPanel";
-import {probeCores} from "./utils/kspParts-other";
+import {probeCores, reactionWheels} from "./utils/kspParts-other";
 import {fromPreset, objectMap} from "./utils/utils";
 
 import {KspFund} from "./components/kspIcon";
@@ -184,6 +184,21 @@ export class BurstPowerCalc extends AdjustableList {
             }
             hierLabelMap['Probe Cores'] = options;
         }
+        {
+            const options = {};
+            for (let deviceName in reactionWheels) {
+                const device = reactionWheels[deviceName];
+                const maxTorqueConsumption = (device.maxTorque[0] + device.maxTorque[1] + device.maxTorque[2])
+                    * device.torquePowerRequirement;
+
+                const shortName = deviceName;
+                const label = `${deviceName} @max torque`;
+                options[label] = shortName;
+                valueMap[shortName] = maxTorqueConsumption;
+                labelMap[shortName] = label;
+            }
+            hierLabelMap['Reaction wheels'] = options;
+        }
 
         return {hierLabelMap, valueMap, labelMap};
     }
@@ -231,7 +246,7 @@ export class BurstPowerCalc extends AdjustableList {
 
     onAdd(element, index) {
         if(element === "") element = {energy: 1, interval: 300};
-        super.onAdd(element, index);
+        super.onAdd({dev: element, duration: 30, interval: 3600}, index);
     }
 
     render() {
@@ -403,8 +418,8 @@ export class ShadeCalc extends AdjustableList {
                 value={this.state.orbitalDarknessAlt}
                 onChange={v => this.setState({orbitalDarknessAlt: v})}
             />mAGL above <KspHierBody
-                value={this.state.selectedSolarNight}
-                onChange={v => this.setState({selectedSolarNight: v})}
+                value={this.state.selectedOrbitalDarknessBody}
+                onChange={v => this.setState({selectedOrbitalDarknessBody: v})}
             /><br/>
             <input type="button" value="Add custom shade"
                    onClick={() => this.onAdd({

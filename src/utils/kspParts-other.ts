@@ -5,6 +5,33 @@ export class ReactionWheel extends Part {
     torquePowerRequirement: number = undefined;  // ⚡/s / (kN*m)
 }
 
+export const reactionWheels = {
+    'Small Inline Reaction Wheel': ReactionWheel.create({
+        cost: 600,
+        mass: 0.05,
+        size: new Set([Size.TINY]),
+        maxTorque: [5, 5, 5],
+        torquePowerRequirement: 0.050,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Small_Inline_Reaction_Wheel",
+    }),
+    'Advanced Inline Stabilizer': ReactionWheel.create({
+        cost: 1200,
+        mass: 0.1,
+        size: new Set([Size.SMALL]),
+        maxTorque: [15, 15, 15],
+        torquePowerRequirement: 0.030,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Advanced_Inline_Stabilizer",
+    }),
+    'Advanced Reaction Wheel Module': ReactionWheel.create({
+        cost: 2100,
+        mass: 0.2,
+        size: new Set([Size.LARGE]),
+        maxTorque: [30, 30, 30],
+        torquePowerRequirement: 0.020,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Advanced_Reaction_Wheel_Module,_Large",
+    }),
+};
+
 export class Pod extends ReactionWheel {
     hibernateMultiplier: number = undefined;  // no hibernate
 
