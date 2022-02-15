@@ -26,7 +26,7 @@ output: clean build
 	cp -a dist/. "$(OUTPUTDIR)"
 
 develop: dev-deps
-	npx webpack --mode=development
+	npx webpack --mode=development --stats=detailed
 
 dev-serve: dev-deps
 	npx webpack serve --mode=development

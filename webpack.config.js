@@ -10,6 +10,7 @@ const jsxPages = {
 const tsxPages = {
     'commnet': 'KSP - CommNet link calculator',
     'orbits': 'KSP - Changing obits',
+    'minmus-departure': 'KSP - Interplanetary departure from Minmus',
 };
 
 const entries = {};

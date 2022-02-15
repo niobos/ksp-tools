@@ -1,0 +1,7 @@
+input.SiInput,input.FloatInput {
+    text-align: right;
+    width: 5em;
+}
+input.KerbalDateInput {
+    width: 8em;
+}

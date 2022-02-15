@@ -264,8 +264,12 @@ export class KerbalYdhmsInput
     parseInput(rawText): number {
         if(rawText === Infinity || rawText === "∞") return Infinity;
 
-        const [y, d, h, m, s] = KerbalYdhmsInput.parseToYdhms(rawText);
-        return (((((y*426) + d)*6 + h)*60 + m)*60) + s;
+        try {
+            const [y, d, h, m, s] = KerbalYdhmsInput.parseToYdhms(rawText);
+            return (((((y * 426) + d) * 6 + h) * 60 + m) * 60) + s;
+        } catch {
+            return 0;
+        }
     }
 
     static splitValueYdhms(sec: number): number[] {
