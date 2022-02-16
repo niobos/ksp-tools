@@ -2,7 +2,7 @@ import React from "react";
 
 interface PresetProps {
     option?: string  // selected name, mutually exclusive with value
-    value?: string  // selected value, mutually exclusive with option
+    value?: any  // selected value, mutually exclusive with option
     onChange?: (value: string, optionName: string) => void
     options: object  // {"visible name": value, "group name": {"nested name": 42}}
     customName?: string  // name for the custom option

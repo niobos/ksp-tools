@@ -1,4 +1,5 @@
 import Part, {Resources, Size} from "./kspParts";
+import * as React from "react";
 
 export class ReactionWheel extends Part {
     maxTorque: [number, number, number] = [0, 0, 0];  // pitch, yaw, roll
@@ -33,6 +34,7 @@ export const reactionWheels = {
 };
 
 export class Pod extends ReactionWheel {
+    crew: number = 0;
     hibernateMultiplier: number = undefined;  // no hibernate
 
     get consumptionHibernated() {
@@ -43,7 +45,154 @@ export class Pod extends ReactionWheel {
 }
 
 export const probeCores = {
-    // TODO: check hibernate
+    'Mk1 Cockpit': Pod.create({
+        cost: 1250,
+        mass: 1.28,
+        size: new Set([Size.SMALL]),
+        content: Resources.create({el: 50, mono: 7.5}),
+        maxTorque: [10, 10, 10],
+        torquePowerRequirement: 0.038,
+        crew: 1,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk1_Cockpit",
+    }),
+    'Mk1 Inline Cockpit': Pod.create({
+        cost: 1600,
+        mass: 1.03,
+        size: new Set([Size.SMALL]),
+        content: Resources.create({el: 50, mono: 7.5}),
+        maxTorque: [10, 10, 10],
+        torquePowerRequirement: 0.030,
+        crew: 1,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk1_Inline_Cockpit",
+    }),
+    'Mk2 Cockpit': Pod.create({
+        cost: 3500,
+        mass: 2.06,
+        size: new Set([Size.MK2]),
+        content: Resources.create({el: 150, mono: 15}),
+        maxTorque: [15, 15, 15],
+        torquePowerRequirement: 0.033,
+        crew: 2,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk2_Cockpit",
+    }),
+    'Mk2 Inline Cockpit': Pod.create({
+        cost: 3500,
+        mass: 2.10,
+        size: new Set([Size.MK2]),
+        content: Resources.create({el: 150, mono: 25}),
+        maxTorque: [15, 15, 15],
+        torquePowerRequirement: 0.033,
+        crew: 2,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk2_Inline_Cockpit",
+    }),
+    'Mk3 Cockpit': Pod.create({
+        cost: 10000,
+        mass: 3.90,
+        size: new Set([Size.SMALL, Size.MK3]),
+        content: Resources.create({el: 500, mono: 100}),
+        maxTorque: [40, 40, 20],
+        torquePowerRequirement: 0.025,
+        crew: 4,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk3_Cockpit",
+    }),
+    'Mk1 Command Pod': Pod.create({
+        cost: 600,
+        mass: 0.84,
+        size: new Set([Size.SMALL, Size.TINY]),
+        content: Resources.create({el: 50, mono: 10}),
+        maxTorque: [5, 5, 5],
+        torquePowerRequirement: 0.048,
+        crew: 1,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk1_Command_Pod",
+    }),
+    'Mk1-3 Command Pod': Pod.create({
+        cost: 3800,
+        mass: 2.72,
+        size: new Set([Size.LARGE, Size.SMALL]),
+        content: Resources.create({el: 150, mono: 30}),
+        maxTorque: [15, 15, 15],
+        torquePowerRequirement: 0.030,
+        crew: 3,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk1-3_Command_Pod",
+    }),
+    'Mk2 Command Pod': Pod.create({
+        cost: 2800,
+        mass: 1.56,
+        size: new Set([Size.MEDIUM]),
+        content: Resources.create({el: 200}),
+        maxTorque: [5, 5, 5],
+        torquePowerRequirement: 0.050,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk2_Command_Pod",
+    }),
+    'Mk1 Lander Can': Pod.create({
+        cost: 1500,
+        mass: 0.66,
+        size: new Set([Size.SMALL]),
+        content: Resources.create({el: 50, mono: 15}),
+        maxTorque: [3, 3, 3],
+        torquePowerRequirement: 0.100,
+        crew: 1,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk1_Lander_Can",
+    }),
+    'Mk2 Lander Can': Pod.create({
+        cost: 3250,
+        mass: 1.515,
+        size: new Set([Size.LARGE]),
+        content: Resources.create({el: 100, mono: 40}),
+        maxTorque: [15, 15, 15],
+        torquePowerRequirement: 0.050,
+        crew: 2,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk2_Lander_Can",
+    }),
+    'PPD-12 Cupola Module': Pod.create({
+        cost: 3200,
+        mass: 1.80,
+        size: new Set([Size.LARGE, Size.SMALL]),
+        content: Resources.create({el: 200, mono: 10}),
+        maxTorque: [9, 9, 9],
+        torquePowerRequirement: 0.100,
+        crew: 1,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/PPD-12_Cupola_Module",
+    }),
+    "KV-1 'Onion' Reentry Module": Pod.create({
+        cost: 600,
+        mass: 0.77,
+        size: new Set([Size.SMALL]),
+        content: Resources.create({el: 50}),
+        crew: 1,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/KV-1_%27Onion%27_Reentry_Module",
+    }),
+    "KV-2 'Pea' Reentry Module": Pod.create({
+        cost: 2000,
+        mass: 1.52,
+        size: new Set([Size.SMALL]),
+        content: Resources.create({el: 50}),
+        crew: 2,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/KV-2_%E2%80%98Pea%E2%80%99_Reentry_Module",
+    }),
+    "KV-3 'Pomegranate' Reentry Module": Pod.create({
+        cost: 3000,
+        mass: 2.27,
+        size: new Set([Size.SMALL]),
+        content: Resources.create({el: 50}),
+        crew: 3,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/KV-3_%27Pomegranate%27_Reentry_Module",
+    }),
+    'EAS-1 External Command Seat': Pod.create({
+        cost: 200,
+        mass: 0.05,
+        size: new Set([Size.RADIAL]),
+        crew: 1,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/EAS-1_External_Command_Seat",
+    }),
+    'Munar Excursion Module (M.E.M.)': Pod.create({
+        cost: 3500,
+        mass: 2.075,
+        size: new Set([Size.TINY, Size.SMALL]),
+        content: Resources.create({el: 150, lf: 54, ox: 66, mono: 30}),
+        crew: 2,
+        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Munar_Excursion_Module_(M.E.M.)",
+    }),
     'Probodobodyne RoveMate': Pod.create({
         cost: 800,
         mass: 0.15,

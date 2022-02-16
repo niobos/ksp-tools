@@ -4,13 +4,13 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 const jsxPages = {
     'engines': 'KSP - Engine selection',
-    'electricity': 'KSP - Electricity calculator',
     'mining': 'KSP - Mining calculator',
 };
 const tsxPages = {
     'commnet': 'KSP - CommNet link calculator',
     'orbits': 'KSP - Changing obits',
     'minmus-departure': 'KSP - Interplanetary departure from Minmus',
+    'electricity': 'KSP - Electricity calculator',
 };
 
 const entries = {};

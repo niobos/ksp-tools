@@ -30,12 +30,18 @@ export function arrayReplaceElement<T>(arr: T[], pos: number, newElement: T): T[
     ];
 }
 
-interface AdjustableListProps {
+export interface AdjustableListProps {
     value: any
     onChange: (any) => null
 }
+export interface AdjustableListState {
 
-export default class AdjustableList extends React.PureComponent {
+}
+
+export default class AdjustableList<
+        TProps extends AdjustableListProps = AdjustableListProps,
+        TState extends AdjustableListState = AdjustableListState
+    > extends React.PureComponent<TProps, TState> {
     props: AdjustableListProps
 
     static defaultProps = {
@@ -43,15 +49,19 @@ export default class AdjustableList extends React.PureComponent {
         onChange: (newValue) => null,
     }
 
-    onAdd(element, index) {
+    constructor(props) {
+        super(props);
+    }
+
+    onAdd(element, index?: number): void {
         const newValue = arrayInsertElement(this.props.value, element, index);
         this.props.onChange(newValue);
     }
-    onDelete(index) {
+    onDelete(index: number): void {
         const newValue = arrayRemoveElement(this.props.value, index);
         this.props.onChange(newValue);
     }
-    onChange(index, newElement) {
+    onChange(index: number, newElement): void {
         const newValue = arrayReplaceElement(this.props.value, index, newElement);
         this.props.onChange(newValue);
     }

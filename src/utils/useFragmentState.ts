@@ -98,7 +98,7 @@ export function addFragmentStateProperty(
     attrName: string,
     key: string,
     fromString: (value: string) => any,
-    toString: (value: any) => string,
+    toString?: (value: any) => string,
 ): void {
     /* Add a property to access a state variable through the `attrName` getter & setter.
      * The state is also synced to the URL fragment identifier (hash) under the key `key`.
