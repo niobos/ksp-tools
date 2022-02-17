@@ -203,6 +203,66 @@ export default class Orbit {
         }
     }
 
+    static FromLambert(
+        gravity: number,
+        position1: Vector,
+        position2: Vector,
+        dt: number,
+        direction: "prograde" | "retrograde" = "prograde",
+    ): Orbit {
+        /* Solve the Lambert problem: find the orbit that will bring an object
+         * from `position1` to `position2` in `dt` time, assuming a primary body
+         * at the center of the coordinate system with gravity `gravity`.
+         */
+        // [OMES Algorithm 5.2]
+        const r1_norm = position1.norm;
+        const r2_norm = position2.norm;
+
+        let dθ = position1.angle_to(position2);  // [OMES 5.26]
+        const dθ_quadrant = position1.cross_product(position2);
+        if((direction === "prograde" && dθ_quadrant.z < 0)
+            || (direction === "retrograde" && dθ_quadrant.z >= 0)) {
+            dθ = 2*Math.PI - dθ;
+        }
+
+        const A = Math.sin(dθ) * Math.sqrt(r1_norm * r2_norm / (1-Math.cos(dθ)));  // [OMES 5.35]
+
+        const y = (z) => r1_norm + r2_norm + A * (z * Orbit._S(z) - 1) / (Math.sqrt(Orbit._C(z)));  // [OMES 5.38]
+        const z = Orbit._findZero(
+            (z) => {
+                const y_z = y(z);
+                const C_z = Orbit._C(z);
+                const S_z = Orbit._S(z);
+                const Cp_z = Orbit._Cp(z);
+                const Sp_z = Orbit._Sp(z);
+                const yp_z = A / 4 * Math.sqrt(C_z);
+                const f = Math.pow(y_z / C_z, 3/2) * S_z
+                    + A * Math.sqrt(y_z) - Math.sqrt(gravity) * dt;  // [OMES 5.40]
+                const fp = 1 / (2 * Math.sqrt(y_z * Math.pow(C_z, 5))) * (
+                    (2 * C_z * Sp_z - 3 * Cp_z * S_z) * y_z*y_z
+                    + (A * Math.pow(C_z, 5/2) + 3 * C_z * S_z * y_z) * yp_z
+                );  // [OMES 5.41]
+                return {f, fp};
+            },
+            0,
+        );
+
+        const y_z = y(z);
+
+        // [OMES 5.46]
+        const f = 1 - y_z / r1_norm;
+        const g = A * Math.sqrt(y_z / gravity);
+        // const fp = Math.sqrt(gravity) / (r1_norm * r2_norm) * Math.sqrt(y_z / Orbit._C(z)) * (
+        //     z * Orbit._S(z) - 1
+        // );
+        const gp = 1 - y_z / r2_norm;
+
+        const v1 = position2.sub(position1.mul(f)).mul(1/g);  // [OMES 5.28]
+        //const v2 = position2.mul(gp).sub(position1).mul(1/g);  // [OMES 5.29]
+
+        return Orbit.FromStateVector(gravity, position1, v1);
+    }
+
     get energy(): number {
         if(this._cache['energy'] === undefined) {
             this._cache['energy'] = this.v0.norm * this.v0.norm / 2
@@ -685,6 +745,28 @@ export default class Orbit {
                 s += (k%2 ? -1 : 1) * Math.pow(z, k) / Orbit._factorial(2*k+2);
             }
             return s;
+        }
+    }
+    static _Sp(z: number): number {
+        /* First derivative of Stumpff function c_{3}
+         * [OMES] 3.60
+         */
+        const Z = 1e-7;
+        if(Math.abs(z) < Z) {
+            return -1/120;
+        } else {
+            return 1 / (2*z) * (Orbit._C(z) - 3 * Orbit._S(z));
+        }
+    }
+    static _Cp(z: number): number {
+        /* First derivative of Stumpff function c_{2}
+         * [OMES] 3.60
+         */
+        const Z = 1e-7;
+        if(Math.abs(z) < Z) {
+            return -1/24;
+        } else {
+            return 1 / (2 * z) * (1 - z * Orbit._S(z) - 2 * Orbit._C(z));
         }
     }
 

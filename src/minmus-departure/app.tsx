@@ -77,6 +77,10 @@ export default function App() {
 
     return <div>
         <h2>Interplanetary departure from Minmus</h2>
+        <p>This planner is heavily inspired on the <a href="https://alexmoon.github.io/ksp/">KSP Launch Window Planner by alexmoon</a>.
+        Writing this planner was an exercise for me to learn TypeScript, Service Workers & Canvas.</p>
+        <p>Contrary to alexmoon's planner, this planner will depart from Minmus orbit (where I usually refuel),
+        and do a powered gravity assist around Kerbin to launch on an interplanetary trajectory.</p>
         <table><tbody>
         <tr><td>Parking orbit:</td><td>
             <Apside value={parkingSma}

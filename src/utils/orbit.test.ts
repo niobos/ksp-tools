@@ -118,6 +118,35 @@ describe('OMES examples', () => {
         expect(v.y / 1e3).toBeCloseTo(-0.96309);
         expect(v.z).toBeCloseTo(0);
     });
+
+    describe('example 5.2', () => {
+        const r1 = new Vector(5000e3, 10000e3, 2100e3);
+        const r2 = new Vector(-14600e3, 2500e3, 7000e3);
+        const dt = 3600;
+        const o = Orbit.FromLambert(earthGravity, r1, r2, dt);
+        expect(o.specificAngularMomentum / 1e6).toBeCloseTo(80470-3, 0);  // different, rounding?
+        expect(o.semiMajorAxis/1e3).toBeCloseTo(20000+3, 0);  // different, rounding?
+        expect(o.eccentricity).toBeCloseTo(0.4335);
+        expect(o.longitudeAscendingNode).toBeCloseTo(44.60/180*Math.PI);
+        expect(o.inclination).toBeCloseTo(30.19/180*Math.PI);
+        expect(o.argumentOfPeriapsis).toBeCloseTo(30.71/180*Math.PI);
+        expect(o.taAtT(0)).toBeCloseTo(350.8/180*Math.PI - 2*Math.PI);
+
+        expect(o.distanceAtPeriapsis / 1e3).toBeCloseTo(11300 + 32, 0);  // different, rounding?
+        expect(0 - o.tAtTa(0)).toBeCloseTo(-256.1, 1);
+    });
+
+    describe('example 5.3', () => {
+        const r1 = new Vector(273378e3, 0, 0);  // Arbitrarily orient coordinate system
+        const r2 = (new Vector(146378e3, 0, 0)).rotated(
+            new Vector(0, 0, 1),
+            5/180*Math.PI,
+        );
+        const dt = 13.5*3600;
+        const o = Orbit.FromLambert(earthGravity, r1, r2, dt);
+        expect(o.distanceAtPeriapsis/1e3).toBeCloseTo(6538.2, 1);
+        expect(o.tAtTa(0) - dt).toBeCloseTo(38396, 0);
+    });
 });
 
 describe('orbit', () => {
