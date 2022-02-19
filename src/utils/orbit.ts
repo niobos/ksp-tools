@@ -372,6 +372,53 @@ export default class Orbit {
         // else:
         return Math.sqrt(this.gravity / (-this.semiMajorAxis));  // [OMES 2.102]
     }
+    static semiMajorAxisFromHyperbolicExcessVelocity(gravity: number, v: number): number {
+        return -gravity / (v*v);  // from [OMES 2.102]
+    }
+    static FromPositionAndHyperbolicExcessVelocityVector(
+        gravity: number,
+        position: Vector,
+        hyperbolicExcessVelocityVector: Vector,
+        direction: "direct" | "indirect",
+    ): Orbit {
+        const vinf = hyperbolicExcessVelocityVector.norm;
+        const speedAtPosition = Math.sqrt(vinf*vinf + 2 * gravity / position.norm);  // from [OMES 2.101 & 2.102]
+        let turn = position.angle_to(hyperbolicExcessVelocityVector);
+        const h_dir = position.cross_product(hyperbolicExcessVelocityVector);
+        if(direction === "direct") {
+            // nothing
+        } else if(direction === "indirect") {
+            turn = 2*Math.PI - turn;
+        } else {
+            throw "Unrecognised direction: " + direction;
+        }
+        //console.log(`desired turn: ${turn}`);
+
+        function turnFromVelocityAngle(velocityAngleVsPosition: number): {turn: number, orbit: Orbit} {
+            const v = position.mul(speedAtPosition/position.norm).rotated(h_dir, velocityAngleVsPosition);
+            const o = Orbit.FromStateVector(gravity, position, v);
+            const ta0 = o.taAtT(0);
+            const tainf = Math.acos(-1/o.eccentricity);
+            //console.log(o);
+            //console.log(`va=${velocityAngleVsPosition}  => e=${o.eccentricity} ta0=${ta0}  tainf=${tainf}  => dta=${tainf-ta0}`);
+            return {
+                turn: tainf - ta0,
+                orbit: o,
+            };
+        }
+
+        const velocityDirection = Orbit._findZeroBisect(
+            d => {
+                const {turn: turnOfD} = turnFromVelocityAngle(d);
+                return turnOfD - turn;
+            },
+            1e-8 * (direction === "direct" ? 1 : -1),
+            (Math.PI - 1e-8) * (direction === "direct" ? 1 : -1),
+        )
+        const {orbit} = turnFromVelocityAngle(velocityDirection);
+
+        return orbit;
+    }
 
     get inclination(): number {
         if(this._cache['inc'] === undefined) {
@@ -421,11 +468,14 @@ export default class Orbit {
                 // ArgP is undefined
                 ω = 0;  // pick arbitrarily
 
-            } else if(N_norm === 0) {  // Orbit is in XY-plane
+            } else if(N_norm === 0) {  // Orbit is in XY-plane => e.z == 0
                 // Longitude of Ascending node is set arbitrarily to 0
                 // Pick N = (1, 0, 0)
-                ω = Math.acos(e.x / e_norm);
-                if (e.z < 0) ω = 2 * Math.PI - ω;
+                ω = Math.atan2(e.y, e.x);
+                if(this.specificAngularMomentumVector.z < 0) {  // retrograde
+                    ω = 2*Math.PI - ω;
+                    if(ω > 2*Math.PI) ω -= 2*Math.PI;
+                }
 
             } else {
                 ω = Math.acos(N.inner_product(e) / (N_norm * e_norm));
@@ -504,6 +554,8 @@ export default class Orbit {
     }
 
     positionAtT(t: number): Vector {
+        if(t === 0) return this.r0;
+
         const dt = t - this.t0;
         const {r} = this._rAndχAtDt(dt);
         return r;

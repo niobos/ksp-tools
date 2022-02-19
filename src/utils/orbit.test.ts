@@ -1,5 +1,6 @@
 import Orbit from "./orbit";
 import Vector from "./vector";
+import {bodies as kspBodies} from "./kspBody";
 
 const earthGravity = 5.972161874653522e24 * 6.67430e-11;
 const earthRadius = 6378e3;
@@ -227,6 +228,20 @@ describe('orbit', () => {
         expect(o.semiMajorAxis).toBeCloseTo(-1);
         expect(o.taAtT(5)).toBeCloseTo(-1);
     });
+
+    it('should be calculated from edge cases (prograde XY-plane, argp>180º)' ,() => {
+        const o = Orbit.FromStateVector(1, new Vector(.707, .707, 0), new Vector(-.5, .5, 0));
+        expect(o.longitudeAscendingNode).toBeCloseTo(0);
+        expect(o.inclination).toBeCloseTo(0);
+        expect(o.argumentOfPeriapsis).toBeCloseTo(225/180*Math.PI -2*Math.PI);
+    });
+
+    it('should be calculated from edge cases (retrograde XY-plane)' ,() => {
+        const o = Orbit.FromStateVector(1, new Vector(.707, .707, 0), new Vector(.5, -.5, 0));
+        expect(o.longitudeAscendingNode).toBeCloseTo(0);
+        expect(o.inclination).toBeCloseTo(Math.PI);
+        expect(o.argumentOfPeriapsis).toBeCloseTo(135/180*Math.PI);
+    });
 })
 
 describe('Laws of physics', () => {
@@ -442,5 +457,21 @@ describe('Hyperbolic orbits', () => {
 
     it('should have e>1', () => {
         expect(o.eccentricity).toBeGreaterThan(1);
+    });
+});
+
+describe('Minmus departure', () => {
+    describe('something', () => {
+        const gravity = kspBodies.Kerbin.gravity;
+        const r1 = new Vector(1e6, 1e5, 0);
+        const vinf = new Vector(1000, 0, 0);
+
+        const od = Orbit.FromPositionAndHyperbolicExcessVelocityVector(gravity, r1, vinf, "direct");
+        const vp2 = od.velocityAtTa(Math.acos(-1/od.eccentricity));
+        expect(vp2.sub(vinf).norm).toBeCloseTo(0);
+
+        const oi = Orbit.FromPositionAndHyperbolicExcessVelocityVector(gravity, r1, vinf, "indirect");
+        const vr2 = oi.velocityAtTa(Math.acos(-1/oi.eccentricity));
+        expect(vr2.sub(vinf).norm).toBeCloseTo(0);
     });
 });

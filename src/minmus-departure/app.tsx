@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
 
 import './app.css';
@@ -18,6 +18,17 @@ export default function App() {
     const [departureTimeUT, setDepartureTimeUT] = useFragmentState('t', 236*6*60*60 + 4*60*60 + 19*60 + 12);
     const [ejectionAngle, setEjectionAngle] = useFragmentState('e', 162/180*Math.PI);
     const [ejectionBurn, setEjectionBurn] = useFragmentState('b', 1047);
+
+    const worker = new Worker(new URL('./worker.ts', import.meta.url));
+    worker.postMessage({
+        question:
+            'The Answer to the Ultimate Question of Life, The Universe, and Everything.',
+    });
+    worker.onmessage = (e) => {
+        console.log("Received worker answer:")
+        console.log(e.data);
+        worker.terminate();
+    };
 
     const parkingSpeed = 2 * Math.PI * parkingSma /
         Orbit.periodFromSma(kspBodies.Kerbin.gravity, parkingSma);
