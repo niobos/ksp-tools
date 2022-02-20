@@ -74,8 +74,8 @@ const columns = [
     },
     {
         title: <span>Spare<br/>power<br/>[⚡/m]</span>, classList: 'number',
-        value: i => ((i.maxPower-i.burstChargePower-i.darknessChargePower-i.nominalPower)*60).toFixed(1),
-        cmp: (a, b) => (a.maxPower-a.burstChargePower-a.darknessChargePower-a.nominalPower) - (b.maxPower-b.burstChargePower-b.darknessChargePower-b.nominalPower),
+        value: i => ((i.maxPower-i.nominalPower)*60).toFixed(1),
+        cmp: (a, b) => (a.maxPower-a.nominalPower) - (b.maxPower-b.nominalPower),
     },
     {
         title: <span>Storage<br/>available<br/>[⚡]</span>, classList: 'number',
