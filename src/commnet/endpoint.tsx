@@ -1,6 +1,6 @@
-import React, {useState} from "react";  // JSX support
+import * as React from "react";  // JSX support
 import {SiInput} from "../components/formatedInput";
-import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../components/list";
+import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 import Antenna, {antennas as kspAntennas} from "../utils/kspParts-antenna";
 
 type Antennas = number | string[]

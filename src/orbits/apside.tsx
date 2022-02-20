@@ -1,5 +1,5 @@
-import React from "react";  // JSX
-import {SiInput, FloatInput} from "../components/formatedInput";
+import * as React from "react";  // JSX
+import {SiInput} from "../components/formatedInput";
 
 import "./apside.css";
 import Body from "../utils/kspBody";
@@ -18,7 +18,7 @@ export default function Apside(props: ApsideProps) {
     const onBlur = props.onBlur !== undefined ? props.onBlur : () => null;
     const primaryBody = props.primaryBody !== undefined ? props.primaryBody : Body.create({});
 
-    let maybeAgl = "", maybeAa = "";
+    let maybeAgl: any = "", maybeAa: any = "";
     if(primaryBody.radius !== undefined) {
         maybeAgl = <span>
             {" = "}<SiInput

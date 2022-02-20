@@ -1,4 +1,5 @@
-import React, {useState} from 'react';
+import * as React from 'react';
+import {useState} from 'react';
 import ReactDOM from 'react-dom';
 import useFragmentState, {jsonParseWithDefault} from "../utils/useFragmentState";
 import {Size} from "../utils/kspParts";
@@ -52,7 +53,7 @@ export default function App() {
     const [dv, setDv] = useFragmentState('dv', 1000);
     const [mass, setMass] = useFragmentState('m', 1.5);
     const [acceleration, setAcceleration] = useFragmentState('a', 14.715);
-    const [gravity, setGravity] = useState('Kerbin');  // not stored in fragment
+    const [gravity, setGravity] = useState('Kerbin' as string | number);  // not stored in fragment
     const [pressure, setPressure] = useFragmentState('p', 'vac');
     const [sizes, setSizes] = useFragmentState('s',
         s => {
@@ -214,7 +215,7 @@ export default function App() {
             // out of spec
             if(!showAll) continue;
         }
-        let name = engineName;
+        let name: any = engineName;
         if(engine.wikiUrl !== undefined) {
             name = <a href={engine.wikiUrl}>{name}</a>;
         }

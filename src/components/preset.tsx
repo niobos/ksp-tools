@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 
 interface PresetProps {
     option?: string  // selected name, mutually exclusive with value

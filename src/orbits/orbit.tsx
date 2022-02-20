@@ -1,4 +1,5 @@
-import React, {useState} from "react";  // JSX
+import * as React from 'react';  // JSX
+import {useState} from "react";
 import {FloatInput, DegreesInput} from "../components/formatedInput";
 import Apside from "./apside";
 import Body from "../utils/kspBody";

@@ -1,4 +1,5 @@
-import React, {useState} from "react";
+import * as React from "react";
+import {useState} from "react";
 import ReactDOM from "react-dom";
 import {FloatInput, KerbalYdhmsInput, SiInput} from "../components/formatedInput";
 import useFragmentState from "../utils/useFragmentState";
@@ -109,7 +110,8 @@ const battery = batteries[batteryName];
 
 function solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue, solarEfficiency: number): Solution[] {
     const solutions: Solution[] = [];
-    for (let panelName in electricalGenerators) {
+    let panelName: any;
+    for (panelName in electricalGenerators) {
         const panel = electricalGenerators[panelName];
         if (!(panel instanceof SolarPanel)) continue;
 
@@ -125,7 +127,7 @@ function solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue, 
         if (panel.wikiUrl !== undefined) {
             panelName = <a href={panel.wikiUrl}>{panelName}</a>;
         }
-        let batteryNameJsx = batteryName;
+        let batteryNameJsx: any = batteryName;
         if(battery.wikiUrl !== undefined) {
             batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>;
         }
@@ -147,7 +149,8 @@ function solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue, 
 
 function fuelCellSolutions(burstPowerValue, continuousPowerValue, fuelTankValue, missionDuration): Solution[] {
     const solutions: Solution[] = [];
-    for (let cellName in electricalGenerators) {
+    let cellName: any;
+    for (cellName in electricalGenerators) {
         const cell = electricalGenerators[cellName];
         if (!(cell instanceof FuelCell)) continue;
 
@@ -172,7 +175,7 @@ function fuelCellSolutions(burstPowerValue, continuousPowerValue, fuelTankValue,
         if (cell.wikiUrl !== undefined) {
             cellName = <a href={cell.wikiUrl}>{cellName}</a>;
         }
-        let batteryNameJsx = batteryName;
+        let batteryNameJsx: any = batteryName;
         if(battery.wikiUrl !== undefined) {
             batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>;
         }
@@ -200,11 +203,11 @@ function rtgSolutions(burstPowerValue, continuousPowerValue): Solution[] {
     const neededPower = continuousPowerValue + burstCharge;
     const numDev = Math.ceil(neededPower / (-dev.consumption.el));
     const numBatteries = Math.ceil(burstPowerValue.energy / batteries['Z-100'].content.el);
-    let genName = 'PB-NUK';
+    let genName: any = 'PB-NUK';
     if (dev.wikiUrl !== undefined) {
         genName = <a href={dev.wikiUrl}>{genName}</a>;
     }
-    let batteryNameJsx = batteryName;
+    let batteryNameJsx: any = batteryName;
     if(battery.wikiUrl !== undefined) {
         batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>;
     }

@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 
 function equalNaNCompatible(a: number, b: number): boolean {
     /* Return true if a === b,
@@ -132,7 +132,7 @@ interface FloatInputProps extends FormattedInputProps {
     decimals?: number
 }
 
-export class FloatInput<TProps extends FloatInputProps>
+export class FloatInput<TProps extends FloatInputProps = FloatInputProps>
         extends FormattedInput<TProps> {
     static defaultProps = {
         ...FormattedInput.defaultProps,

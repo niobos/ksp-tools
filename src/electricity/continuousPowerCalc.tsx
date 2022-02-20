@@ -1,9 +1,10 @@
-import React, {useState} from "react";
+import * as React from "react";
+import {useState} from "react";
 import {
     arrayInsertElement,
     arrayRemoveElement,
     arrayReplaceElement
-} from "../components/list";
+} from "../utils/list";
 import {probeCores} from "../utils/kspParts-other";
 import {FloatInput} from "../components/formatedInput";
 

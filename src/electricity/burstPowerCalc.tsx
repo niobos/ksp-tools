@@ -1,14 +1,16 @@
-import React, {useState} from "react";
+import * as React from "react";
+import {useState} from "react";
 import {probeCores, reactionWheels} from "../utils/kspParts-other";
+import {engines} from "../utils/kspParts-engine";
 import {FloatInput, KerbalYdhmsInput} from "../components/formatedInput";
-import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../components/list";
+import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 
 function generateDeviceMap() {
     const hierLabelMap = {};
     const valueMap = {};
     const labelMap = {};
 
-    {
+    {  // Probe Cores
         const options = {};
         for (let deviceName in probeCores) {
             const device = probeCores[deviceName];
@@ -24,7 +26,7 @@ function generateDeviceMap() {
         }
         hierLabelMap['Probe Cores'] = options;
     }
-    {
+    { // Reaction wheels
         const options = {};
         for (let deviceName in reactionWheels) {
             const device = reactionWheels[deviceName];
@@ -38,6 +40,17 @@ function generateDeviceMap() {
             labelMap[shortName] = label;
         }
         hierLabelMap['Reaction wheels'] = options;
+    }
+    { // Dawn engine
+        const options = {};
+        const deviceName = 'IX-6315 \"Dawn\"';
+        const device = engines[deviceName];
+        const shortName = deviceName;
+        const label = `${deviceName}`;
+        options[label] = shortName;
+        valueMap[shortName] = device.consumption.el;
+        labelMap[shortName] = label;
+        hierLabelMap['Engines'] = options;
     }
 
     return {hierLabelMap, valueMap, labelMap};

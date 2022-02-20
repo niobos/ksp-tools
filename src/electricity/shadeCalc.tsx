@@ -1,5 +1,6 @@
-import React, {useState} from "react";
-import AdjustableList, {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../components/list";
+import * as React from "react";
+import {useState} from "react";
+import AdjustableList, {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 import Orbit, {orbitalDarkness} from "../utils/orbit";
 import Body, {bodies} from "../utils/kspBody";
 import {KerbalYdhmsInput, SiInput} from "../components/formatedInput";

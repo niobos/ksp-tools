@@ -1,4 +1,4 @@
-import React from "react";  // JSX
+import * as React from "react";  // JSX
 import {SiInput} from "../components/formatedInput";
 import Body, {bodies as kspBodies} from "../utils/kspBody";
 

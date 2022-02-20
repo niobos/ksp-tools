@@ -1,9 +1,9 @@
-import React from "react";  // JSX support
+import * as React from "react";  // JSX support
 import ReactDOM from "react-dom";
 import useFragmentState from "../utils/useFragmentState";
 import Link from "./link";
 import Endpoint, {calcCombinedPower} from "./endpoint";
-import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../components/list";
+import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 
 import './app.css';
 import Antenna, {antennas as kspAntennas} from "../utils/kspParts-antenna";

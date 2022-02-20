@@ -1,4 +1,5 @@
-import React, {useState} from "react";
+import * as React from 'react';
+import {useState} from "react";
 import {KerbalYdhmsInput, SiInput} from "../components/formatedInput";
 import {default as kspOrbit} from "../utils/orbit";
 

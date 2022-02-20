@@ -1,4 +1,5 @@
-import React, {useState} from "react";  // JSX support
+import * as React from "react";
+import {useState} from "react";  // JSX support
 import Antenna from "../utils/kspParts-antenna";
 import {SiInput} from "../components/formatedInput";
 import KspHierBody from "../components/kspHierBody";

@@ -1,4 +1,4 @@
-import React from "react";  // for JSX
+import * as React from "react";  // for JSX
 import {bodiesHier} from "../utils/kspBody";
 
 interface KspHierBodyProps {
