@@ -1,6 +1,6 @@
 import Orbit from "./orbit";
 import Vector from "./vector";
-import {bodies as kspBodies} from "./kspBody";
+import {bodies, bodies as kspBodies} from "./kspBody";
 
 const earthGravity = 5.972161874653522e24 * 6.67430e-11;
 const earthRadius = 6378e3;
@@ -461,7 +461,7 @@ describe('Hyperbolic orbits', () => {
 });
 
 describe('Minmus departure', () => {
-    describe('something', () => {
+    describe('Hyperbolic escape from any given position', () => {
         const gravity = kspBodies.Kerbin.gravity;
         const r1 = new Vector(1e6, 1e5, 0);
         const vinf = new Vector(1000, 0, 0);

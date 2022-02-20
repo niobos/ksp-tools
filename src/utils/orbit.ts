@@ -381,6 +381,12 @@ export default class Orbit {
         hyperbolicExcessVelocityVector: Vector,
         direction: "direct" | "indirect",
     ): Orbit {
+        /* Given a position and a desired escape velocity vector, calculates
+         * the orbit to accomplish that.
+         * There are always two option: going directly toward the escape direction ("direct"),
+         * or slinging around the primary body ("indirect"). For this last scenario, verify that
+         * the orbit periapsis is above the surface and atmosphere!
+         */
         const vinf = hyperbolicExcessVelocityVector.norm;
         const speedAtPosition = Math.sqrt(vinf*vinf + 2 * gravity / position.norm);  // from [OMES 2.101 & 2.102]
         let turn = position.angle_to(hyperbolicExcessVelocityVector);
@@ -418,6 +424,12 @@ export default class Orbit {
         const {orbit} = turnFromVelocityAngle(velocityDirection);
 
         return orbit;
+    }
+    static optimalPeriapsis(gravity: number, hyperbolicExcessVelocity: number): number {
+        /* Calculates the optimal (in ∆v terms) periapsis to switch from
+         * a hyperbolic orbit into/from a circular orbit.
+         */
+        return 2 * gravity / (hyperbolicExcessVelocity*hyperbolicExcessVelocity);  // [OMES 8.69]
     }
 
     get inclination(): number {

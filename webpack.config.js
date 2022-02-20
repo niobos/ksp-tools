@@ -3,10 +3,10 @@ const HtmlMinimizerPlugin = require("html-minimizer-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 const jsxPages = {
-    'engines': 'KSP - Engine selection',
     'mining': 'KSP - Mining calculator',
 };
 const tsxPages = {
+    'engines': 'KSP - Engine selection',
     'commnet': 'KSP - CommNet link calculator',
     'orbits': 'KSP - Changing obits',
     'minmus-departure': 'KSP - Interplanetary departure from Minmus',

@@ -26,7 +26,7 @@ export function updateHashValue(key: string, value: string): void {
     history.replaceState({}, '', '#' + params.toString());
 }
 
-export function jsonParseWithDefault(defaultValue: string): (value: string) => any {
+export function jsonParseWithDefault(defaultValue: any): (value: string) => any {
     return (valueFromHash) => {
         if(valueFromHash === null || valueFromHash === undefined) {
             return defaultValue;

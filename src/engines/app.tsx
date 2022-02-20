@@ -1,20 +1,20 @@
 import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
-import useFragmentState, {jsonParseWithDefault} from "./utils/useFragmentState";
-import {Size} from "./utils/kspParts";
-import {bodies as kspBodies} from "./utils/kspBody";
-import {FloatInput} from "./components/formatedInput";
-import KspHierBody from "./components/kspHierBody";
-import Multiselect from "./components/multiselect";
-import {KspFund} from "./components/kspIcon";
-import SortableTable from "./components/sortableTable";
-import Preset from "./components/preset";
-import FuelTank from "./components/fuelTank";
-import {fuelTanks} from "./utils/kspParts-fuelTanks";
-import {engines as kspEngines} from "./utils/kspParts-engine";
-import {fromPreset, objectMap} from "./utils/utils";
+import useFragmentState, {jsonParseWithDefault} from "../utils/useFragmentState";
+import {Size} from "../utils/kspParts";
+import {bodies as kspBodies} from "../utils/kspBody";
+import {FloatInput} from "../components/formatedInput";
+import KspHierBody from "../components/kspHierBody";
+import Multiselect from "../components/multiselect";
+import {KspFund} from "../components/kspIcon";
+import SortableTable from "../components/sortableTable";
+import Preset from "../components/preset";
+import FuelTank from "../components/fuelTank";
+import {fuelTanks} from "../utils/kspParts-fuelTanks";
+import {engines as kspEngines} from "../utils/kspParts-engine";
+import {fromPreset, objectMap} from "../utils/utils";
 
-import './engines.css';
+import './app.css';
 
 function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry) {
     /* Calculate the mass of fuel tanks needed to get the desired ∆v
@@ -90,42 +90,42 @@ export default function App() {
     );
 
     const columns = [
-        {title: 'Name', value: i => i.name},
-        {title: 'Number', classList: 'number', value: i => i.n},
-        {title: <span>Cost [<KspFund/>]</span>, value: i => i.cost.toFixed(0),
+        {title: <span>Name</span>, value: i => i.name},
+        {title: <span>Number</span>, classList: 'number', value: i => i.n},
+        {title: <span>Cost<br/>[<KspFund/>]</span>, value: i => i.cost.toFixed(0),
             classList: i => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
             cmp: (a, b) => a.cost - b.cost,
         },
-        {title: 'Total Mass [t]', classList: 'number', value: i => i.totalMass.toFixed(2),
+        {title: <span>Total<br/>Mass<br/>[t]</span>, classList: 'number', value: i => i.totalMass.toFixed(2),
             cmp: (a, b) => a.totalMass - b.totalMass,
         },
-        {title: 'Engines Mass [t]', classList: 'number', value: i => i.engineMass.toFixed(2),
+        {title: <span>Engine(s)<br/>Mass<br/>[t]</span>, classList: 'number', value: i => i.engineMass.toFixed(2),
             cmp: (a, b) => a.engineMass - b.engineMass,
         },
-        {title: 'Fuel+tank Mass [t]', value: i => i.fuelTankMass.toFixed(2),
+        {title: <span>Fuel+tank<br/>Mass<br/>[t]</span>, value: i => i.fuelTankMass.toFixed(2),
             classList: i => (i.fuelTankMass === 0 || isNaN(i.fuelTankMass)) ? ['number', 'zero'] : ['number'],
             cmp: (a, b) => a.fuelTankMass - b.fuelTankMass,
         },
-        {title: 'Size', value: i => i.size},
-        {title: `Thrust/engine (${pressure}) [kN]`, classList: 'number', value: i => i.thrustPerEngine.toFixed(1),
+        {title: <span>Size</span>, value: i => i.size},
+        {title: <span>Thrust/engine<br/>({pressure}) [kN]</span>, classList: 'number', value: i => i.thrustPerEngine.toFixed(1),
             cmp: (a, b) => a.thrustPerEngine - b.thrustPerEngine,
         },
-        {title: `Isp (${pressure}) [s]`, classList: 'number', value: i => i.isp},
-        {title: `TWR (${pressure}) full []`, value: i => (i.accelerationFull / gravityValue).toFixed(2),
+        {title: <span>Isp<br/>({pressure})<br/>[s]</span>, classList: 'number', value: i => i.isp},
+        {title: <span>TWR ({pressure})<br/>full []</span>, value: i => (i.accelerationFull / gravityValue).toFixed(2),
             classList: i => i.accelerationFull < acceleration*.99 ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
             cmp: (a, b) => a.accelerationFull - b.accelerationFull,
         },
-        {title: `TWR (${pressure}) empty []`, value: i => (i.accelerationEmpty / gravityValue).toFixed(2),
+        {title: <span>TWR ({pressure})<br/>empty []</span>, value: i => (i.accelerationEmpty / gravityValue).toFixed(2),
             classList: 'number',
             cmp: (a, b) => a.accelerationEmpty - b.accelerationEmpty,
         },
-        {title: 'Gimbal [º]', value: i => i.gimbal,
+        {title: <span>Gimbal [º]</span>, value: i => i.gimbal,
             classList: i => i.gimbal === 0 ? ['number', 'zero'] : ['number'],
         },
-        {title: 'Alternator [⚡/s]', value: i => i.alternator,
+        {title: <span>Alternator<br/>[⚡/s]</span>, value: i => i.alternator,
             classList: i => i.alternator <= 0 ? ['number', 'zero'] : ['number'],
         },
-        {title: '∆v [m/s]', value: i => i.dv.toFixed(1),
+        {title: <span>∆v [m/s]</span>, value: i => i.dv.toFixed(1),
             classList: i => (i.dv < dv*.99 || isNaN(i.dv)) ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
             cmp: (a, b) => a.dv - b.dv,
         },
@@ -251,7 +251,7 @@ export default function App() {
         </td></tr>
         <tr><td>Min acceleration</td><td>
             <FloatInput value={acceleration} decimals={2}
-                        onChange={setAcceleration}/>m/s^2
+                        onChange={setAcceleration}/>m/s<sup>2</sup>
             {" ("}<FloatInput value={dv / acceleration} decimals={0}
                               onChange={(v) => setAcceleration(dv / v)}/>s
             {" with TWR "}<FloatInput value={acceleration / gravityValue} decimals={2}
@@ -294,6 +294,8 @@ export default function App() {
     </div>;
 }
 
-if(typeof window === 'object') window.renderApp = function() {
-    ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
-};
+if(typeof window === 'object') { // @ts-ignore
+    window.renderApp = function() {
+        ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
+    };
+}

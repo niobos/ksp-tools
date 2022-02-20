@@ -1,6 +1,7 @@
 import React, {useState} from "react";
 
 import './sortableTable.css';
+import innerText from "react-innertext";
 
 export default function SortableTable(props) {
     /* Displays items in a sortable table.
@@ -30,7 +31,13 @@ export default function SortableTable(props) {
             const valueF = column.value;
             column.cmp = (a, b) => {
                 a = valueF(a);
+                if(React.isValidElement(a)) {
+                    a = innerText(a);
+                }
                 b = valueF(b);
+                if(React.isValidElement(b)) {
+                    b = innerText(b);
+                }
                 if(a === b) return 0;
                 if(a < b) return -1;
                 if(a > b) return 1;

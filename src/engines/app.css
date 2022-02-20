@@ -1,13 +1,14 @@
 input[type="text"] {
+    text-align: right;
     width: 4em;
-}
-
-.zero {
-    color: #f0f0f0;
 }
 
 .number {
     text-align: right;
+}
+
+.zero {
+    color: #f0f0f0;
 }
 
 .outOfSpec {
