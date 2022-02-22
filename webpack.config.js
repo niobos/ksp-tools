@@ -7,7 +7,8 @@ const jsxPages = {
 };
 const tsxPages = {
     'engines': 'KSP - Engine selection',
-    'commnet': 'KSP - CommNet link calculator',
+    'commnet-link-budget': 'KSP - CommNet link budget calculator',
+    'commnet-line-of-sight': 'KSP - CommNet line of sight calculator',
     'orbits': 'KSP - Changing obits',
     'minmus-departure': 'KSP - Interplanetary departure from Minmus',
     'electricity': 'KSP - Electricity calculator',

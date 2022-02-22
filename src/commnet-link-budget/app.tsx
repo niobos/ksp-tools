@@ -45,7 +45,7 @@ export default function App() {
     }
 
     return <div>
-        <h1>CommNet calculator</h1>
+        <h1>CommNet link budget calculator</h1>
         {hopsJsx}
         <Endpoint value={hops[hops.length-1].a}
                   onChange={v => setHops(arrayReplaceElement(hops, hops.length-1, {a: v}))}
