@@ -1,12 +1,16 @@
 import * as React from "react";
+import {useMemo} from "react";
 import ReactDOM from "react-dom";
 import useFragmentState from "../utils/useFragmentState";
-import {Location} from "../utils/location";
+import {Location, sphericalGrid} from "../utils/location";
 import {groundstations as kspGroundstations} from "../utils/kspLocations";
 import {bodies as kspBodies} from "../utils/kspBody";
+import {SiInput} from "../components/formatedInput";
+import {useWorker} from "react-hooks-worker";
+import {CartesianGrid, Label, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,} from 'recharts';
+import {calcCoverageInput, calcCoverageOutput} from "./worker";
 
 import './app.css';
-import {SiInput} from "../components/formatedInput";
 
 function groundstationsFromString(s: string): Set<string> {
     try {
@@ -20,17 +24,27 @@ function groundstationsToString(g: Set<string>): string {
     return JSON.stringify(Array.from(g));
 }
 
+const createWorker = () => new Worker(new URL('./worker', import.meta.url));
+
 export default function App() {
     const [groundstations, setGroundstations] = useFragmentState('g', groundstationsFromString, groundstationsToString);
 
+    const locations = useMemo(() => {
+        const locations = [];
+        for(let locationName in kspGroundstations) {
+            if(groundstations.has(locationName)) {
+                locations.push(kspGroundstations[locationName]);
+            }
+        }
+        return locations;
+    }, [groundstations]);
+
     const locationsJsx = [];
-    const locations = [];
     for(let locationName in kspGroundstations) {
         const checked = groundstations.has(locationName);
         const newValue = new Set(groundstations);
         if(checked) {
             newValue.delete(locationName);
-            locations.push(kspGroundstations[locationName]);
         } else {
             newValue.add(locationName);
         }
@@ -41,6 +55,7 @@ export default function App() {
             />{locationName} ({kspGroundstations[locationName].toStringDegrees()})</label>
         </li>);
     }
+
     const furthestAwayLocation = findFurthestAwayLocation(locations);
 
     const distancesJsx = [];
@@ -56,6 +71,12 @@ export default function App() {
             will always have at least 1 ground station in line of sight.</p>;
     }
 
+    const coverageInput = useMemo(() => ({locations}), [locations]);  // ensure it doesn't change to avoid re-render-loop
+    let {result: coverage} = useWorker<calcCoverageInput, calcCoverageOutput>(createWorker, coverageInput);
+    if(coverage === undefined) {
+        coverage = {altitudeCoveragePairs: []};
+    }
+
     return <div>
         <h1>CommNet line-of-sight calculator</h1>
         <h2>Available locations</h2>
@@ -65,17 +86,28 @@ export default function App() {
             which is {(furthestAwayLocation.distanceToNearest/Math.PI*180).toFixed(1)}º away from the nearest station:</p>
         <ul>{distancesJsx}</ul>
         {maybeAltitude}
+        <ResponsiveContainer width="100%" height={400}>
+            <ScatterChart
+                margin={{
+                    top: 20,
+                    right: 20,
+                    bottom: 20,
+                    left: 20,
+                }}
+            >
+                <CartesianGrid />
+                <XAxis type="number" dataKey="x" name="Altitude" unit="kmAGL" scale="log"
+                       domain={[1, 50e3]} ticks={[10, 100, 1e3, 1e4]}>
+                    <Label value="Altitude" offset={0} position="insideBottom" />
+                </XAxis>
+                <YAxis type="number" dataKey="y" name="Coverage" unit="%" domain={[0, 100]}>
+                    <Label value="Coverage" angle={-90} position="insideLeft" />
+                </YAxis>
+                <Tooltip />
+                <Scatter data={coverage.altitudeCoveragePairs} line fill="#ff0000" />
+            </ScatterChart>
+        </ResponsiveContainer>
     </div>;
-}
-
-function generateGrid(xMin: number, xMax: number, yMin: number, yMax: number, step: number): [number, number][] {
-    const out = []
-    for(let x = xMin; x<xMax; x++) {
-        for(let y = yMin; y<yMax; y++) {
-            out.push([x, y]);
-        }
-    }
-    return out;
 }
 
 function argmin(a: number[]): number {
@@ -151,21 +183,23 @@ export function findFurthestAwayLocation(locations: Location[], tolerance: numbe
         return closestLocationDistance;
     }
 
+    let step;
     let bestCandidate: Location = null;
     let bestCandidateClosestLocation = 0;
-    for(let candidate of generateGrid(-Math.PI, Math.PI, -Math.PI/2, Math.PI/2, minimalDistance/2)) {
-        const loc = Location.create({latitude: candidate[1], longitude: candidate[0]});
-        let closestLocationDistance = distanceToClosestLocation(loc);
-        if(closestLocationDistance > bestCandidateClosestLocation) {
-            bestCandidateClosestLocation = closestLocationDistance;
-            bestCandidate = loc;
+    {  // Limit scope of grid
+        const grid = sphericalGrid(1000);
+        step = Location.greatCircleDistance(grid[0], grid[1]);
+        for (let loc of grid) {
+            let closestLocationDistance = distanceToClosestLocation(loc);
+            if (closestLocationDistance > bestCandidateClosestLocation) {
+                bestCandidateClosestLocation = closestLocationDistance;
+                bestCandidate = loc;
+            }
         }
     }
 
     // Now do a gradient descend to narrow it down.
-    let step = minimalDistance/2;
     while(step > tolerance) {
-        step = step / 2;
         const around = [
             bestCandidate,
             bestCandidate.move(0, step),
@@ -177,6 +211,7 @@ export function findFurthestAwayLocation(locations: Location[], tolerance: numbe
         const bestIdx = argmin(dist);
         bestCandidate = around[bestIdx];
         bestCandidateClosestLocation = dist[bestIdx];
+        if(bestIdx === 0) step = step / 2;
     }
 
     return {

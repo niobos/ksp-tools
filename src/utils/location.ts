@@ -93,3 +93,19 @@ export class Location extends Data {
         })
     }
 }
+
+export function sphericalGrid(numPoints: number = 1000): Location[] {
+    // https://stackoverflow.com/a/26127012
+    const phi = Math.PI * (3 - Math.sqrt(5));  // golden angle in radians
+    const out = [];
+    for (let i = 0; i < numPoints; i++) {
+        const y = 1 - (i / (numPoints - 1)) * 2;  // y goes from 1 to -1
+        const radius = Math.sqrt(1 - y * y);  // radius at y
+        const theta = phi * i;  // golden angle increment
+        const x = Math.cos(theta) * radius;
+        const z = Math.sin(theta) * radius;
+        const loc = Location.create({latitude: Math.sin(z), longitude: Math.atan2(y, x)});
+        out.push(loc);
+    }
+    return out;
+}

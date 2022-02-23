@@ -19,17 +19,6 @@ export default function App() {
     const [ejectionAngle, setEjectionAngle] = useFragmentState('e', 162/180*Math.PI);
     const [ejectionBurn, setEjectionBurn] = useFragmentState('b', 1047);
 
-    const worker = new Worker(new URL('./worker.ts', import.meta.url));
-    worker.postMessage({
-        question:
-            'The Answer to the Ultimate Question of Life, The Universe, and Everything.',
-    });
-    worker.onmessage = (e) => {
-        console.log("Received worker answer:")
-        console.log(e.data);
-        worker.terminate();
-    };
-
     const parkingSpeed = 2 * Math.PI * parkingSma /
         Orbit.periodFromSma(kspBodies.Kerbin.gravity, parkingSma);
 
