@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {useState} from 'react';
 import ReactDOM from 'react-dom';
-import useFragmentState, {jsonParseWithDefault} from "../utils/useFragmentState";
+import useFragmentState, {updatedHashValue} from 'useFragmentState';
 import {Size} from "../utils/kspParts";
 import {bodies as kspBodies} from "../utils/kspBody";
 import {FloatInput} from "../components/formatedInput";
@@ -48,6 +48,18 @@ function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry)
     return (payloadMass - wetDryRatio * payloadMassDry) / (wetDryRatio / tankWetDryRatio - 1);
 }
 
+function jsonParseWithDefault(defaultValue: any): (value: string) => any {
+    return (valueFromHash) => {
+        if(valueFromHash === null || valueFromHash === undefined) {
+            return defaultValue;
+        } // else:
+        try {
+            return JSON.parse(valueFromHash);
+        } catch(e) {
+            return defaultValue;
+        }
+    }
+}
 
 export default function App() {
     const [dv, setDv] = useFragmentState('dv', 1000);
@@ -97,7 +109,11 @@ export default function App() {
             classList: i => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
             cmp: (a, b) => a.cost - b.cost,
         },
-        {title: <span>Total<br/>Mass<br/>[t]</span>, classList: 'number', value: i => i.totalMass.toFixed(2),
+        {title: <span>Total<br/>Mass<br/>[t]</span>, classList: 'number',
+            value: i => <a href={"#" + updatedHashValue('m', i.totalMass)}
+                           target="_new"
+                           title="Use as payload for next stage"
+                >{i.totalMass.toFixed(2)}</a>,
             cmp: (a, b) => a.totalMass - b.totalMass,
         },
         {title: <span>Engine(s)<br/>Mass<br/>[t]</span>, classList: 'number', value: i => i.engineMass.toFixed(2),
