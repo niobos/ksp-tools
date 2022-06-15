@@ -1,4 +1,4 @@
-table.sortableTable th {
+table.sortableTable thead {
     position: sticky;
     top: 1px;
     background-color: #ffffffd0;

@@ -221,7 +221,7 @@ export function findFurthestAwayLocation(locations: Location[], tolerance: numbe
 }
 
 if(typeof window === 'object') { // @ts-ignore
-    window.renderApp = function() {
-        ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
+    window.renderApp = function(selector) {
+        ReactDOM.render(React.createElement(App), document.querySelector(selector));
     };
 }

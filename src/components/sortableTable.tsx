@@ -1,9 +1,23 @@
-import React, {useState} from "react";
+import * as React from "react";
+import {CSSProperties, ReactElement, useState} from "react";
 
 import './sortableTable.css';
 import innerText from "react-innertext";
 
-export default function SortableTable(props) {
+type ColumnConfig<TItem = object> = {
+    title: string | ReactElement,
+    value: (item: TItem) => string | ReactElement,
+    cmp?: (a: TItem, b: TItem) => number,
+    classList?: string | string[] | ((item: TItem) => string[]),
+    style?: CSSProperties | ((item: TItem) => CSSProperties),
+}
+
+interface SortableTableProps<TItem = object> {
+    columns: ColumnConfig<TItem>[],
+    data: TItem[],
+}
+
+export default function SortableTable<TItem = object>(props: SortableTableProps<TItem>) {
     /* Displays items in a sortable table.
      * `data` is an array of objects, one for each row to display
      * `columns` is an array of columns to extract from each item to display:
@@ -20,27 +34,20 @@ export default function SortableTable(props) {
 
     const columns = [];
     for(let column of props.columns || []) {
-        if (typeof column === 'string' || React.isValidElement(column)) {
-            column = {
-                title: column,
-                value: i => i[column],
-            };
-        }
-
         if(!('cmp' in column)) {
             const valueF = column.value;
             column.cmp = (a, b) => {
-                a = valueF(a);
-                if(React.isValidElement(a)) {
-                    a = innerText(a);
+                let aVal = valueF(a);
+                if(React.isValidElement(aVal)) {
+                    aVal = innerText(aVal);
                 }
-                b = valueF(b);
-                if(React.isValidElement(b)) {
-                    b = innerText(b);
+                let bVal = valueF(b);
+                if(React.isValidElement(bVal)) {
+                    bVal = innerText(bVal);
                 }
-                if(a === b) return 0;
-                if(a < b) return -1;
-                if(a > b) return 1;
+                if(aVal === bVal) return 0;
+                if(aVal < bVal) return -1;
+                if(aVal > bVal) return 1;
                 console.error("Can't compare:", a, b);
                 return 0;
             }
@@ -99,7 +106,7 @@ export default function SortableTable(props) {
         rows.push(<tr key={i}>{td}</tr>);
     }
 
-    return <table border="1" className="sortableTable">
+    return <table className="sortableTable">
         <thead><tr>{columnHeaders}</tr></thead>
         <tbody>{rows}</tbody>
     </table>;

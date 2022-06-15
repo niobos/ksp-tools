@@ -14,3 +14,7 @@ input[type="text"] {
 .outOfSpec {
     background-color: #ffdddd;
 }
+
+table.sortableTable, table.sortableTable th, table.sortableTable td {
+    border: 1px solid black;
+}

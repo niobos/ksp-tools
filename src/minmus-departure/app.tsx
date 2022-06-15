@@ -116,7 +116,7 @@ export default function App() {
 }
 
 if(typeof window === 'object') { // @ts-ignore
-    window.renderApp = function() {
-        ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
+    window.renderApp = function(selector) {
+        ReactDOM.render(React.createElement(App), document.querySelector(selector));
     };
 }

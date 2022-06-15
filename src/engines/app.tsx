@@ -201,20 +201,20 @@ export default function App() {
                 fuelTankMass = calcFuelTankMass(
                     dv, engine.isp[pressureIndex],
                     mass + numEngines * engine.mass,
-                    tank.fullEmptyRatio,
+                    tankValue.fullEmptyRatio,
                     mass + numEngines * engine.emptied().mass,
                 )
                 fuelTankMass = Math.max(0, fuelTankMass);  // cap to >=0 for engines with fuel
 
                 if (!isNaN(fuelTankMass)) {
                     totalMass = mass + engine.mass * numEngines + fuelTankMass;
-                    emptyMass = mass + engine.emptied().mass * numEngines + fuelTankMass / tank.fullEmptyRatio;
+                    emptyMass = mass + engine.emptied().mass * numEngines + fuelTankMass / tankValue.fullEmptyRatio;
                     actualDv = engine.isp[pressureIndex] * 9.81 * Math.log(totalMass / emptyMass);
                 } else {
                     // max attainable ∆v with infinite fueltanks
                     totalMass = mass + engine.mass * numEngines;
                     emptyMass = mass + engine.emptied().mass * numEngines;
-                    actualDv = engine.isp[pressureIndex] * 9.81 * Math.log(tank.fullEmptyRatio);
+                    actualDv = engine.isp[pressureIndex] * 9.81 * Math.log(tankValue.fullEmptyRatio);
                 }
 
                 const newNumEngines = calcNumEngines();  // iterate
@@ -240,7 +240,7 @@ export default function App() {
             n: numEngines,
             thrustPerEngine: engine.thrust[pressureIndex],
             isp: engine.isp[pressureIndex],
-            cost: engine.cost * numEngines + fuelTankMass * tank.cost,
+            cost: engine.cost * numEngines + fuelTankMass * tankValue.cost,
             engineMass: engine.mass * numEngines,
             fuelTankMass,
             totalMass: totalMass,
@@ -312,7 +312,7 @@ export default function App() {
 }
 
 if(typeof window === 'object') { // @ts-ignore
-    window.renderApp = function() {
-        ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
+    window.renderApp = function(selector) {
+        ReactDOM.render(React.createElement(App), document.querySelector(selector));
     };
 }
