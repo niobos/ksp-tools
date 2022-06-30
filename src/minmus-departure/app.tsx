@@ -20,7 +20,7 @@ export default function App() {
     const [ejectionBurn, setEjectionBurn] = useFragmentState('b', 1047);
 
     const parkingSpeed = 2 * Math.PI * parkingSma /
-        Orbit.periodFromSma(kspBodies.Kerbin.gravity, parkingSma);
+        Orbit.periodFromSma(kspBodies['Kerbin'].gravity, parkingSma);
 
     const kerbinTaAtDeparture = kspOrbits.Kerbin.taAtT(departureTimeUT);
     const kerbinAngleAtDeparture =
@@ -35,7 +35,7 @@ export default function App() {
         parkingSma,
     );
     const minmusKerbinOrbit = Orbit.FromOrbitalElements(
-        kspBodies.Kerbin.gravity,
+        kspBodies['Kerbin'].gravity,
         {sma: minmusKerbinOrbitSma, e: minmusKerbinOrbitE},
     );
     const minmusKerbinTransferTime = minmusKerbinOrbit.period / 2;
@@ -85,7 +85,7 @@ export default function App() {
         <tr><td>Parking orbit:</td><td>
             <Apside value={parkingSma}
                     onChange={v => setParkingSma(v)}
-                    primaryBody={kspBodies.Kerbin}
+                    primaryBody={kspBodies['Kerbin']}
             />, {parkingSpeed.toFixed(1)} m/s
         </td></tr>
         <tr><td>Departure date:</td><td>

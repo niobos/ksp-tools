@@ -5,7 +5,7 @@ import {FloatInput, KerbalYdhmsInput, SiInput} from "../components/formatedInput
 import useFragmentState from "../utils/useFragmentState";
 import Preset from "../components/preset";
 import SortableTable from "../components/sortableTable";
-import {planets} from "../utils/kspBody";
+import {bodies} from "../utils/kspBody";
 import {orbits} from "../utils/kspOrbit";
 import {Resources} from "../utils/kspParts";
 import FuelTank from "../components/fuelTank";
@@ -316,8 +316,8 @@ export default function App() {
         />%, equivalent to a distance to Kerbol of <SiInput
             value={kerbolDistanceFromSolarPanelEfficiency(solarEfficiency)}
             onChange={d => setSolarEfficiency(solarPanelEfficiencyFromKerbolDistance(d))}
-        />m <Preset options={planets.reduce((acc, p) => {
-            acc[p] = orbits[p].semiMajorAxis;
+        />m <Preset options={bodies['Kerbol'].isOrbitedBy().reduce((acc, p) => {
+            acc[p.name] = orbits[p.name].semiMajorAxis;
             return acc
         }, {})}
                     value={kerbolDistanceFromSolarPanelEfficiency(solarEfficiency)}

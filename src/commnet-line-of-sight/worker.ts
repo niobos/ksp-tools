@@ -22,7 +22,7 @@ function calcCoverage(input: calcCoverageInput): calcCoverageOutput {
             }
         }
         if(distanceToClosestLocation < Math.PI/2) {
-            const alt = (1/Math.cos(distanceToClosestLocation) - 1) * kspBodies.Kerbin.radius;
+            const alt = (1/Math.cos(distanceToClosestLocation) - 1) * kspBodies['Kerbin'].radius;
             altitudes.push(alt);
         } else {
             altitudes.push(Infinity);

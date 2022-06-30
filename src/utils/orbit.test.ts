@@ -462,7 +462,7 @@ describe('Hyperbolic orbits', () => {
 
 describe('Minmus departure', () => {
     describe('Hyperbolic escape from any given position', () => {
-        const gravity = kspBodies.Kerbin.gravity;
+        const gravity = kspBodies['Kerbin'].gravity;
         const r1 = new Vector(1e6, 1e5, 0);
         const vinf = new Vector(1000, 0, 0);
 

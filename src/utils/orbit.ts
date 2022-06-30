@@ -255,7 +255,7 @@ export default class Orbit {
         // const fp = Math.sqrt(gravity) / (r1_norm * r2_norm) * Math.sqrt(y_z / Orbit._C(z)) * (
         //     z * Orbit._S(z) - 1
         // );
-        const gp = 1 - y_z / r2_norm;
+        // const gp = 1 - y_z / r2_norm;
 
         const v1 = position2.sub(position1.mul(f)).mul(1/g);  // [OMES 5.28]
         //const v2 = position2.mul(gp).sub(position1).mul(1/g);  // [OMES 5.29]

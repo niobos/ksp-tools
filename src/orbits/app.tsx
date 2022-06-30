@@ -12,7 +12,7 @@ import Orbit, {
     toString as orbitToString
 } from "./orbit";
 import Preset from "../components/preset";
-import {bodiesHier, bodiesHierFind, planets} from "../utils/kspBody";
+import {bodies} from "../utils/kspBody";
 
 import "./app.css";
 
@@ -22,26 +22,19 @@ function App() {
 
     let orbitsAroundPrimaryBody = {};
     if(typeof primaryBody === 'string') {
-        const primaryBodyLoc = bodiesHierFind(primaryBody);
-        if(primaryBodyLoc.length === 1) {  // Kerbol
-            for(let planet of planets) {
-                orbitsAroundPrimaryBody[planet] = planet;
-            }
-        } else if(primaryBodyLoc.length === 2) {  // a planet, list its moons
-            const system = bodiesHier[`${primaryBody} system`];
-            for(let i = 1; i < system.length; i++) {
-                orbitsAroundPrimaryBody[system[i]] = system[i];
-            }
-        } // else: No orbit presets around a moon
+        for(let secondary of bodies[primaryBody].isOrbitedBy()) {
+            orbitsAroundPrimaryBody[secondary.name] = secondary.name;
+        }
     } else {  // list them all
-        for(let system in bodiesHier) {
-            if(bodiesHier[system] instanceof Array) {
-                orbitsAroundPrimaryBody[system] = {}
-                for(let body of bodiesHier[system]) {
-                    orbitsAroundPrimaryBody[system][body] = body;
+        for(let planet of bodies['Kerbol'].isOrbitedBy()) {
+            const moons = planet.isOrbitedBy();
+            if(moons.length > 0) {
+                orbitsAroundPrimaryBody[planet.name] = {}
+                for(let moon of planet.isOrbitedBy()) {
+                    orbitsAroundPrimaryBody[planet.name][moon.name] = moon.name;
                 }
             } else {
-                orbitsAroundPrimaryBody[bodiesHier[system]] = bodiesHier[system];
+                orbitsAroundPrimaryBody[planet.name] = planet.name;
             }
         }
     }
