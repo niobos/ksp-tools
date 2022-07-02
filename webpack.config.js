@@ -12,6 +12,7 @@ const tsxPages = {
     'orbits': 'KSP - Changing obits',
     'minmus-departure': 'KSP - Interplanetary departure from Minmus',
     'electricity': 'KSP - Electricity calculator',
+    'planner': 'KSP - Mission planner',
 };
 
 const entries = {};

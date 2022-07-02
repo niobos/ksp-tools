@@ -968,31 +968,49 @@ export default class Orbit {
         f: (x: number[]) => number,
         x0: number[],
         initialStep: number = 1,
-        gradientStep: number = 1,
+        dxStep: number = 1,
         tolerance: number = 1e-8,
     ): {xmin: number[], fmin: number} {
         let x = [...x0];  // copy
         let error = Infinity;
         let remainingIterations = 1000;
         let previousFx;
-        let a = initialStep;
         while(error > tolerance && --remainingIterations) {
             const fx = f(x);
-            console.log(`f(${x}) = ${fx}; a=${a}, rem=${remainingIterations}`);
+            console.log(`f(${x}) = ${fx}; rem=${remainingIterations}`);
             if(previousFx != null) {
                 error = Math.abs(fx - previousFx);
-                a = previousFx > fx ? a * 1.1 : a * 0.7;
             }
             previousFx = fx;
             const gradientX = x.map((xi, i) => {
                 const xdx = [...x];
-                xdx[i] += gradientStep;
+                xdx[i] += dxStep;
                 const fxdx = f(xdx);
-                return (fxdx - fx) / gradientStep;
+                return (fxdx - fx) / dxStep;
             });
-            for(let i = 0; i < x0.length; i++) {
-                x[i] = x[i] - a * gradientX[i];
+
+            // Rough line-search in the direction of -gradientX
+            let a = initialStep;
+            let xPrevA = [...x];
+            let fxPrevA = fx;
+            let remainingJumps = 100;
+            while(--remainingJumps) {
+                const xNext = [...xPrevA];
+                for (let i = 0; i < x0.length; i++) {
+                    xNext[i] = x[i] - a * gradientX[i];
+                }
+                const fxNext = f(xNext);
+                if(a >= 1 && fxNext < fxPrevA) {  // we descended, keep searching forward
+                    a = 2*a;
+                } else if(a <= 1 && fxNext >= fxPrevA) {  // we ascended, take smaller steps
+                    a = a/2;
+                } else {
+                    break;
+                }
+                xPrevA = xNext;
+                fxPrevA = fxNext;
             }
+            x = xPrevA;
         }
         return {xmin: x, fmin: previousFx};
     }

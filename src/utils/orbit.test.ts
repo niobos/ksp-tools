@@ -492,7 +492,7 @@ describe('nearest approach', () => {
         );
 
         const encounter = o1.nearestApproach(o2, 2);
-        expect(encounter.t/10).toBeCloseTo(5000/10, 0);  // to within 10 seconds
-        expect(encounter.distance / 1e3).toBeCloseTo(0, 0);  // to within 1km
+        expect(encounter.t).toBeCloseTo(5000, 0);  // to within 1 seconds
+        expect(encounter.distance / 100).toBeCloseTo(0, 0);  // to within 100m
     });
 });
