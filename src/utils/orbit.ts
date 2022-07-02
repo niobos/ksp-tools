@@ -5,6 +5,7 @@
  */
 
 import Vector from "./vector";
+import {minimize_Powell} from 'optimization-js';
 
 type OrbitalElements = {
     sma: number,  // or parameter for parabolic orbits
@@ -566,9 +567,8 @@ export default class Orbit {
     }
 
     positionAtT(t: number): Vector {
-        if(t === 0) return this.r0;
-
         const dt = t - this.t0;
+        if(dt === 0) return this.r0;
         const {r} = this._rAndχAtDt(dt);
         return r;
     }
@@ -744,6 +744,41 @@ export default class Orbit {
             g.inner_product(r),
             g.inner_product(n),
         );
+    }
+
+    nearestApproach(
+        otherOrbit: Orbit,
+        revolutions: number = 1
+    ): {t: number, distance: number} {
+        /* Calculate the time when the object in this orbit is closest to the object in otherOrbit
+         * in the next `revolutions` revolutions.
+         */
+        if(this.gravity !== otherOrbit.gravity) throw "Not in same gravitational field";
+
+        const d = (t) => {
+            const r1 = this.positionAtT(t[0]);
+            const r2 = otherOrbit.positionAtT(t[0]);
+            const dist = r1.sub(r2).norm;
+            return dist / (this.semiMajorAxis + otherOrbit.semiMajorAxis);
+            // Scale to be around 1.0 for better convergence
+        };
+
+        let guess = 0;
+        {
+            let bestDistance = Infinity;
+            const stepSize = 0.1 * Math.min(this.period, otherOrbit.period) / this.period;
+            for(let rev = 0; rev < revolutions; rev += stepSize) {
+                const t = rev * this.period;
+                const dist = d([t]);
+                if(dist < bestDistance) {
+                    bestDistance = dist;
+                    guess = t;
+                }
+            }
+        }
+
+        const minimum = Orbit._findMinimum(d, [guess], 100, 0.1);
+        return {t: minimum.xmin[0], distance: minimum.fmin * (this.semiMajorAxis + otherOrbit.semiMajorAxis)};
     }
 
     // public copy(modifyObject: { [P in keyof this]?: this[P] }): this {
@@ -927,6 +962,39 @@ export default class Orbit {
             }
         }
         return (a+b)/2;
+    }
+
+    static _findMinimum(
+        f: (x: number[]) => number,
+        x0: number[],
+        initialStep: number = 1,
+        gradientStep: number = 1,
+        tolerance: number = 1e-8,
+    ): {xmin: number[], fmin: number} {
+        let x = [...x0];  // copy
+        let error = Infinity;
+        let remainingIterations = 1000;
+        let previousFx;
+        let a = initialStep;
+        while(error > tolerance && --remainingIterations) {
+            const fx = f(x);
+            console.log(`f(${x}) = ${fx}; a=${a}, rem=${remainingIterations}`);
+            if(previousFx != null) {
+                error = Math.abs(fx - previousFx);
+                a = previousFx > fx ? a * 1.1 : a * 0.7;
+            }
+            previousFx = fx;
+            const gradientX = x.map((xi, i) => {
+                const xdx = [...x];
+                xdx[i] += gradientStep;
+                const fxdx = f(xdx);
+                return (fxdx - fx) / gradientStep;
+            });
+            for(let i = 0; i < x0.length; i++) {
+                x[i] = x[i] - a * gradientX[i];
+            }
+        }
+        return {xmin: x, fmin: previousFx};
     }
 
     _universalAnomalyAtDt(

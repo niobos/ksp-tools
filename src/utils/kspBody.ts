@@ -14,6 +14,7 @@ export default class Body extends Data {
     wikiUrl?: string
     name?: string
     orbitsAround?: Body
+    private orbitedBy: Body[] = ['init' as unknown as Body]
 
     get gravity(): number | null {
         if(this.mass == null) return null;
@@ -30,12 +31,14 @@ export default class Body extends Data {
     }
 
     isOrbitedBy(): Body[] {
-        const subBodies = [];
-        for(let bodyName in bodies) {
-            const body = bodies[bodyName];
-            if(body.orbitsAround === this) subBodies.push(body);
+        if(this.orbitedBy[0] === 'init' as unknown as Body) {
+            this.orbitedBy.pop();
+            for (let bodyName in bodies) {
+                const body = bodies[bodyName];
+                if (body.orbitsAround === this) this.orbitedBy.push(body);
+            }
         }
-        return subBodies;
+        return this.orbitedBy;
     }
 }
 

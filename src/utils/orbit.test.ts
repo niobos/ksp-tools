@@ -475,3 +475,24 @@ describe('Minmus departure', () => {
         expect(vr2.sub(vinf).norm).toBeCloseTo(0);
     });
 });
+
+describe('nearest approach', () => {
+    describe('test something', () => {
+        const o1 = Orbit.FromStateVector(
+            kspBodies['Kerbin'].gravity,
+            new Vector(700e3, 0, 0),
+            new Vector(0, 2500, 0),
+            5000,
+        );
+        const o2 = Orbit.FromStateVector(
+            kspBodies['Kerbin'].gravity,
+            new Vector(700e3, 0, 0),
+            new Vector(0, 2300, 0),
+            5000,
+        );
+
+        const encounter = o1.nearestApproach(o2, 2);
+        expect(encounter.t/10).toBeCloseTo(5000/10, 0);  // to within 10 seconds
+        expect(encounter.distance / 1e3).toBeCloseTo(0, 0);  // to within 1km
+    });
+});
