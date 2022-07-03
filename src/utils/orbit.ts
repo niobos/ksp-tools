@@ -7,7 +7,7 @@
 import Vector from "./vector";
 import {minimize_Powell} from 'optimization-js';
 
-type OrbitalElements = {
+export type OrbitalElements = {
     sma: number,  // or parameter for parabolic orbits
     e?: number,
     argp?: number,
@@ -17,7 +17,7 @@ type OrbitalElements = {
     h: Vector,
     e: Vector,
 };
-type OrbitalPhase = {
+export type OrbitalPhase = {
     ma0: number,
 } | {
     ta: number,
@@ -669,7 +669,8 @@ export default class Orbit {
 
     taAtDistance(r: number): number {
         /* Calculates a true anomaly where the orbit crosses distance `r`.
-         * For elliptical orbits with apoapsis < `d`, returns NaN.
+         * The other true anomaly will be the negative of this result.
+         * Returns NaN if the specified distance is never reached.
          */
         const µ = this.gravity;
         const h = this.specificAngularMomentum;
@@ -746,39 +747,69 @@ export default class Orbit {
         );
     }
 
-    nearestApproach(
+    nextIntercept(
         otherOrbit: Orbit,
-        revolutions: number = 1
-    ): {t: number, distance: number} {
-        /* Calculate the time when the object in this orbit is closest to the object in otherOrbit
-         * in the next `revolutions` revolutions.
+        t: number = 0,
+        tEnd: number = Infinity,
+        accuracy: number = 10,
+    ): {t: number, separation: number} {
+        /* Returns the time & separation of the next intercept: A minimum in the distance between the two objects.
+         * Note that this may not return the closest intercept. For that you need to iteratively call this function
+         * to exhaustively search through time.
+         * Sometimes, two intercepts happen very close to each other. When they are closer than `accuracy` seconds
+         * apart, this function may only report one of them.
          */
-        if(this.gravity !== otherOrbit.gravity) throw "Not in same gravitational field";
+
+        if(this.gravity !== otherOrbit.gravity) {
+            console.warn('Calculating nearestApproach() between\n' +
+                `${this}  and  ${otherOrbit}\n` +
+                "Not in the same gravitational field!");
+        }
 
         const d = (t) => {
-            const r1 = this.positionAtT(t[0]);
-            const r2 = otherOrbit.positionAtT(t[0]);
+            const r1 = this.positionAtT(t);
+            const r2 = otherOrbit.positionAtT(t);
             const dist = r1.sub(r2).norm;
-            return dist / (this.semiMajorAxis + otherOrbit.semiMajorAxis);
+            return dist;
             // Scale to be around 1.0 for better convergence
         };
 
-        let guess = 0;
-        {
-            let bestDistance = Infinity;
-            const stepSize = 0.1 * Math.min(this.period, otherOrbit.period) / this.period;
-            for(let rev = 0; rev < revolutions; rev += stepSize) {
-                const t = rev * this.period;
-                const dist = d([t]);
-                if(dist < bestDistance) {
-                    bestDistance = dist;
-                    guess = t;
+        const dt = 1;
+        let prevSepP = undefined;
+        while(t < tEnd) {
+            console.log(`nextIntercept(): t=${t}`)
+            let tStep = Math.min(this.period, otherOrbit.period) / 10;  // move 1/10 revolution forward
+
+            const separation = [d(t-dt), d(t), d(t+dt)];
+            const separationP = (separation[2] - separation[0]) / (2*dt);  // estimate of d/dt separation(t)
+            const separationPp = (separation[2] - 2*separation[1] + separation[0]) / (dt*dt);  // estimate of d^2/dt^2 separation(t)
+
+            if(separationP === 0 && separationPp > 0) {
+                // we hit a local minima
+                if(prevSepP != null) {  // and we're not at our starting point anymore
+                    return {t, separation: separation[1]};
                 }
             }
-        }
+            if(prevSepP != null && prevSepP < 0 && separationP > 0) {
+                // we jumped over a local minimum
+                const min = Orbit._findMinimum(
+                    x => d(x[0]) / (this.semiMajorAxis + otherOrbit.semiMajorAxis),  // normalize to be scaled around 1.0
+                    [t],
+                );
+                return {t: min.xmin[0], separation: d(min.xmin[0])};
+            }
 
-        const minimum = Orbit._findMinimum(d, [guess], 100, 0.1);
-        return {t: minimum.xmin[0], distance: minimum.fmin * (this.semiMajorAxis + otherOrbit.semiMajorAxis)};
+            if(separationP < 0) {  // closing
+                if(separationPp > 0) {
+                    // slowing down
+                    tStep = Math.min(- separationP / separationPp, tStep);
+                }
+            }
+
+            t = t + Math.max(tStep, accuracy);
+            prevSepP = separationP;
+        }
+        return null;
     }
 
     // public copy(modifyObject: { [P in keyof this]?: this[P] }): this {
@@ -946,7 +977,9 @@ export default class Orbit {
          */
         let fa = f(a);
         let fb = f(b);
-        if(!(fa * fb < 0)) throw `Expected f(${a})=${fa} and f(${b})=${fb} to have different sign.`;
+        if(!(fa * fb < 0)) {
+            throw `Expected f(${a})=${fa} and f(${b})=${fb} to have different sign.`;
+        }
         while(Math.abs(a-b) > tolerance) {
             const x = (a + b) / 2;
             const fx = f(x);
@@ -977,7 +1010,6 @@ export default class Orbit {
         let previousFx;
         while(error > tolerance && --remainingIterations) {
             const fx = f(x);
-            console.log(`f(${x}) = ${fx}; rem=${remainingIterations}`);
             if(previousFx != null) {
                 error = Math.abs(fx - previousFx);
             }

@@ -74,6 +74,13 @@ export default function App() {
         },
         o => JSON.stringify([...o]),
     );
+    const [techLevel, setTechLevel] = useFragmentState<number>('tl',
+        s => {
+            if(s == null || s === '') return 9;  // default
+            return parseInt(s);
+        },
+        i => '' + i,
+    );
     const fuelTypes = ['lf', 'ox', 'air', 'sf', 'xe', 'mono'];
     const [fuelType, setFuelType] = useFragmentState('f',
         s => {
@@ -150,6 +157,9 @@ export default function App() {
     const engineOptions = [];
     for(let engineName in kspEngines) {
         const engine = kspEngines[engineName];
+
+        // Correct tech level?
+        if(engine.techTreeNode.level > techLevel) continue;
 
         // Correct fuel type?
         let skip = false;
@@ -253,6 +263,16 @@ export default function App() {
         });
     }
 
+    const techLevelJsx = [];
+    for(let tl = 1; tl <= 9; tl++) {
+        techLevelJsx.push(<label key={tl}>
+            <input type="radio"
+                   checked={techLevel === tl}
+                   onChange={e => setTechLevel(tl)}
+            />{tl}
+        </label>);
+    }
+
     return <div>
         <h1>Engine selection</h1>
         <table><tbody>
@@ -290,6 +310,7 @@ export default function App() {
                           onChange={(e) => setPressure(e.target.value)}
             />vac</label>
         </td></tr>
+        <tr><td>Tech level</td><td>{techLevelJsx}</td></tr>
         <tr><td>Sizes</td><td>
             <Multiselect items={objectMap(Size, v => v.longDescription)} value={sizes} onChange={setSizes}/>
         </td></tr>
@@ -306,7 +327,7 @@ export default function App() {
         <h2>Engine options</h2>
         <label><input type="checkbox" checked={showAll}
                       onChange={(e) => setShowAll(e.target.checked)}
-        />Show all engines</label>
+        />Also show engines not meeting ∆v requirements</label>
         <SortableTable columns={columns} data={engineOptions}/>
     </div>;
 }
