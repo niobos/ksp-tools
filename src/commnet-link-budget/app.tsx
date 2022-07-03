@@ -1,6 +1,6 @@
 import * as React from "react";  // JSX support
 import ReactDOM from "react-dom";
-import useFragmentState from "../utils/useFragmentState";
+import useFragmentState from 'useFragmentState';
 import Link from "./link";
 import Endpoint, {calcCombinedPower} from "./endpoint";
 import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";

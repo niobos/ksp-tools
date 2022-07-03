@@ -5,7 +5,7 @@ import {bodies as kspBodies} from "../utils/kspBody";
 import {orbits as kspOrbits} from "../utils/kspOrbit";
 import {FloatInput, KerbalDateInput, KerbalYdhmsInput} from "../components/formatedInput";
 import Apside from "../orbits/apside";
-import useFragmentState from "../utils/useFragmentState";
+import useFragmentState from 'useFragmentState';
 
 import './app.css';
 

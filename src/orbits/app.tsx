@@ -1,7 +1,7 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
 import KspHierBody from "../components/kspHierBody";
-import useFragmentState from "../utils/useFragmentState";
+import useFragmentState from 'useFragmentState';
 import PrimaryBody, {
     fromString as primaryBodyFromString,
     toString as primaryBodyToString,
