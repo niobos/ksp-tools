@@ -232,7 +232,8 @@ export default function App() {
     const [burstPower, setBurstPower] = useFragmentState('b', BurstPowerCalcFromString, BurstPowerCalcToString);
     const [burstPowerCalcOpen, setBurstPowerCalcOpen] = useState(false);
     const [missionDuration, setMissionDuration] = useFragmentState('d', 10 * 6 * 60 * 60);
-    const [fuelTank, setFuelTank] = useFragmentState('ft', {fullEmptyRatio: 8.69, cost: 233.50});
+    const [fuelTank, setFuelTank] = useFragmentState<{fullEmptyRatio: number, cost: number} | string>(
+        'ft', {fullEmptyRatio: 8.69, cost: 233.50});
     const [solarEfficiency, setSolarEfficiency] = useFragmentState('s', 1.00);
     const [shade, setShade] = useFragmentState('S', ShadeCalcFromString, ShadeCalcToString);
     const [shadeCalcOpen, setShadeCalcOpen] = useState(false);

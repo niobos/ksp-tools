@@ -1,19 +1,18 @@
 import * as React from "react";  // JSX
-import {SiInput} from "../components/formatedInput";
+import {SiInput} from "formattedInput";
+import Body from "../utils/kspBody";
 
 import "./apside.css";
-import Body from "../utils/kspBody";
 
 interface ApsideProps {
     value: number
     onChange?: (value: number) => void
     onFocus?: () => void
-    onBlur?: (finalValue: number) => void
+    onBlur?: () => void
     primaryBody?: Body
 }
 
 export default function Apside(props: ApsideProps) {
-    const onChange = props.onChange !== undefined ? props.onChange : () => null;
     const onFocus = props.onFocus !== undefined ? props.onFocus : () => null;
     const onBlur = props.onBlur !== undefined ? props.onBlur : () => null;
     const primaryBody = props.primaryBody !== undefined ? props.primaryBody : Body.create({});
@@ -23,10 +22,10 @@ export default function Apside(props: ApsideProps) {
         maybeAgl = <span>
             {" = "}<SiInput
                 value={props.value - primaryBody.radius}
-                onChange={v => onChange(v + primaryBody.radius)}
+                onChange={props.onChange != null ? v => props.onChange(v + primaryBody.radius) : null}
                 onFocus={onFocus}
-                onBlur={v => onBlur(v + primaryBody.radius)}
-                classNameFunc={v => v <= 0 ? ['warning'] : []}
+                onBlur={onBlur}
+                classNameFunc={v => v <= 0 ? 'warning' : ''}
             />mAGL
         </span>;
 
@@ -43,10 +42,10 @@ export default function Apside(props: ApsideProps) {
             maybeAa = <span>
                 {" = "}<SiInput
                     value={props.value - primaryBody.radius - primaryBody[highestObstacle]}
-                    onChange={v => onChange(v + primaryBody.radius + primaryBody[highestObstacle])}
+                    onChange={props.onChange != null ? v => props.onChange(v + primaryBody.radius + primaryBody[highestObstacle]) : null}
                     onFocus={onFocus}
-                    onBlur={v => onBlur(v + primaryBody.radius + primaryBody[highestObstacle])}
-                    classNameFunc={v => v <= 0 ? ['warning'] : []}
+                    onBlur={onBlur}
+                    classNameFunc={v => v <= 0 ? 'warning' : ''}
                 />m above {highestObstacle}
             </span>;
         }
@@ -54,10 +53,10 @@ export default function Apside(props: ApsideProps) {
 
     return <span>
         <SiInput value={props.value}
-                 onChange={onChange}
+                 onChange={props.onChange}
                  onFocus={onFocus}
                  onBlur={onBlur}
-                 classNameFunc={v => v >= primaryBody.soi ? ['warning'] : []}
+                 classNameFunc={v => v >= primaryBody.soi ? 'warning' : ''}
         />m{maybeAgl}{maybeAa}
     </span>;
 }

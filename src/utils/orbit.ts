@@ -264,6 +264,24 @@ export default class Orbit {
         return Orbit.FromStateVector(gravity, position1, v1);
     }
 
+    serialize(): string {
+        return JSON.stringify({
+            g: this.gravity,
+            r: [this.r0.x, this.r0.y, this.r0.z],
+            v: [this.v0.x, this.v0.y, this.v0.z],
+            t: this.t0,
+        });
+    }
+    static Unserialize(s: string): Orbit {
+        const o = JSON.parse(s);
+        return new Orbit(
+            o.g,
+            new Vector(o.r[0], o.r[1], o.r[2]),
+            new Vector(o.v[0], o.v[1], o.v[2]),
+            o.t,
+        )
+    }
+
     get energy(): number {
         if(this._cache['energy'] === undefined) {
             this._cache['energy'] = this.v0.norm * this.v0.norm / 2

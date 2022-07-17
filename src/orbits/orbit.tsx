@@ -1,6 +1,7 @@
 import * as React from 'react';  // JSX
 import {useState} from "react";
-import {FloatInput, DegreesInput} from "../components/formatedInput";
+import {FloatInput} from 'formattedInput';
+import {DegreesInput} from "../components/formattedInput";
 import Apside from "./apside";
 import Body from "../utils/kspBody";
 import {orbits as kspOrbits} from "../utils/kspOrbit";
@@ -107,7 +108,6 @@ function fromApsideSpeed(
 }
 
 export default function Orbit(props: OrbitProps) {
-    const onChange = props.onChange || (() => null);
     const [editingApside, setEditingApside]: [editingApsideType, (editingApsideType) => void] = useState(null);
 
     let value = props.value;
@@ -137,13 +137,13 @@ export default function Orbit(props: OrbitProps) {
     return <table><tbody>
     <tr><td>Semi-major axis</td><td>
         <Sma value={value.semiMajorAxis}
-             onChange={sma => onChange(changeOrbitKepler(value, {sma}))}
+             onChange={props.onChange != null ? sma => props.onChange(changeOrbitKepler(value, {sma})) : null}
              gravity={value.gravity}
         />
     </td></tr>
     <tr><td>Eccentricity</td><td>
         <FloatInput value={value.eccentricity}
-                    onChange={e => onChange(changeOrbitKepler(value, {e}))}
+                    onChange={props.onChange != null ? e => props.onChange(changeOrbitKepler(value, {e})) : null}
         />
     </td></tr>
     <tr><td>Periapsis</td><td>
@@ -152,12 +152,12 @@ export default function Orbit(props: OrbitProps) {
                     {distance: apsis1},
                     {distance: apsis2},
                 ])}
-                onChange={r => {
-                    onChange(changeOrbitKepler(value,
+                onChange={props.onChange != null ? r => {
+                    props.onChange(changeOrbitKepler(value,
                         kspOrbit.smaEFromApsides(r, apsis2),
                     ));
                     if(editingApside != null) editingApside[0].distance = r;
-                }}
+                } : null}
                 onBlur={() => setEditingApside(null)}
                 primaryBody={props.primaryBody}
         /><span style={speedStyle}>, speed <FloatInput
@@ -167,7 +167,7 @@ export default function Orbit(props: OrbitProps) {
                 {distance: apsis1, speed: apsis1Speed},
                 {distance: apsis2, speed: apsis2Speed},
             ])}
-            onChange={s => fromApsideSpeed(1, apsis1, s, value, onChange, editingApside, setEditingApside)}
+            onChange={props.onChange != null ? s => fromApsideSpeed(1, apsis1, s, value, props.onChange, editingApside, setEditingApside) : null}
             onBlur={() => setEditingApside(null)}
         />m/s</span>
     </td></tr>
@@ -177,12 +177,12 @@ export default function Orbit(props: OrbitProps) {
                     {distance: apsis1},
                     {distance: apsis2},
                 ])}
-                onChange={r => {
-                    onChange(changeOrbitKepler(value,
+                onChange={props.onChange != null ? r => {
+                    props.onChange(changeOrbitKepler(value,
                         kspOrbit.smaEFromApsides(apsis1, r),
                     ));
                     if(editingApside != null) editingApside[1].distance = r;
-                }}
+                } : null}
                 onBlur={() => setEditingApside(null)}
                 primaryBody={props.primaryBody}
         /><span style={speedStyle}>, speed <FloatInput
@@ -192,40 +192,41 @@ export default function Orbit(props: OrbitProps) {
                 {distance: apsis1, speed: apsis1Speed},
                 {distance: apsis2, speed: apsis2Speed},
             ])}
-            onChange={s => fromApsideSpeed(2, apsis2, s, value, onChange, editingApside, setEditingApside)}
+            onChange={props.onChange != null ? s => fromApsideSpeed(2, apsis2, s, value, props.onChange, editingApside, setEditingApside) : null}
             onBlur={() => setEditingApside(null)}
     />m/s</span>
     </td></tr>
     <tr><td>Argument of Periapsis</td><td>
         <DegreesInput value={value.argumentOfPeriapsis}
-                      onChange={argp => onChange(changeOrbitKepler(value, {argp}))}
+                      onChange={props.onChange != null ? argp => props.onChange(changeOrbitKepler(value, {argp})) : null}
         />º
     </td></tr>
     <tr><td>Inclination</td><td>
-        <DegreesInput value={value.inclination}
-                      onChange={inc => onChange(changeOrbitKepler(value, {inc}))}
-                      onBlur={inc => {
-                     if(inc > Math.PI) {
-                         // Correct inclination to be <=180º by swapping ascending & descending node
-                         // Note: since argp is measured from the AN, we need to correct that as well
-                         onChange(changeOrbitKepler(value, {
-                             inc: 2*Math.PI - inc,
-                             lon_an: value.longitudeAscendingNode < Math.PI ? value.longitudeAscendingNode + Math.PI : value.longitudeAscendingNode - Math.PI,
-                             argp: value.argumentOfPeriapsis < Math.PI ? value.argumentOfPeriapsis + Math.PI : value.argumentOfPeriapsis - Math.PI,
-                         }))
-                     }
-                 }}
+        <DegreesInput
+            value={value.inclination}
+            onChange={props.onChange != null ? inc => props.onChange(changeOrbitKepler(value, {inc})) : null}
+            onBlur={() => {
+                if(value.inclination > Math.PI) {
+                    // Correct inclination to be <=180º by swapping ascending & descending node
+                    // Note: since argp is measured from the AN, we need to correct that as well
+                    props.onChange(changeOrbitKepler(value, {
+                        inc: 2*Math.PI - value.inclination,
+                        lon_an: value.longitudeAscendingNode < Math.PI ? value.longitudeAscendingNode + Math.PI : value.longitudeAscendingNode - Math.PI,
+                        argp: value.argumentOfPeriapsis < Math.PI ? value.argumentOfPeriapsis + Math.PI : value.argumentOfPeriapsis - Math.PI,
+                    }))
+                }
+            }}
         />º
     </td></tr>
     <tr><td>Longitude of Ascending Node</td><td>
         <DegreesInput value={value.longitudeAscendingNode}
-                      onChange={lon_an => onChange(changeOrbitKepler(value, {lon_an}))}
+                      onChange={props.onChange != null ? lon_an => props.onChange(changeOrbitKepler(value, {lon_an})) : null}
         />º
     </td></tr>
     <tr><td>Mean anomaly at epoch</td><td>
         <DegreesInput value={value.meanAnomalyAtEpoch}
                       placeholder={"any"} emptyValue={null}
-                      onChange={ma0 => onChange(changeOrbitKepler(value, {ma0}))}
+                      onChange={props.onChange != null ? ma0 => props.onChange(changeOrbitKepler(value, {ma0})) : null}
         />º
     </td></tr>
     </tbody></table>;

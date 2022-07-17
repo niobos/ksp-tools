@@ -1,5 +1,6 @@
 import Body from './kspBody';
 import Orbit, {OrbitalPhase} from "./orbit";
+import {bodies as kspBodies} from './kspBody';
 import {orbits as kspOrbits} from './kspOrbit';
 
 export enum orbitEvent {
@@ -19,6 +20,20 @@ export default class OrbitAround {
         public orbit: Orbit,
     ) {
         if(body.gravity !== orbit.gravity) throw "Gravity mismatch";
+    }
+
+    serialize(): string {
+        return JSON.stringify({
+            b: this.body.name,
+            o: this.orbit.serialize(),
+        });
+    }
+    static Unserialize(s: string): OrbitAround {
+        const o = JSON.parse(s);
+        return new OrbitAround(
+            kspBodies[o.b],
+            Orbit.Unserialize(o.o),
+        )
     }
 
     nextEvent(
