@@ -41,14 +41,26 @@ export default function Endpoint(props: EndpointProps) {
     const antennasJsx = []
     if(Array.isArray(props.value) && props.value.length > 0) {
         for(let antennaNr = 0; antennaNr < props.value.length; antennaNr++) {
-            const antenna = props.value[antennaNr];
+            const antennaName = props.value[antennaNr];
+            const antenna = kspAntennas[antennaName];
+            let scienceJsx;
+            if(antenna.txSpeed == null) {
+                scienceJsx = "(Not able to transmit science)"
+            } else {
+                scienceJsx = <>
+                    {antenna.txSpeed}Mit/s{", "}
+                    {antenna.consumption.el}⚡/Mit{", "}
+                    {(antenna.consumption.el / antenna.txSpeed).toFixed(1)}⚡/s
+                </>;
+            }
             antennasJsx.push(<div key={antennaNr}>
                 <input type="button" value="-"
                        onClick={e => props.onChange(arrayRemoveElement(props.value as string[], antennaNr))}
-                /><select value={antenna}
+                /><select value={antennaName}
                           onChange={e => props.onChange(arrayReplaceElement(props.value as string[], antennaNr, e.target.value))}>
                     {presetAntennasJsx}
-                </select>
+                </select>{" "}
+                {scienceJsx}
             </div>);
         }
     } else {

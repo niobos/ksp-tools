@@ -10,6 +10,8 @@ help:
 clean:
 	rm -rf dist
 	rm -rf node_modules
+	find src -name '*.ts' -print | while read ts; do rm -f $${ts%%.ts}.js $${ts%%.ts}.js.map; done
+	find src -name '*.tsx' -print | while read ts; do rm -f $${ts%%.tsx}.js $${ts%%.tsx}.js.map; done
 
 deps:
 	npm install
