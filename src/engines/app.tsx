@@ -327,7 +327,7 @@ export default function App() {
         <h2>Engine options</h2>
         <label><input type="checkbox" checked={showAll}
                       onChange={(e) => setShowAll(e.target.checked)}
-        />Also show engines not meeting ∆v requirements</label>
+        />Also show engines not meeting ∆v or TWR requirements</label>
         <SortableTable columns={columns} data={engineOptions}/>
     </div>;
 }
