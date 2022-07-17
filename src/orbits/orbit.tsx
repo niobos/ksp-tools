@@ -139,11 +139,13 @@ export default function Orbit(props: OrbitProps) {
         <Sma value={value.semiMajorAxis}
              onChange={props.onChange != null ? sma => props.onChange(changeOrbitKepler(value, {sma})) : null}
              gravity={value.gravity}
+             readOnly={props.onChange == null}
         />
     </td></tr>
     <tr><td>Eccentricity</td><td>
         <FloatInput value={value.eccentricity}
                     onChange={props.onChange != null ? e => props.onChange(changeOrbitKepler(value, {e})) : null}
+                    readOnly={props.onChange == null}
         />
     </td></tr>
     <tr><td>Periapsis</td><td>
@@ -159,6 +161,7 @@ export default function Orbit(props: OrbitProps) {
                     if(editingApside != null) editingApside[0].distance = r;
                 } : null}
                 onBlur={() => setEditingApside(null)}
+                readOnly={props.onChange == null}
                 primaryBody={props.primaryBody}
         /><span style={speedStyle}>, speed <FloatInput
             decimals={1}
@@ -169,6 +172,7 @@ export default function Orbit(props: OrbitProps) {
             ])}
             onChange={props.onChange != null ? s => fromApsideSpeed(1, apsis1, s, value, props.onChange, editingApside, setEditingApside) : null}
             onBlur={() => setEditingApside(null)}
+            readOnly={props.onChange == null}
         />m/s</span>
     </td></tr>
     <tr><td>Apoapsis</td><td>
@@ -184,6 +188,7 @@ export default function Orbit(props: OrbitProps) {
                     if(editingApside != null) editingApside[1].distance = r;
                 } : null}
                 onBlur={() => setEditingApside(null)}
+                readOnly={props.onChange == null}
                 primaryBody={props.primaryBody}
         /><span style={speedStyle}>, speed <FloatInput
             decimals={1}
@@ -194,11 +199,13 @@ export default function Orbit(props: OrbitProps) {
             ])}
             onChange={props.onChange != null ? s => fromApsideSpeed(2, apsis2, s, value, props.onChange, editingApside, setEditingApside) : null}
             onBlur={() => setEditingApside(null)}
-    />m/s</span>
+            readOnly={props.onChange == null}
+        />m/s</span>
     </td></tr>
     <tr><td>Argument of Periapsis</td><td>
         <DegreesInput value={value.argumentOfPeriapsis}
                       onChange={props.onChange != null ? argp => props.onChange(changeOrbitKepler(value, {argp})) : null}
+                      readOnly={props.onChange == null}
         />º
     </td></tr>
     <tr><td>Inclination</td><td>
@@ -216,17 +223,20 @@ export default function Orbit(props: OrbitProps) {
                     }))
                 }
             }}
+            readOnly={props.onChange == null}
         />º
     </td></tr>
     <tr><td>Longitude of Ascending Node</td><td>
         <DegreesInput value={value.longitudeAscendingNode}
                       onChange={props.onChange != null ? lon_an => props.onChange(changeOrbitKepler(value, {lon_an})) : null}
+                      readOnly={props.onChange == null}
         />º
     </td></tr>
     <tr><td>Mean anomaly at epoch</td><td>
         <DegreesInput value={value.meanAnomalyAtEpoch}
                       placeholder={"any"} emptyValue={null}
                       onChange={props.onChange != null ? ma0 => props.onChange(changeOrbitKepler(value, {ma0})) : null}
+                      readOnly={props.onChange == null}
         />º
     </td></tr>
     </tbody></table>;

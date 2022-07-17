@@ -361,6 +361,10 @@ describe('Circular orbits', () => {
         expect(o.positionAtTa(Math.PI*3/2).sub(new Vector(0, -1, 0)).norm).toBeCloseTo(0);
         expect(o.positionAtTa(2*Math.PI).sub(new Vector(1, 0, 0)).norm).toBeCloseTo(0);
     });
+
+    it('should calculate mean anomaly at epoch correctly', () => {
+        expect(o.meanAnomalyAtEpoch).toBeCloseTo(0);
+    });
 });
 
 describe('Elliptical orbits', () => {

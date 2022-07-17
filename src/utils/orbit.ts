@@ -5,7 +5,6 @@
  */
 
 import Vector from "./vector";
-import {minimize_Powell} from 'optimization-js';
 
 export type OrbitalElements = {
     sma: number,  // or parameter for parabolic orbits
@@ -517,6 +516,11 @@ export default class Orbit {
         return this._cache['argp'];
     }
 
+    get _periapsisUnitVector(): Vector {
+        const v = this.positionAtTa(0);
+        return v.mul(1/v.norm);
+    }
+
     get meanAnomalyAtEpoch(): number {
         if(this._cache['ma0'] === undefined) {
             const r = this.r0.norm;
@@ -526,7 +530,12 @@ export default class Orbit {
             const e = this.eccentricityVector;
             const e_norm = this.eccentricity;
 
-            let θ = Math.acos(e.inner_product(this.r0) / (e_norm * r));
+            let θ;
+            if(e_norm > 0) {
+                θ = Math.acos(e.inner_product(this.r0) / (e_norm * r));
+            } else {  // special case for circular; arbitrarily choose argP to be 1x
+                θ = Math.acos(this._periapsisUnitVector.inner_product(this.r0) / r);
+            }
             if (vr < 0) θ = 2 * Math.PI - θ;
 
             if (e_norm < 1) {  // elliptic
@@ -682,7 +691,7 @@ export default class Orbit {
          */
         const tp = this.timeSincePeriapsisAtTa(θ);
         const tp0 = this._timeSincePeriapsisOfT0;
-        return tp - tp0;
+        return this.t0 + tp - tp0;
     }
 
     taAtDistance(r: number): number {
@@ -794,8 +803,9 @@ export default class Orbit {
 
         const dt = 1;
         let prevSepP = undefined;
+        let prevT = t;
+        t += accuracy;  // prevent finding the same intercept twice
         while(t < tEnd) {
-            console.log(`nextIntercept(): t=${t}`)
             let tStep = Math.min(this.period, otherOrbit.period) / 10;  // move 1/10 revolution forward
 
             const separation = [d(t-dt), d(t), d(t+dt)];
@@ -812,7 +822,8 @@ export default class Orbit {
                 // we jumped over a local minimum
                 const min = Orbit._findMinimum(
                     x => d(x[0]) / (this.semiMajorAxis + otherOrbit.semiMajorAxis),  // normalize to be scaled around 1.0
-                    [t],
+                    [prevT],  // start searching from previousT
+                    // This avoids overshooting to before prevT
                 );
                 return {t: min.xmin[0], separation: d(min.xmin[0])};
             }
@@ -824,6 +835,7 @@ export default class Orbit {
                 }
             }
 
+            prevT = t;
             t = t + Math.max(tStep, accuracy);
             prevSepP = separationP;
         }
@@ -841,6 +853,15 @@ export default class Orbit {
         private readonly v0: Vector,  // (m/s, m/s, m/s)
         private readonly t0: number = 0,  // s
     ) {}
+
+    static FromObject(o: any): Orbit {
+        return new Orbit(
+            o.gravity,
+            new Vector(o.r0.x, o.r0.y, o.r0.z),
+            new Vector(o.v0.x, o.v0.y, o.v0.z),
+            o.t0,
+        )
+    }
 
     get _α(): number {
         // Reciprocal of the semi-major axis
@@ -948,7 +969,7 @@ export default class Orbit {
          */
         let x = x0;
         let r = tolerance;  // bootstrap
-        let maxIter = 100;
+        let maxIter = 1000;
         let xl, fxl, xh, fxh;  // keep track of bounds to fall back to bisecting mode
         while(Math.abs(r) >= tolerance && --maxIter) {
             const {f: fx, fp: fpx} = ffp(x);

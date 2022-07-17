@@ -9,6 +9,8 @@ export function splitSecondsToYdhms(sec: number): [number, number, number, numbe
     return [y, d, h, m, s];
 }
 export function formatValueYdhms(seconds: number): string {
+    if(isNaN(seconds)) return 'NaN';
+
     let values: any[] = splitSecondsToYdhms(seconds);
     let units: string[] = ['y', 'd', 'h', 'm', 's'];
 

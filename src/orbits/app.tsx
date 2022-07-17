@@ -54,7 +54,7 @@ function App() {
                 value={typeof orbit === 'string' ? orbit : ""}
                 onChange={(v, o) => setOrbit(v)}
         />
-        <Orbit value={orbit}
+        <Orbit value={orbit as any}  // TODO: fix 'as any'
                onChange={setOrbit}
                primaryBody={primaryBodyResolve(primaryBody)}
         />

@@ -1,6 +1,11 @@
 {
   "presets": [
-    ["@babel/preset-env", {"modules": false}],
+    ["@babel/preset-env", {
+      "modules": false,
+      "targets": {
+        "browsers": [">1%"]
+      }
+    }],
     "@babel/preset-typescript",
     "@babel/react"
   ],

@@ -22,6 +22,13 @@ export default class OrbitAround {
         if(body.gravity !== orbit.gravity) throw "Gravity mismatch";
     }
 
+    static FromObject(o: any): OrbitAround {
+        return new OrbitAround(
+            kspBodies[o.body.name],
+            Orbit.FromObject(o.orbit),
+        );
+    }
+
     serialize(): string {
         return JSON.stringify({
             b: this.body.name,
@@ -45,7 +52,7 @@ export default class OrbitAround {
     } {
         const ta = this.orbit.taAtT(t);
         const r = this.orbit.positionAtTa(ta);
-        if(r.norm > this.body.soi) return {
+        if(r.norm > this.body.soi * 1.01) return {  // rounding
             t: t,
             type: orbitEvent.exitSoI,
             body: this.body,
@@ -88,23 +95,29 @@ export default class OrbitAround {
 
         for(let subBody of this.body.isOrbitedBy()) {
             const subBodyOrbit = kspOrbits[subBody.name];
-            const nextIntercept = this.orbit.nextIntercept(subBodyOrbit, t, events[0].t);
+            const nextIntercept = this.orbit.nextIntercept(subBodyOrbit, t, events[0]?.t);
             if(nextIntercept != null) {
                 if(nextIntercept.separation < subBody.soi) {
-                    const tsoi = Orbit._findZeroBisect(
-                        (t) => {
-                            const r = this.orbit.positionAtT(t);
-                            const rsb = subBodyOrbit.positionAtT(t);
-                            const sep = r.sub(rsb).norm;
-                            return sep - subBody.soi;
-                        },
-                        t, nextIntercept.t,
-                    );
-                    events.push({
-                        t: tsoi,
-                        type: orbitEvent.enterSoI,
-                        body: subBody,
-                    });
+                    try {
+                        const tsoi = Orbit._findZeroBisect(
+                            (t) => {
+                                const r = this.orbit.positionAtT(t);
+                                const rsb = subBodyOrbit.positionAtT(t);
+                                const sep = r.sub(rsb).norm;
+                                return sep - subBody.soi;
+                            },
+                            (t+nextIntercept.t)/2, nextIntercept.t + 10,
+                        );
+                        events.push({
+                            t: tsoi,
+                            type: orbitEvent.enterSoI,
+                            body: subBody,
+                        });
+                    } catch(e) {
+                        console.log("Couldn't determine exact SoI change moment for orbit ", this.orbit,
+                            " with body ", subBody.name, ". Should be between ", t, " and ", nextIntercept.t);
+                        throw e;
+                    }
                 } else {
                     events.push({
                         t: nextIntercept.t,
@@ -123,7 +136,7 @@ export default class OrbitAround {
         if(this.body.orbitsAround == null) throw "Can't exit SoI, no parent body";
 
         const taOld = this.orbit.taAtT(t);
-        const rOld = this.orbit.positionAtT(taOld);
+        const rOld = this.orbit.positionAtTa(taOld);
         const vOld = this.orbit.velocityAtTa(taOld);
 
         if(rOld.norm < this.body.soi * 0.99 || rOld.norm > this.body.soi * 1.01) {
@@ -150,10 +163,10 @@ export default class OrbitAround {
         if(subBody.orbitsAround !== this.body) throw `${subBody.name} is not a sub-body of ${this.body.name}`;
 
         const taOld = this.orbit.taAtT(t);
-        const rOld = this.orbit.positionAtT(taOld);
+        const rOld = this.orbit.positionAtTa(taOld);
         const vOld = this.orbit.velocityAtTa(taOld);
 
-        const bodyOrbit = kspOrbits[this.body.name];
+        const bodyOrbit = kspOrbits[subBody.name];
         const taBody = bodyOrbit.taAtT(t);
         const rBody = bodyOrbit.positionAtTa(taBody);
         const vBody = bodyOrbit.velocityAtTa(taBody);

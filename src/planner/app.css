@@ -1,0 +1,55 @@
+div#segments {
+    display: inline-block;
+    margin: 1em;
+    border: 1px solid black;
+    padding: 1em;
+}
+
+div#details {
+    display: inline-block;
+    vertical-align: top;
+    margin: 1em;
+    border: 1px solid black;
+    padding: 1em;
+}
+
+div#segments li.active {
+    background-color: #cccccc;
+}
+
+input.SiInput, input.FloatInput, input.DegreesInput {
+    width: 4em;
+}
+
+input.KerbalYdhmsInput {
+    width: 8em;
+}
+input.KerbalAbsYdhmsInput {
+    width: 10em;
+}
+
+input.warning {
+    background-color: #ffff80;
+}
+input:read-only {
+    background-color: #eeeeee;
+}
+
+ol#segments li.Initial {
+    list-style-type: "💫 ";
+}
+ol#segments li.SoIChange {
+    list-style-type: "💫 ";
+}
+ol#segments li.Burn {
+    list-style-type: "🚀 ";
+}
+ol#segments li.CollideOrAtmosphere {
+    list-style-type: "💥 ";
+}
+ol#segments li.End {
+    list-style-type: "🛑 ";
+}
+ol#segments li.processing {
+    list-style-type: "⚙️ ";
+}

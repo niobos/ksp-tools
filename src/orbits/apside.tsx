@@ -7,6 +7,7 @@ import "./apside.css";
 interface ApsideProps {
     value: number
     onChange?: (value: number) => void
+    readOnly?: boolean
     onFocus?: () => void
     onBlur?: () => void
     primaryBody?: Body
@@ -18,16 +19,17 @@ export default function Apside(props: ApsideProps) {
     const primaryBody = props.primaryBody !== undefined ? props.primaryBody : Body.create({});
 
     let maybeAgl: any = "", maybeAa: any = "";
-    if(primaryBody.radius !== undefined) {
-        maybeAgl = <span>
+    if(primaryBody.radius !== undefined && props.value >= 0) {
+        maybeAgl = <>
             {" = "}<SiInput
                 value={props.value - primaryBody.radius}
                 onChange={props.onChange != null ? v => props.onChange(v + primaryBody.radius) : null}
                 onFocus={onFocus}
                 onBlur={onBlur}
+                readOnly={props.readOnly}
                 classNameFunc={v => v <= 0 ? 'warning' : ''}
             />mAGL
-        </span>;
+        </>;
 
         let highestObstacle;
         if(primaryBody.terrain === undefined) {
@@ -39,24 +41,26 @@ export default function Apside(props: ApsideProps) {
                 'atmosphere' : 'terrain';
         }
         if(primaryBody[highestObstacle] !== undefined) {
-            maybeAa = <span>
+            maybeAa = <>
                 {" = "}<SiInput
                     value={props.value - primaryBody.radius - primaryBody[highestObstacle]}
                     onChange={props.onChange != null ? v => props.onChange(v + primaryBody.radius + primaryBody[highestObstacle]) : null}
+                    readOnly={props.readOnly}
                     onFocus={onFocus}
                     onBlur={onBlur}
                     classNameFunc={v => v <= 0 ? 'warning' : ''}
                 />m above {highestObstacle}
-            </span>;
+            </>;
         }
     }
 
-    return <span>
+    return <>
         <SiInput value={props.value}
                  onChange={props.onChange}
+                 readOnly={props.readOnly}
                  onFocus={onFocus}
                  onBlur={onBlur}
-                 classNameFunc={v => v >= primaryBody.soi ? 'warning' : ''}
+                 classNameFunc={v => (v >= primaryBody.soi || v < 0) ? 'warning' : ''}
         />m{maybeAgl}{maybeAa}
-    </span>;
+    </>;
 }
