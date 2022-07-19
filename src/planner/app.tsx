@@ -10,11 +10,10 @@ import {OrbitSummary} from "./orbitSummary";
 import {default as OrbitDetails} from "../orbits/orbit";
 import {KerbalAbsYdhmsInput} from "../components/formattedInput";
 import BurnDetails from "./burnDetails";
-import {useWorker} from "react-hooks-worker";
-import {Burn, calcPatchedConicsInput, calcPatchedConicsOutput, EventType} from "./worker";
+import {Burn, ConicSegment, SegmentReason} from "./worker";
+import {arrayReplaceElement} from "../utils/list";
 
 import './app.css';
-import {arrayInsertElement, arrayReplaceElement} from "../utils/list";
 
 
 interface DetailsProps {
@@ -53,8 +52,6 @@ function Details(props: DetailsProps) {
     </>;
 }
 
-const createWorker = () => new Worker(new URL('./worker', import.meta.url));
-
 function App() {
     const [startTime, setStartTime] = useFragmentState<number>('t0',
             s => {
@@ -86,7 +83,7 @@ function App() {
         s => {
             try {
                 const o = JSON.parse(s);
-                return o.map(e => Burn.Unserialize(e));
+                return o.map(e => Burn.FromObject(e));
             } catch(e) {
                 return [
                     Burn.create({t: 154860, prn: new Vector(900, 0, 0)}),
@@ -94,44 +91,80 @@ function App() {
             }
         },
         o => {
-            return JSON.stringify(o.map(e => e.serialize()));
+            return JSON.stringify(o.map(e => e.toObject()));
         }
     );
-    const [simulateTimeout, setSimulateTimeout] = useFragmentState<number>('f', 1*426*6*60*60);
+    const [endSimulation, setEndSimulation] = useFragmentState<number>('eos', 10*426*6*60*60);
     const [activeSegment, setActiveSegment] = useState<number | null>(0);
-    const [segments, setSegments] = useState<Array<calcPatchedConicsOutput>>([]);
+    const [segments, setSegments] = useState<Array<ConicSegment>>([]);
 
-    const patchedConicsInput = useMemo<calcPatchedConicsInput>(() => {
-            setSegments([]);
-            return {startTime, initialOrbit, burns, simulateTimeout}
-        },
-        [startTime, initialOrbit, burns, simulateTimeout])
-    const {result: segment} = useWorker<calcPatchedConicsInput, calcPatchedConicsOutput>(createWorker, patchedConicsInput);
+    const worker = useMemo(() => new Worker(new URL('./worker', import.meta.url)), []);
+    // ^^ BUG: useMemo is *not* *guaranteed* to remember previous values. This may leak workers.
+    worker.onmessage = (e) => {
+        setSegments(e.data.map(s => {
+            // Message is plain JSON objects; upgrade these to instances of classes
+            s.orbit = OrbitAround.FromObject(s.orbit);
+            return s;
+        }));
+    };
     useEffect(() => {
-        console.log("Got new segment from worker: ", segment);
-        if(segment != null) {
-            segment.newOrbit = OrbitAround.FromObject(segment.newOrbit);
-            setSegments(arrayInsertElement(segments, segment));
-        }
-    }, [segment]);
+        worker.postMessage({
+            type: 'setStartTime',
+            value: startTime,
+        });
+    }, [startTime]);
+    useEffect(() => {
+        worker.postMessage({
+            type: 'setInitialOrbit',
+            value: initialOrbit,
+        });
+    }, [initialOrbit]);
+    useEffect(() => {
+        worker.postMessage({
+            type: 'setBurns',
+            value: burns,
+        });
+    }, [burns]);
+    useEffect(() => {
+        worker.postMessage({
+            type: 'calculateUntil',
+            value: endSimulation,
+        });
+    }, [endSimulation]);
+
+    // const patchedConicsInput = useMemo<calcPatchedConicsInput>(() => {
+    //         setSegments([]);
+    //         return {startTime, initialOrbit, burns, simulateTimeout}
+    //     },
+    //     [startTime, initialOrbit, burns, simulateTimeout])
+    //const {result: segment} = useWorker<calcPatchedConicsInput, calcPatchedConicsOutput>(createWorker, patchedConicsInput);
+    // useEffect(() => {
+    //     console.log("Got new segment from worker: ", segment);
+    //     if(segment != null) {
+    //         segment.newOrbit = OrbitAround.FromObject(segment.newOrbit);
+    //         setSegments(arrayInsertElement(segments, segment));
+    //     }
+    // }, [segment]);
 
     const segmentsJsx = [];
     for (let segmentIdx = 0; segmentIdx < segments.length; segmentIdx++) {
         const segment = segments[segmentIdx];
-        if(segment.event != EventType.Intercept) {
-            segmentsJsx.push(
-                <li key={segmentIdx} onClick={e => setActiveSegment(segmentIdx)}
-                    className={(activeSegment === segmentIdx ? "active" : "") + " " + EventType[segment.event]}
-                ><OrbitSummary t={segment.t} value={segment.newOrbit}/>
-                </li>,
-            )
-        }
+        if(segment.reason == SegmentReason.EndOfSimulation) continue;
+        segmentsJsx.push(
+            <li key={segmentIdx} onClick={e => setActiveSegment(segmentIdx)}
+                className={(activeSegment === segmentIdx ? "active" : "") + " " + SegmentReason[segment.reason]}
+            ><OrbitSummary t={segment.startT} value={segment.orbit}/>
+            </li>,
+        )
     }
-    if(segments.length === 0 || segments[segments.length-1].event != EventType.End) {
+    if(!(segments[segments.length-1]?.startT >= endSimulation)) {  // !(>=) to work with undefined
         segmentsJsx.push(<li key={segments.length} className="processing">
             calculating...
         </li>);
     }
+    segmentsJsx.push(<li key="end" className="end">
+        <KerbalAbsYdhmsInput value={endSimulation} onChange={setEndSimulation}/> end simulation
+    </li>);
 
     return <><React.StrictMode>
         <h1>Mission planner</h1>
@@ -142,10 +175,10 @@ function App() {
         <div id="details">
             {(activeSegment < segments.length) ?
                 <Details
-                    time={segments[activeSegment].t}
+                    time={segments[activeSegment].startT}
                     setTime={(() => {
                         if (activeSegment === 0) return setStartTime;
-                        if (segments[activeSegment].event === EventType.Burn) {
+                        if (segments[activeSegment].reason === SegmentReason.Burn) {
                             const burnIdx = segments[activeSegment].burnIdx;
                             return v => setBurns(arrayReplaceElement(burns, burnIdx, burns[burnIdx].copy({t: v})));
                         }
@@ -158,7 +191,7 @@ function App() {
                         }
                         return null;
                     })()}
-                    orbit={segments[activeSegment].newOrbit}
+                    orbit={segments[activeSegment].orbit}
                     setOrbit={activeSegment === 0 ? setInitialOrbit : null}
                 />
                 : null

@@ -47,7 +47,7 @@ ol#segments li.Burn {
 ol#segments li.CollideOrAtmosphere {
     list-style-type: "💥 ";
 }
-ol#segments li.End {
+ol#segments li.end {
     list-style-type: "🛑 ";
 }
 ol#segments li.processing {
