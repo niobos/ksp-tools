@@ -83,43 +83,25 @@ export default class Orbit {
         let θ = 0, t0 = 0;
         if(orbitalPhase != null) {
             if('ma0' in orbitalPhase) {
-                // Calculate true anomaly θ at t=0
+                /* Normally we'd calculate the true anomaly at t=0 from ma0.
+                 * But (at least) for hyperbolic orbits, this doesn't always converge; especially when far from
+                 * periapsis.
+                 * Instead, work the other way around: find t0 so that true anomaly is 0.
+                 */
                 const ma0 = orbitalPhase.ma0;
                 if(e_norm < 1) {  // elliptical
-                    const E = Orbit._findZero( // [OMES Algorithm 3.1]
-                        (E) => {
-                            return {
-                                f: E - e_norm * Math.sin(E) - ma0,
-                                fp: 1 - e_norm * Math.cos(E),
-                            }
-                        },
-                        ma0 < Math.PI ? ma0 + e_norm / 2 : ma0 - e_norm / 2,
-                    );
-                    θ = Math.acos((e_norm - Math.cos(E))
-                        / (e_norm * Math.cos(E) - 1));  // [OMES 3.7b]
-                    if (E > Math.PI) θ = 2 * Math.PI - θ;
+                    t0 = (-ma0) * h_norm*h_norm*h_norm / (gravity*gravity)
+                        / Math.pow(1 - e_norm*e_norm, 3/2);  // from [OMES 3.4]
+                    // at t=t0, Mean Anomaly is 0 and thus true anomaly is also 0
 
                 } else if(e_norm == 1) {  // parabolic
-                    θ = 2 * Math.atan(
-                        Math.pow(3*ma0 + Math.sqrt(9*ma0*ma0 + 1),
-                            1/3)
-                        - Math.pow(3*ma0 + Math.sqrt(9*ma0*ma0 + 1),
-                            -1/3)
-                    );  // [OMES 3.29]
+                    t0 = (-ma0) * h_norm*h_norm*h_norm / (gravity*gravity);  // from [OMES 3.28]
+                    // at t=t0, Parabolic anomaly is 0, thus true anomaly is 0
 
                 } else {  // hyperbolic
-                    const F = Orbit._findZero(  // [OMES Algorithm 3.2]
-                        (F) => {
-                            return {
-                                f: e_norm * Math.sinh(F) - F - ma0,
-                                fp: e_norm * Math.cosh(F) - 1,
-                            };
-                        },
-                        ma0,
-                    );
-                    θ = 2*Math.atan(
-                        Math.sqrt((e_norm+1)/(e_norm-1)) * Math.tanh(F/2)
-                    );  // [OMES 3.41b]
+                    t0 = (-ma0) * h_norm*h_norm*h_norm / (gravity*gravity)
+                        / Math.pow(e_norm*e_norm - 1, 3/2);  // from [OMES 3.31]
+                    // at t=t0, Hyperbolic anomaly is 0, thus true anomaly is 0
                 }
 
             } else if('ta' in orbitalPhase) {

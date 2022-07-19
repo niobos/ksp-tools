@@ -462,6 +462,16 @@ describe('Hyperbolic orbits', () => {
     it('should have e>1', () => {
         expect(o.eccentricity).toBeGreaterThan(1);
     });
+
+    it('should work with largely negative ma0', () => {
+        const sma = -159494;
+        const o2 = Orbit.FromOrbitalElements(
+            65140544620.37999,
+            {sma: sma, e: 5.16, },
+            {ma0: -6800},
+        );
+        expect(o2.semiMajorAxis).toBeCloseTo(sma);
+    });
 });
 
 describe('Minmus departure', () => {
