@@ -23,6 +23,12 @@ function generateDeviceMap() {
     const valueMap = {};
     const labelMap = {};
 
+    function add(options, shortName, displayName, cons) {
+        options[displayName] = shortName;
+        valueMap[shortName] = cons
+        labelMap[shortName] = displayName;
+    }
+
     {
         const options = {};
         for (let deviceName in probeCores) {
@@ -43,6 +49,18 @@ function generateDeviceMap() {
             }
         }
         hierLabelMap['Probe Cores'] = options;
+    }
+    {
+        const options = {};
+        add(options, 'dom5p', 'Drill-O-Matic w/ 5★ eng, planet', 18.8)
+        add(options, 'domjr5p', 'Drill-O-Matic Jr w/ 5★ eng, planet', 3.8)
+        add(options, 'dom5a', 'Drill-O-Matic w/ 5★ eng, asteroid', 1.5)
+        add(options, 'domjr5a', 'Drill-O-Matic Jr w/ 5★ eng, asteroid', 1.5)
+
+        add(options, 'isru1r', 'Convert-O-Tron recipe w/ 5★ eng', 37.5)
+        add(options, 'isru1dr', 'Convert-O-Tron recipe w/ 5★ eng, 1 drill supply', 6)
+
+        hierLabelMap['ISRU'] = options;
     }
 
     return {hierLabelMap, valueMap, labelMap};
