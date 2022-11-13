@@ -10,7 +10,7 @@ const tsxPages = {
     'commnet-link-budget': 'KSP - CommNet link budget calculator',
     'commnet-line-of-sight': 'KSP - CommNet line of sight calculator',
     'orbits': 'KSP - Changing obits',
-    'minmus-departure': 'KSP - Interplanetary departure from Minmus',
+    'moon-departure': 'KSP - Interplanetary departure from a moon',
     'electricity': 'KSP - Electricity calculator',
     'planner': 'KSP - Mission planner',
 };
