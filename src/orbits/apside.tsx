@@ -1,66 +1,66 @@
 import * as React from "react";  // JSX
-import {SiInput} from "formattedInput";
+import Altitude from "./altitude";
+import {FloatInput} from "formattedInput";
+import Orbit from "../utils/orbit";
 import Body from "../utils/kspBody";
-
-import "./apside.css";
+import Vector from "../utils/vector";
 
 interface ApsideProps {
-    value: number
-    onChange?: (value: number) => void
-    readOnly?: boolean
+    altitude: number
+    speed: number
+    primaryBody?: Body
+    onAltitudeChange?: (altitude: number) => void
+    onSpeedChange?: (speed: number) => void
     onFocus?: () => void
     onBlur?: () => void
-    primaryBody?: Body
+    readOnly?: boolean
 }
-
 export default function Apside(props: ApsideProps) {
     const onFocus = props.onFocus !== undefined ? props.onFocus : () => null;
     const onBlur = props.onBlur !== undefined ? props.onBlur : () => null;
-    const primaryBody = props.primaryBody !== undefined ? props.primaryBody : Body.create({});
 
-    let maybeAgl: any = "", maybeAa: any = "";
-    if(primaryBody.radius !== undefined && props.value >= 0) {
-        maybeAgl = <>
-            {" = "}<SiInput
-                value={props.value - primaryBody.radius}
-                onChange={props.onChange != null ? v => props.onChange(v + primaryBody.radius) : null}
+    if(props.altitude === Infinity) {  // parabolic
+        return <>Parabolic</>
+
+    } else if(props.altitude > 0) {  // elliptical
+        let speedStyle: object = {visibility: 'hidden'};
+        if(props.primaryBody != null && props.primaryBody.gravity != null) {
+            speedStyle = {};
+        }
+
+        return <>
+            <Altitude
+                value={props.altitude}
                 onFocus={onFocus}
+                onChange={r => props.onAltitudeChange != null ? props.onAltitudeChange(r) : null}
                 onBlur={onBlur}
-                readOnly={props.readOnly}
-                classNameFunc={v => v <= 0 ? 'warning' : ''}
-            />mAGL
-        </>;
+                readOnly={props.onAltitudeChange == null}
+                primaryBody={props.primaryBody}
+            /><span style={speedStyle}>, speed <FloatInput
+                decimals={1}
+                value={props.speed}
+                onFocus={onFocus}
+                onChange={v => props.onSpeedChange != null ? props.onSpeedChange(v) : null}
+                onBlur={onBlur}
+                readOnly={props.onSpeedChange == null}
+            />m/s</span>
+        </>
 
-        let highestObstacle;
-        if(primaryBody.terrain === undefined) {
-            highestObstacle = 'atmosphere';
-        } else if(primaryBody.atmosphere === undefined) {
-            highestObstacle = 'terrain';
-        } else {  // both defined
-            highestObstacle = primaryBody.atmosphere > primaryBody.terrain ?
-                'atmosphere' : 'terrain';
+    } else { // hyperbolic
+        let speedStyle: object = {visibility: 'hidden'};
+        if(props.primaryBody != null && props.primaryBody.gravity != null) {
+            speedStyle = {};
         }
-        if(primaryBody[highestObstacle] !== undefined) {
-            maybeAa = <>
-                {" = "}<SiInput
-                    value={props.value - primaryBody.radius - primaryBody[highestObstacle]}
-                    onChange={props.onChange != null ? v => props.onChange(v + primaryBody.radius + primaryBody[highestObstacle]) : null}
-                    readOnly={props.readOnly}
-                    onFocus={onFocus}
-                    onBlur={onBlur}
-                    classNameFunc={v => v <= 0 ? 'warning' : ''}
-                />m above {highestObstacle}
-            </>;
-        }
+
+        return <>
+            Hyperbolic<span style={speedStyle}>, hyperbolic excess velocity <FloatInput
+                decimals={1}
+                value={props.speed}
+                onFocus={onFocus}
+                onChange={v => props.onSpeedChange != null ? props.onSpeedChange(v) : null}
+                onBlur={onBlur}
+                readOnly={props.onSpeedChange == null}
+            />m/s</span>
+        </>
     }
-
-    return <>
-        <SiInput value={props.value}
-                 onChange={props.onChange}
-                 readOnly={props.readOnly}
-                 onFocus={onFocus}
-                 onBlur={onBlur}
-                 classNameFunc={v => (v >= primaryBody.soi || v < 0) ? 'warning' : ''}
-        />m{maybeAgl}{maybeAa}
-    </>;
 }

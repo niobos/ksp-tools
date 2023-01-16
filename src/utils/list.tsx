@@ -1,5 +1,3 @@
-import * as React from "react";
-
 export function arrayInsertElement<T>(arr: T[], element: T, pos?: number): T[] {
     /* insert `element` into `arr` at position `pos` (default: end)
      */

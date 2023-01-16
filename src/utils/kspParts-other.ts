@@ -1,5 +1,4 @@
 import Part, {Resources, Size} from "./kspParts";
-import * as React from "react";
 
 export class ReactionWheel extends Part {
     maxTorque: [number, number, number] = [0, 0, 0];  // pitch, yaw, roll

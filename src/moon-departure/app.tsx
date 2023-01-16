@@ -4,7 +4,7 @@ import Orbit from "../utils/orbit";
 import {bodies as kspBodies} from "../utils/kspBody";
 import {orbits as kspOrbits} from "../utils/kspOrbit";
 import {FloatInput, KerbalDateInput, KerbalYdhmsInput} from "../components/formatedInput";
-import Apside from "../orbits/apside";
+import Altitude from "../orbits/altitude";
 import useFragmentState from 'useFragmentState';
 
 import './app.css';
@@ -19,6 +19,10 @@ export default function App() {
     const [parkingSma, setParkingSma] = useFragmentState('p', 700000);
     const [departureTimeUT, setDepartureTimeUT] = useFragmentState('t', 236*6*60*60 + 4*60*60 + 19*60 + 12);
     const [ejectionAngle, setEjectionAngle] = useFragmentState('e', 162/180*Math.PI);
+    const [ejectionAngleReference, setEjectionAngleReference] = useFragmentState<number>('er',
+        s => s === 'r' ? Math.PI : 0,
+        v => v === Math.PI ? 'r' : 'p',
+        );
     const [ejectionBurn, setEjectionBurn] = useFragmentState('b', 1047);
 
     const moon = kspBodies[moonName];
@@ -99,9 +103,9 @@ export default function App() {
             }}/>, departing out of {planet.name} system
         </td></tr>
         <tr><td>Parking orbit from Launch Window Planner:</td><td>
-            <Apside value={parkingSma}
-                    onChange={v => setParkingSma(v)}
-                    primaryBody={planet}
+            <Altitude value={parkingSma}
+                      onChange={v => setParkingSma(v)}
+                      primaryBody={planet}
             />, {parkingSpeed.toFixed(1)} m/s
         </td></tr>
         <tr><td>Departure date:</td><td>
@@ -110,9 +114,14 @@ export default function App() {
             />
         </td></tr>
         <tr><td>Ejection angle from Launch Planner:</td><td>
-            <FloatInput value={ejectionAngle/Math.PI*180} decimals={1}
-                        onChange={v => setEjectionAngle(v/180*Math.PI)}
-            />º before prograde</td></tr>
+            <FloatInput value={(ejectionAngle + ejectionAngleReference)/Math.PI*180} decimals={1}
+                        onChange={v => setEjectionAngle(v/180*Math.PI - ejectionAngleReference)}
+            />º before
+            <select value={ejectionAngleReference === Math.PI ? 'r' : 'p'}
+                    onChange={e => setEjectionAngleReference(e.target.value == 'p' ? 0 : Math.PI)}>
+              <option value="p">prograde</option>
+              <option value="r">retrograde</option>
+            </select></td></tr>
         <tr><td>Ejection burn from Launch Planner:</td><td>
             <FloatInput value={ejectionBurn} decimals={1}
                         onChange={v => setEjectionBurn(v)}

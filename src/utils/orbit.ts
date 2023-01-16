@@ -185,6 +185,29 @@ export default class Orbit {
         }
     }
 
+    static FromOrbitWithUpdatedOrbitalElements(
+        orbit: Orbit,
+        changes: object,
+    ): Orbit {
+        let gravity = orbit.gravity;
+        if('gravity' in changes) gravity = changes['gravity'];
+
+        const elements = {
+            sma: orbit._smaOrParameter,
+            e: orbit.eccentricity,
+            argp: orbit.argumentOfPeriapsis,
+            inc: orbit.inclination,
+            lon_an: orbit.longitudeAscendingNode,
+        };
+        const phase = {
+            ma0: orbit.meanAnomalyAtEpoch,
+        }
+        return Orbit.FromOrbitalElements(gravity,
+            Object.assign({}, elements, changes),
+            Object.assign({}, phase, changes),
+        );
+    }
+
     static FromLambert(
         gravity: number,
         position1: Vector,
@@ -312,6 +335,13 @@ export default class Orbit {
         const h = this.specificAngularMomentum;
         return h*h / this.gravity;  // [OMES 2.43]
     }
+    get _smaOrParameter(): number {
+        if(this.eccentricity === 1) {
+            return this.parameter;
+        }
+        // else:
+        return this.semiMajorAxis;
+    }
     get period(): number | null {
         if(this._cache['period'] === undefined) {
             if (this.eccentricity < 1) {  // elliptic
@@ -345,9 +375,20 @@ export default class Orbit {
         const apoapsis = ap1 >= ap2 ? ap1 : ap2;
         const periapsis = ap1 >= ap2 ? ap2 : ap1;
 
-        const e = (apoapsis - periapsis) / (apoapsis + periapsis);
-        const sma = apoapsis / (1. + e);
-        return {sma, e};
+        if(periapsis < 0) {  // hyperbolic
+            const e = (periapsis - apoapsis) / (apoapsis + periapsis);
+            const sma = - apoapsis / (e - 1.);
+            return {sma, e};
+        } else if(apoapsis == Infinity) {  // parabolic
+            return {
+                sma: periapsis * 2,  // parameter
+                e: 1,
+            }
+        } else {
+            const e = (apoapsis - periapsis) / (apoapsis + periapsis);
+            const sma = apoapsis / (1. + e);
+            return {sma, e};
+        }
     }
     static apsidesFromSmaE(sma: number, e: number): [number, number] {
         return [
@@ -374,6 +415,30 @@ export default class Orbit {
     }
     static semiMajorAxisFromHyperbolicExcessVelocity(gravity: number, v: number): number {
         return -gravity / (v*v);  // from [OMES 2.102]
+    }
+    static semiMajorAxisEFromApoapsisHyperbolicExcessVelocity(
+        gravity: number,
+        apoapsisDistance: number,
+        hyperbolicExcessVelocity: number
+    ): {sma: number, e: number} {
+        const sma = Orbit.semiMajorAxisFromHyperbolicExcessVelocity(gravity, hyperbolicExcessVelocity);
+        const e = apoapsisDistance / sma - 1;
+        return {sma, e};
+    }
+    static semiMajorAxisEFromPeriapsisHyperbolicExcessVelocity(
+        gravity: number,
+        periapsisDistance: number,
+        hyperbolicExcessVelocity: number
+    ): {sma: number, e: number} {
+        if(hyperbolicExcessVelocity === 0) {  // Parabolic
+            return {
+                sma: 2 * periapsisDistance,  // parameter in parabolic case
+                e: 1,
+            }
+        }
+        const sma = Orbit.semiMajorAxisFromHyperbolicExcessVelocity(gravity, hyperbolicExcessVelocity);
+        const e = -periapsisDistance / sma + 1;
+        return {sma, e};
     }
     static FromPositionAndHyperbolicExcessVelocityVector(
         gravity: number,
@@ -425,9 +490,11 @@ export default class Orbit {
 
         return orbit;
     }
-    static optimalPeriapsis(gravity: number, hyperbolicExcessVelocity: number): number {
-        /* Calculates the optimal (in ∆v terms) periapsis to switch from
+    static optimalApoapsis(gravity: number, hyperbolicExcessVelocity: number): number {
+        /* Calculates the optimal (in ∆v terms) apoapsis to switch from
          * a hyperbolic orbit into/from a circular orbit.
+         * The hyperbolic periapsis depends on the desired eccentricity, and equals the
+         * returned apoapsis for a circular orbit
          */
         return 2 * gravity / (hyperbolicExcessVelocity*hyperbolicExcessVelocity);  // [OMES 8.69]
     }
@@ -770,7 +837,7 @@ export default class Orbit {
          */
 
         if(this.gravity !== otherOrbit.gravity) {
-            console.warn('Calculating nearestApproach() between\n' +
+            console.warn('Calculating nextIntercept() between\n' +
                 `${this}  and  ${otherOrbit}\n` +
                 "Not in the same gravitational field!");
         }

@@ -13,17 +13,19 @@ clean:
 	find src -name '*.ts' -print | while read ts; do rm -f $${ts%%.ts}.js $${ts%%.ts}.js.map; done
 	find src -name '*.tsx' -print | while read ts; do rm -f $${ts%%.tsx}.js $${ts%%.tsx}.js.map; done
 
-deps:
+deps: package.json
 	npm install
+	touch $@
 
-dev-deps:
+dev-deps: package-lock.json
 	npm install --include=dev
+	touch $@
 
 build: deps
 	rm -rf dist
 	npx webpack --mode=production
 
-output: clean build
+output: build
 	mkdir -p "$(OUTPUTDIR)"
 	cp -a dist/. "$(OUTPUTDIR)"
 

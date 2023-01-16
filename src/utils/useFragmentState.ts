@@ -4,7 +4,7 @@
 import {useCallback, useState} from 'react';
 
 function getHash(): URLSearchParams {
-    let hash = window.location.hash;  // strip leading #
+    let hash = window.location.hash;
     if(hash.length > 1) hash = hash.substring(1);  // remove leading #
     return new URLSearchParams(hash);
 }
