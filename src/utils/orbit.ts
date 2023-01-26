@@ -7,20 +7,20 @@
 import Vector from "./vector";
 
 export type OrbitalElements = {
-    sma: number,  // or parameter for parabolic orbits
-    e?: number,
-    argp?: number,
-    inc?: number,
-    lon_an?: number,
+    sma: number,  // m, parameter for parabolic orbits, negative for hyperbolic
+    e?: number,  // unitless
+    argp?: number,  // rad
+    inc?: number,  // rad
+    lon_an?: number,  // rad
 } | {
-    h: Vector,
-    e: Vector,
+    h: Vector,  // [m^2/s, m^2/s, m^2/s]
+    e: Vector,  // [unitless, unitless, unitless]
 };
 export type OrbitalPhase = {
-    ma0: number,
+    ma0: number,  // rad
 } | {
-    ta: number,
-    t0?: number,
+    ta: number,  // rad
+    t0?: number,  // s
 }
 
 // noinspection JSNonASCIINames,NonAsciiCharacters
@@ -28,11 +28,19 @@ export default class Orbit {
     _cache: object = {}
 
     static FromStateVector(
-        gravity: number,  // m^3 s^-2
-        position: Vector,  // (m, m, m)
-        velocity: Vector,  // (m/s, m/s, m/s)
+        gravity: number,
+        position: Vector,
+        velocity: Vector,
         time: number = 0,
     ): Orbit {
+        /**
+         * create a new orbit from a given position, velocity and time
+         * @param {number} gravity - gravitational field of orbit [m³ × s⁻²]
+         * @param {Vector} position - position vector [m, m, m]
+         * @param {Vector} velocity - velocity vector [m/s, m/s, m/s]
+         * @param {number} [time] - optional time at which the vessel is at the given position [s], default to 0
+         * @returns {Orbit}
+         */
         return new Orbit(
             gravity,
             position,
@@ -42,7 +50,7 @@ export default class Orbit {
     }
 
     static FromOrbitalElements(
-        gravity: number,
+        gravity: number,  // m^3 s^-2
         orbitalElements: OrbitalElements,
         orbitalPhase?: OrbitalPhase,
     ): Orbit {
@@ -175,7 +183,7 @@ export default class Orbit {
          * Note that the return value is redundant in several ways.
          */
         return {
-            sma: this.semiMajorAxis,
+            sma: this._smaOrParameter,
             h: this.specificAngularMomentumVector,
             e: this.eccentricityVector,
             inc: this.inclination,

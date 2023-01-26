@@ -27,14 +27,14 @@ function App() {
         }
     } else {  // list them all
         for(let planet of bodies['Kerbol'].isOrbitedBy()) {
+            orbitsAroundPrimaryBody[planet.name] = {
+                [planet.name]: planet.name,
+            }
             const moons = planet.isOrbitedBy();
             if(moons.length > 0) {
-                orbitsAroundPrimaryBody[planet.name] = {}
                 for(let moon of planet.isOrbitedBy()) {
                     orbitsAroundPrimaryBody[planet.name][moon.name] = moon.name;
                 }
-            } else {
-                orbitsAroundPrimaryBody[planet.name] = planet.name;
             }
         }
     }
