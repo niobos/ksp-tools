@@ -374,8 +374,8 @@ export default class Orbit {
          * Returns undefined for hyperbolic (sma<0) and
          * parabolic (sma=NaN) orbits.
          */
-        if(sma < 0) return undefined;  // hyperbolic orbits don't have a period
-        if(isNaN(sma)) return undefined;  // parabolic orbits don't have a period
+        if(sma < 0) return null;  // hyperbolic orbits don't have a period
+        if(isNaN(sma)) return null;  // parabolic orbits don't have a period
         // https://en.wikipedia.org/wiki/Orbital_period
         return 2 * Math.PI * Math.sqrt(sma*sma*sma / gravity);
     };
@@ -421,6 +421,11 @@ export default class Orbit {
         // else:
         return Math.sqrt(this.gravity / (-this.semiMajorAxis));  // [OMES 2.102]
     }
+    get trueAnomalyOfAsymptote(): number {
+        if(this.energy < 0) return null  // elliptic, does not have an asymptote
+        // else:  // parabolic, hyperbolic
+        return Math.acos(-1./this.eccentricity)
+    }
     static semiMajorAxisFromHyperbolicExcessVelocity(gravity: number, v: number): number {
         return -gravity / (v*v);  // from [OMES 2.102]
     }
@@ -454,7 +459,7 @@ export default class Orbit {
         hyperbolicExcessVelocityVector: Vector,
         direction: "direct" | "indirect",
     ): Orbit {
-        /* Given a position and a desired escape velocity vector, calculates
+        /* Given a position and a desired escape velocity vector, searches for
          * the orbit to accomplish that.
          * There are always two option: going directly toward the escape direction ("direct"),
          * or slinging around the primary body ("indirect"). For this last scenario, verify that
@@ -477,7 +482,7 @@ export default class Orbit {
             const v = position.mul(speedAtPosition/position.norm).rotated(h_dir, velocityAngleVsPosition);
             const o = Orbit.FromStateVector(gravity, position, v);
             const ta0 = o.taAtT(0);
-            const tainf = Math.acos(-1/o.eccentricity);
+            const tainf = o.trueAnomalyOfAsymptote;
             //console.log(o);
             //console.log(`va=${velocityAngleVsPosition}  => e=${o.eccentricity} ta0=${ta0}  tainf=${tainf}  => dta=${tainf-ta0}`);
             return {
@@ -518,6 +523,7 @@ export default class Orbit {
     }
 
     get nodeLineVector(): Vector {
+        /* Vector pointing to the ascending node */
         if(this._cache['N'] === undefined) {
             // part of [OMES Algorithm 4.1]
             const h = this.specificAngularMomentumVector;

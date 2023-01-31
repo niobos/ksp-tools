@@ -187,7 +187,7 @@ export default function App() {
         let numEngines;
         let fuelTankMass, totalMass, emptyMass, actualDv;
         if(engine.consumption.sf > 0) { // SRB
-            /* a = n * F / m = n * F / (m_payload + n*m_egine)
+            /* a = n * F / m = n * F / (m_payload + n*m_engine)
              * => a * m_payload + a * n * m_engine = n * F
              * => (F - a * m_engine) * n = a * m_payload
              * => n = a * m_payload / (F - a*m_engine)
@@ -200,7 +200,7 @@ export default function App() {
 
         } else {  // Normal rocket engine or jet engine
             function calcNumEngines() {
-                let n = Math.ceil(totalMass * acceleration / engine.thrust[pressureIndex]);  // initial guess
+                let n = Math.ceil(totalMass * acceleration / engine.thrust[pressureIndex]);
                 if(n === Infinity || isNaN(n) || n === 0) n = 1;
                 return n;
             }
