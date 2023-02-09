@@ -1,4 +1,4 @@
-import Part, {Resources, Size, TechTreeNode} from "./kspParts";
+import Part, {Resources, Size, TechTreeNode} from "./kspParts"
 
 export class Engine extends Part {
     gimbal: number = 0;  // degrees

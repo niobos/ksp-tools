@@ -57,6 +57,49 @@ export class Resources extends Data {
             ore: this.ore * factor,
         })
     }
+    add(other: Resources): Resources {
+        return Resources.create({
+            lf: this.lf + other.lf,
+            ox: this.ox + other.ox,
+            air: this.air + other.air,
+            mono: this.mono + other.mono,
+            sf: this.sf + other.sf,
+            xe: this.xe + other.xe,
+            el: this.el + other.el,
+            ore: this.ore + other.ore,
+        })
+    }
+    sub(other: Resources): Resources {
+        return Resources.create({
+            lf: this.lf - other.lf,
+            ox: this.ox - other.ox,
+            air: this.air - other.air,
+            mono: this.mono - other.mono,
+            sf: this.sf - other.sf,
+            xe: this.xe - other.xe,
+            el: this.el - other.el,
+            ore: this.ore - other.ore,
+        })
+    }
+
+    consumedAtRatio(consumption: Resources): number {
+        /* Consume `this` resources at `consumption` rate.
+         * Calculates how many times `consumption` fits in `this` for the resource that is most critical
+         * and returns that number.
+         */
+        let number = Infinity;
+        if(consumption.lf > 0) number = Math.min(number, this.lf / consumption.lf)
+        if(consumption.ox > 0) number = Math.min(number, this.ox / consumption.ox)
+        if(consumption.air > 0) number = Math.min(number, this.air / consumption.air)
+        if(consumption.mono > 0) number = Math.min(number, this.mono / consumption.mono)
+        if(consumption.sf > 0) number = Math.min(number, this.sf / consumption.sf)
+        if(consumption.xe > 0) number = Math.min(number, this.xe / consumption.xe)
+        if(consumption.el > 0) number = Math.min(number, this.el / consumption.el)
+        if(consumption.ore > 0) number = Math.min(number, this.ore / consumption.ore)
+
+        if(number == Infinity) return null
+        return number
+    }
 }
 
 export class Size {

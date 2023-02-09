@@ -10,7 +10,7 @@ import PrimaryBody, {
 import Orbit, {
     fromString as orbitFromString,
     toString as orbitToString
-} from "./orbit";
+} from "../components/orbit";
 import Preset from "../components/preset";
 import {bodies} from "../utils/kspBody";
 

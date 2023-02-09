@@ -1,9 +1,7 @@
 import * as React from "react";  // JSX
 import Altitude from "./altitude";
 import {FloatInput} from "formattedInput";
-import Orbit from "../utils/orbit";
 import Body from "../utils/kspBody";
-import Vector from "../utils/vector";
 
 interface ApsideProps {
     altitude: number

@@ -2,7 +2,7 @@ import * as React from 'react';
 import {useState} from "react";
 import {default as kspOrbit} from "../utils/orbit";
 import {SiInput} from 'formattedInput';
-import {KerbalYdhmsInput} from "../components/formattedInput";
+import {KerbalYdhmsInput} from "./formattedInput";
 
 interface SmaProps {
     value: number

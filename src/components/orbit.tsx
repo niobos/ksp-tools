@@ -1,8 +1,7 @@
 import * as React from 'react';  // JSX
 import {useState} from "react";
 import {FloatInput} from 'formattedInput';
-import {DegreesInput} from "../components/formattedInput";
-import Altitude from "./altitude";
+import {DegreesInput} from "./formattedInput";
 import Apside from "./apside";
 import Body from "../utils/kspBody";
 import {orbits as kspOrbits} from "../utils/kspOrbit";

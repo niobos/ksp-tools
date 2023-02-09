@@ -7,7 +7,7 @@ import OrbitAround from "../utils/orbitAround";
 import {bodies as kspBodies} from "../utils/kspBody";
 import Vector from "../utils/vector";
 import {OrbitSummary} from "./orbitSummary";
-import {default as OrbitDetails} from "../orbits/orbit";
+import {default as OrbitDetails} from "../components/orbit";
 import {KerbalAbsYdhmsInput} from "../components/formattedInput";
 import BurnDetails from "./burnDetails";
 import {Burn, ConicSegment, SegmentReason} from "./worker";
