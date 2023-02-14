@@ -1,4 +1,4 @@
-input.SiInput,input.FloatInput {
+input.SiInput, input.FloatInput, input.DegreesInput {
     text-align: right;
     width: 5em;
 }

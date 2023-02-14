@@ -5,6 +5,17 @@ export default class Vector {
         public z: number,
     ) {};
 
+    static FromObject(o: any): Vector {
+        return new Vector(o.x, o.y, o.z)
+    }
+    isEqual(other: Vector): boolean {
+        return (
+            this.x == other.x
+            && this.y == other.y
+            && this.z == other.z
+        )
+    }
+
     static FromSpherical(r: number, i: number, a: number): Vector {
         // Inclination measured from positive z-axis
         return new Vector(

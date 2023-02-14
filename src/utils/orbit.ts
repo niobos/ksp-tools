@@ -222,6 +222,7 @@ export default class Orbit {
         position2: Vector,
         dt: number,
         direction: "prograde" | "retrograde" = "prograde",
+        t0: number = 0,
     ): Orbit {
         /* Solve the Lambert problem: find the orbit that will bring an object
          * from `position1` to `position2` in `dt` time, assuming a primary body
@@ -273,7 +274,7 @@ export default class Orbit {
         const v1 = position2.sub(position1.mul(f)).mul(1/g);  // [OMES 5.28]
         //const v2 = position2.mul(gp).sub(position1).mul(1/g);  // [OMES 5.29]
 
-        return Orbit.FromStateVector(gravity, position1, v1);
+        return Orbit.FromStateVector(gravity, position1, v1, t0);
     }
 
     serialize(): string {
@@ -424,7 +425,8 @@ export default class Orbit {
     get trueAnomalyOfAsymptote(): number {
         if(this.energy < 0) return null  // elliptic, does not have an asymptote
         // else:  // parabolic, hyperbolic
-        return Math.acos(-1./this.eccentricity)
+        return Math.acos(Math.max(-1, Math.min(1,
+            -1./this.eccentricity)))
     }
     static semiMajorAxisFromHyperbolicExcessVelocity(gravity: number, v: number): number {
         return -gravity / (v*v);  // from [OMES 2.102]
@@ -458,6 +460,7 @@ export default class Orbit {
         position: Vector,
         hyperbolicExcessVelocityVector: Vector,
         direction: "direct" | "indirect",
+        t0: number = 0,
     ): Orbit {
         /* Given a position and a desired escape velocity vector, searches for
          * the orbit to accomplish that.
@@ -480,8 +483,8 @@ export default class Orbit {
 
         function turnFromVelocityAngle(velocityAngleVsPosition: number): {turn: number, orbit: Orbit} {
             const v = position.mul(speedAtPosition/position.norm).rotated(h_dir, velocityAngleVsPosition);
-            const o = Orbit.FromStateVector(gravity, position, v);
-            const ta0 = o.taAtT(0);
+            const o = Orbit.FromStateVector(gravity, position, v, t0);
+            const ta0 = o.taAtT(t0);
             const tainf = o.trueAnomalyOfAsymptote;
             //console.log(o);
             //console.log(`va=${velocityAngleVsPosition}  => e=${o.eccentricity} ta0=${ta0}  tainf=${tainf}  => dta=${tainf-ta0}`);
@@ -491,17 +494,21 @@ export default class Orbit {
             };
         }
 
-        const velocityDirection = Orbit._findZeroBisect(
-            d => {
-                const {turn: turnOfD} = turnFromVelocityAngle(d);
-                return turnOfD - turn;
-            },
-            1e-8 * (direction === "direct" ? 1 : -1),
-            (Math.PI - 1e-8) * (direction === "direct" ? 1 : -1),
-        )
-        const {orbit} = turnFromVelocityAngle(velocityDirection);
-
-        return orbit;
+        try {
+            const velocityDirection = Orbit._findZeroBisect(
+                d => {
+                    const {turn: turnOfD} = turnFromVelocityAngle(d);
+                    return turnOfD - turn;
+                },
+                1e-8 * (direction === "direct" ? 1 : -1),
+                (Math.PI - 1e-8) * (direction === "direct" ? 1 : -1),
+            )
+            const {orbit} = turnFromVelocityAngle(velocityDirection);
+            return orbit;
+        } catch(e) {
+            if(e instanceof TypeError) return null;
+            throw e;
+        }
     }
     static optimalApoapsis(gravity: number, hyperbolicExcessVelocity: number): number {
         /* Calculates the optimal (in ∆v terms) apoapsis to switch from
@@ -571,7 +578,8 @@ export default class Orbit {
                 }
 
             } else {
-                ω = Math.acos(N.inner_product(e) / (N_norm * e_norm));
+                ω = Math.acos(Math.max(-1, Math.min(1,  // cap for rounding errors
+                    N.inner_product(e) / (N_norm * e_norm))));
                 if (e.z < 0) ω = 2 * Math.PI - ω;
             }
             this._cache['argp'] = ω;
@@ -926,6 +934,15 @@ export default class Orbit {
         )
     }
 
+    isEqual(other: Orbit): boolean {
+        return (
+            this.gravity == other.gravity
+            && this.r0.isEqual(other.r0)
+            && this.v0.isEqual(other.v0)
+            && this.t0 == other.t0
+        )
+    }
+
     get _α(): number {
         // Reciprocal of the semi-major axis
         if(this._cache['_α'] === undefined) {
@@ -1008,7 +1025,7 @@ export default class Orbit {
         tolerance: number = 1e-6,
     ): number {
         try {
-            return Orbit._findZeroNewton(ffp, x0, tolerance);
+            return Orbit._findZeroNewton(ffp, x0, tolerance, true);
         } catch(e) {
             if(e.error === 'did not converge') {
                 // try to continue with bisecting
@@ -1023,6 +1040,7 @@ export default class Orbit {
         ffp: (x: number) => {f: number, fp: number},
         x0: number,
         tolerance: number = 1e-6,
+        throwForBisect: boolean = false
     ): number {
         /* Find a zero of function `f(x)` with derivative `fp(x)`
          * iteratively by using Newton's method, starting from an
@@ -1049,6 +1067,13 @@ export default class Orbit {
                     } else {
                         xh = x;
                         fxh = fx;
+                    }
+                    if(throwForBisect) {
+                        /* we have f(xl) with the opposite sign from f(xh)
+                         * We can break out of Newton and start bisecting
+                         */
+                        maxIter = 0
+                        break
                     }
                 }
             } else {  // narrowing
@@ -1077,14 +1102,19 @@ export default class Orbit {
         /* Find zero of function `f(x)` by bisecting between [a;b].
          * Expects f(a) * f(b) < 0 (i.e. should have a different sign).
          */
-        let fa = f(a);
-        let fb = f(b);
+        const f_ = (x) => {
+            const fx = f(x);
+            if(isNaN(fx)) throw TypeError("function returned NaN for f(" + x + ")");
+            return fx
+        }
+        let fa = f_(a);
+        let fb = f_(b);
         if(!(fa * fb < 0)) {
             throw `Expected f(${a})=${fa} and f(${b})=${fb} to have different sign.`;
         }
         while(Math.abs(a-b) > tolerance) {
             const x = (a + b) / 2;
-            const fx = f(x);
+            const fx = f_(x);
             if(fx === 0) return x;
             if(fx * fa > 0) {  // same sign
                 a = x;
@@ -1205,7 +1235,7 @@ export default class Orbit {
         normal = normal.mul(1/normal.norm);
         radialIn = radialIn.mul(1/radialIn.norm);
 
-        return [prograde, normal, radialIn];
+        return [prograde, radialIn, normal];
     }
 
     get _timeSincePeriapsisOfT0(): number {

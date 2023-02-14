@@ -15,13 +15,18 @@ interface OrbitProps {
     primaryBody?: Body
 }
 
-export function fromString(s: string): kspOrbit {
-    if(s === "" || s == null) return kspOrbit.FromOrbitalElements(1,
-        {sma: 800_000, e: 0.125},
-    );
+export function fromString(s: string, defaultOrbit?: kspOrbit, gravity: number = 1): kspOrbit {
+    if(s === "" || s == null) {
+        if(defaultOrbit == null) {
+            defaultOrbit = kspOrbit.FromOrbitalElements(gravity,
+                {sma: 800_000, e: 0.125},
+            );
+        }
+        return defaultOrbit;
+    }
     const o = JSON.parse(s);
     if(typeof o === 'string') return kspOrbits[o];
-    return kspOrbit.FromOrbitalElements(1,
+    return kspOrbit.FromOrbitalElements(gravity,
         {sma: o.sma, e: o.e, argp: o.argp, inc: o.inc, lon_an: o.lon_an},
         {ma0: o.ma0}
     );
