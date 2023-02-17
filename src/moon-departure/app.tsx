@@ -16,12 +16,16 @@ import {SingleOutput, WorkerInput} from "./worker";
 import Vector from "../utils/vector";
 import ColorMapPlot, {PlotFuncType} from "./colorMapPlot";
 import './app.css';
+import Altitude from "../components/altitude";
 
 let REQUEST_ID = 0;
 
 enum PlotType {
     dv,
+    diveBurn,
     escapeBurn,
+    captureBurn,
+    circularizationBurn,
 }
 
 export default function App() {
@@ -38,6 +42,7 @@ export default function App() {
         s => OrbitFromString(s, kspOrbits.Minmus, kspBodies[departingPlanet].gravity),
         OrbitToString,
     )
+    const [departingDivePeriapsis_, setDepartingDivePeriapsis] = useFragmentState<number>('da', null)
     const [targetPlanet, setTargetPlanet] = useFragmentState<string>(
         't',
         s => {
@@ -46,6 +51,7 @@ export default function App() {
         },
         v => v,
     )
+    const [arrivalParkingRadius_, setArrivalParkingRadius] = useFragmentState<number>('apo', null)
     const [earliestDeparture, setEarliestDeparture] = useFragmentState<number>('t0l', 0)
     const [latestDeparture_, setLatestDeparture] = useFragmentState<number>('t0h', null)
     const [minTravelTime_, setMinTravelTime] = useFragmentState<number>('dtl', null)
@@ -61,6 +67,17 @@ export default function App() {
     }
 
     const primaryBody = kspBodies[departingPlanet];
+
+    const departingDivePeriapsis = departingDivePeriapsis_ != null ? departingDivePeriapsis_ : (
+        kspBodies[departingPlanet].radius
+        + Math.max(kspBodies[departingPlanet].atmosphere | 0, kspBodies[departingPlanet].terrain | 0)
+        + 10000
+    )
+    const arrivalParkingRadius = arrivalParkingRadius_ != null ? arrivalParkingRadius_ : (
+        kspBodies[targetPlanet].radius
+        + Math.max(kspBodies[targetPlanet].atmosphere | 0, kspBodies[targetPlanet].terrain | 0)
+        + 10000
+    )
 
     const moonOptions = [<option key="" value="">custom</option>]
     for(let moon of primaryBody.isOrbitedBy()) {
@@ -126,62 +143,70 @@ export default function App() {
                 requestId,
                 departingPlanetOrbit: kspOrbits[departingPlanet],
                 parkingOrbitAroundDepartingPlanet: departingOrbit,
-                minPeriapsis: kspBodies[departingPlanet].radius
-                    + Math.max(kspBodies[departingPlanet].atmosphere | 0, kspBodies[departingPlanet].terrain | 0)
-                    + 10000,
+                minPeriapsis: departingDivePeriapsis,
                 targetPlanetOrbit: kspOrbits[targetPlanet],
                 targetPlanetGravity: kspBodies[targetPlanet].gravity,
-                targetPlanetParkingOrbitRadius: kspBodies[targetPlanet].radius
-                    + Math.max(kspBodies[targetPlanet].atmosphere | 0, kspBodies[targetPlanet].terrain | 0)
-                    + 10000,
+                targetPlanetParkingOrbitRadius: arrivalParkingRadius,
+                targetPlanetSoi: kspBodies[targetPlanet].soi,
                 departureAndTravelTimes: t0dts,
             }
             worker.postMessage(m)
         })
-    }, [departingPlanet, departingOrbit, targetPlanet])
+    }, [departingPlanet, departingOrbit, departingDivePeriapsis, targetPlanet, arrivalParkingRadius])
 
-    const plotColorFunc: PlotFuncType<SingleOutput> = useCallback((value, state) => {
+    const plotColorFunc: PlotFuncType<SingleOutput> = useCallback((result, state) => {
+        if (state == null) state = {minDv: Infinity}
+        let value
         if(plotType == PlotType.dv) {
-            if (state == null) state = {minDv: Infinity}
-            let redraw = false
-            if (value.totalDv != null && value.totalDv < state.minDv) {
-                state.minDv = value.totalDv
-                redraw = true
-            }
-            const color = colorMap(value.totalDv, state.minDv, 5 * state.minDv)
-            return {
-                color,
-                state,
-                redraw,
-            }
+            value = result.totalDv
+        } else if(plotType == PlotType.diveBurn) {
+            value = Vector.FromObject(result.diveBurnPrn).norm
+        } else if(plotType == PlotType.escapeBurn) {
+            value = Vector.FromObject(result.escapeBurnPrn).norm
+        } else if(plotType == PlotType.captureBurn) {
+            value = Vector.FromObject(result.captureBurnPrn).norm
+        } else if(plotType == PlotType.circularizationBurn) {
+            value = Vector.FromObject(result.circularizationBurnPrn).norm
+        } else {
+            throw `Unknown plot type ${plotType}`
         }
-        if(plotType == PlotType.escapeBurn) {
-            const r = Math.max(0, Math.min(255, Math.abs(value.escapeBurnPrn.x) / 5000 * 255))
-            const g = Math.max(0, Math.min(255, Math.abs(value.escapeBurnPrn.y) / 5000 * 255))
-            const b = Math.max(0, Math.min(255, Math.abs(value.escapeBurnPrn.z) / 5000 * 255))
-            return {color: [r, g, b]}
+        let redraw = false
+        if (value != null && value < state.minDv) {
+            state.minDv = value
+            redraw = true
         }
-        throw "Unknown plot type: " + plotType
+        const color = colorMap(value, state.minDv, 5 * state.minDv)
+        return {
+            color,
+            state,
+            redraw,
+        }
     }, [plotType])
 
     const plotOnClick = useCallback(async (t0, dt) => {
         const result = await asyncCalc([[t0, dt]])
         const r = result[0];
+        r.diveBurnPrn = Vector.FromObject(r.diveBurnPrn)
         r.escapeBurnPrn = Vector.FromObject(r.escapeBurnPrn)
+        r.captureBurnPrn = Vector.FromObject(r.captureBurnPrn)
+        r.circularizationBurnPrn = Vector.FromObject(r.circularizationBurnPrn)
         setSelectedTransfer(r)
     }, [asyncCalc])
 
     let plotTypesJsx = [];
     const plotTypeRadios = {
         [PlotType.dv]: "total ∆v",
+        [PlotType.diveBurn]: "dive burn",
         [PlotType.escapeBurn]: "escape burn",
+        [PlotType.captureBurn]: "capture burn",
+        [PlotType.circularizationBurn]: "circularization burn",
     }
     for(let pt in plotTypeRadios) {
         plotTypesJsx.push(<label key={pt}>
             <input type="radio" name="plotType"
                    checked={plotType == +pt}
                    onChange={e => setPlotType(+pt)}
-            />{PlotType[pt]}
+            />{plotTypeRadios[pt]}
         </label>)
     }
 
@@ -191,15 +216,19 @@ export default function App() {
             <h3>Selected transfer details</h3>
             <table><tbody>
             <tr><td>Departure</td><td>{formatValueYdhmsAbs(selectedTransfer.departureTime)}</td></tr>
-            <tr><td>Transfer Time</td><td>{formatValueYdhms(selectedTransfer.travelTime)}</td></tr>
-            <tr><td>Arrival Time</td>
-                <td>{formatValueYdhmsAbs(selectedTransfer.departureTime + selectedTransfer.travelTime)}</td></tr>
-            <tr><td>Escape burn</td><td>{selectedTransfer.escapeBurnPrn.norm.toFixed(1)}m/s
+            <tr><td>Total travel time</td><td>{formatValueYdhms(selectedTransfer.travelTime)}</td></tr>
+            <tr><td>Dive burn</td><td>{selectedTransfer.diveBurnPrn.norm.toFixed(1)}m/s
+                ({selectedTransfer.diveBurnPrn.x.toFixed(1)}m/s prograde,{" "}
+                {selectedTransfer.diveBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
+                {selectedTransfer.diveBurnPrn.z.toFixed(1)}m/s normal)</td></tr>
+            <tr><td>Escape Burn</td><td>{selectedTransfer.escapeBurnPrn.norm.toFixed(1)}m/s
                 ({selectedTransfer.escapeBurnPrn.x.toFixed(1)}m/s prograde,{" "}
                 {selectedTransfer.escapeBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
-                {selectedTransfer.escapeBurnPrn.z.toFixed(1)}m/s normal
-                )</td></tr>
-            <tr><td>Capture burn</td><td>{selectedTransfer.captureBurn.toFixed(1)}m/s</td></tr>
+                {selectedTransfer.escapeBurnPrn.z.toFixed(1)}m/s normal)</td></tr>
+            <tr><td>Arrival Time</td>
+                <td>{formatValueYdhmsAbs(selectedTransfer.departureTime + selectedTransfer.travelTime)}</td></tr>
+            <tr><td>Capture Burn</td><td>{(-selectedTransfer.captureBurnPrn.x).toFixed(1)}m/s retrograde</td></tr>
+            <tr><td>Circularization Burn</td><td>{(-selectedTransfer.circularizationBurnPrn.x).toFixed(1)}m/s retrograde</td></tr>
             <tr><td>total ∆v</td><td>{selectedTransfer.totalDv.toFixed(1)}m/s</td></tr>
             </tbody></table>
         </div>
@@ -208,7 +237,7 @@ export default function App() {
     return <>
         <h2>Interplanetary departure from a Moon</h2>
         <p>This planner is heavily inspired on the <a href="https://alexmoon.github.io/ksp/">KSP Launch Window Planner by alexmoon</a>.
-        Writing this planner was an exercise for me to learn TypeScript, Service Workers & Canvas.</p>
+        Writing this planner was an exercise for me to learn Orbital mechanics, TypeScript, Service Workers & Canvas.</p>
         <p>Contrary to alexmoon's planner, this planner will depart from a specified orbit around the planet
             (e.g. a moon such as Minmus). It will calculate the optimal dive into the planet's gravity well,
             and do a powered slingshot around it to launch on an interplanetary trajectory.</p>
@@ -239,11 +268,24 @@ export default function App() {
                 primaryBody={primaryBody}
             />
         </td></tr>
+        <tr><td>Dive periapsis</td><td>
+            <Altitude
+                value={departingDivePeriapsis}
+                onChange={v => setDepartingDivePeriapsis(v)}
+                primaryBody={kspBodies[departingPlanet]}
+            /></td></tr>
         <tr><td>Target planet</td><td>
             <select
                 value={targetPlanet}
                 onChange={e => setTargetPlanet(e.target.value)}
             >{planetOptions}</select>
+        </td></tr>
+        <tr><td>Capture Orbit Radius</td><td>
+            <Altitude
+                value={arrivalParkingRadius}
+                onChange={v => setArrivalParkingRadius(v)}
+                primaryBody={kspBodies[targetPlanet]}
+            />
         </td></tr>
         <tr><td>Departure</td><td><KerbalAbsYdhmsInput
             value={earliestDeparture}

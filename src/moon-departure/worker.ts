@@ -9,13 +9,18 @@ export type WorkerInput = {
     targetPlanetOrbit: Orbit
     targetPlanetGravity: number
     targetPlanetParkingOrbitRadius: number
+    targetPlanetSoi: number
     departureAndTravelTimes: [number, number][]
 }
 export type TransferResult = {
-    transferOrbit: Orbit
-    totalDv: number
+    diveBurnPrn: Vector
+    diveOrbit: Orbit
     escapeBurnPrn: Vector
-    captureBurn: number
+    escapeOrbit: Orbit
+    transferOrbit: Orbit
+    captureBurnPrn: Vector
+    circularizationBurnPrn: Vector
+    totalDv: number
 }
 export type SingleOutput = {
     departureTime: number
@@ -34,60 +39,102 @@ function calcOne(
     targetPlanetOrbit: Orbit,
     targetPlanetGravity: number,
     targetParkingOrbitRadius: number,
+    targetPlanetSoi: number,
     departureTime: number,
     travelTime: number,
 ): TransferResult {
     if(travelTime <= 0) return null
 
-    const r1 = departingPlanetOrbit.positionAtT(departureTime)
-    const arrivalTime = departureTime + travelTime
-    const r2 = targetPlanetOrbit.positionAtT(arrivalTime)
-    const transferOrbit = Orbit.FromLambert(departingPlanetOrbit.gravity, r1, r2, travelTime, "prograde", departureTime)
+    const parkingOrbitAroundDepartingPlanetTaAtStart = parkingOrbitAroundDepartingPlanet.taAtT(departureTime)
+    const probePositionAtStart = parkingOrbitAroundDepartingPlanet.positionAtTa(parkingOrbitAroundDepartingPlanetTaAtStart)
 
-    const planetV0 = departingPlanetOrbit.velocityAtT(departureTime)
-    const transferV0 = transferOrbit.velocityAtT(departureTime)
-    const departureHev = transferV0.sub(planetV0)
+    // Dive into planet's gravity well
+    let diveOrbit = Orbit.FromOrbitalElements(
+        parkingOrbitAroundDepartingPlanet.gravity,
+        Orbit.smaEFromApsides(probePositionAtStart.norm, minDepartingPeriapsis),
+    )
+    // Orientation of this orbit still needs to be determined, but we only need the period for now
+    const diveTravelTime = diveOrbit.period / 2
+    const interplanetaryDepartureTime = departureTime + diveTravelTime
+
+    const departingPlanetPositionAtDeparture = departingPlanetOrbit.positionAtT(interplanetaryDepartureTime)
+    const interplanetaryTravelTime = travelTime - diveTravelTime
+    if(interplanetaryTravelTime <= 0) return null
+    const interplanetaryArrivalTime = interplanetaryDepartureTime + interplanetaryTravelTime;
+    const targetPlanetPositionAtEnd = targetPlanetOrbit.positionAtT(interplanetaryArrivalTime)
+
+    const interplanetaryTransferOrbit = Orbit.FromLambert(
+        departingPlanetOrbit.gravity,
+        departingPlanetPositionAtDeparture, targetPlanetPositionAtEnd, interplanetaryTravelTime,
+        "prograde", interplanetaryDepartureTime,
+    )
+    const interplanetaryDepartureVelocity = interplanetaryTransferOrbit.velocityAtT(interplanetaryDepartureTime)
+    const departurePlanetEscapeVelocity = interplanetaryDepartureVelocity.sub(departingPlanetOrbit.velocityAtT(interplanetaryDepartureTime))
+
+    const probeVelocityAtStart = parkingOrbitAroundDepartingPlanet.velocityAtT(departureTime)
+    const diveSpeedAtStart = diveOrbit.speedAtTa(Math.PI)
+    /* Now determine the direction of the diveVelocityAtStart vector
+     * It should be in the plane defined by probePositionAtStart and departurePlanetEscapeVelocity,
+     * and be perpendicular to probePositionAtStart (since we're at apoapsis of the dive orbit)
+     * Also, it should point away from the Escape Velocity vector, since we'll be swinging around the planet
+     */
+    const diveVelocityDirectionAtStart = probePositionAtStart.cross_product(probePositionAtStart.cross_product(departurePlanetEscapeVelocity))
+    const diveVelocityAtStart = diveVelocityDirectionAtStart.mul(diveSpeedAtStart/diveVelocityDirectionAtStart.norm)
+
+    const diveBurnPrn = parkingOrbitAroundDepartingPlanet.globalToPrn(
+        diveVelocityAtStart.sub(probeVelocityAtStart),
+        parkingOrbitAroundDepartingPlanetTaAtStart,
+    )
+    diveOrbit = Orbit.FromStateVector(
+        parkingOrbitAroundDepartingPlanet.gravity,
+        probePositionAtStart, diveVelocityAtStart, departureTime,
+    )
+
+    const probePositionEscapeBurn = diveOrbit.positionAtT(interplanetaryDepartureTime)
 
     const escapeOrbit = Orbit.FromPositionAndHyperbolicExcessVelocityVector(
         parkingOrbitAroundDepartingPlanet.gravity,
-        parkingOrbitAroundDepartingPlanet.positionAtT(departureTime),
-        departureHev,
-        "direct",
-        departureTime,
+        probePositionEscapeBurn, departurePlanetEscapeVelocity,
+        "direct", interplanetaryDepartureTime
     )
     if(escapeOrbit == null) return null
-    const parkingOrbitVelocityAtDeparture = parkingOrbitAroundDepartingPlanet.velocityAtT(departureTime);
-    const escapeVelocityAtDeparture = escapeOrbit.velocityAtT(departureTime);
-    const escapeBurn = escapeVelocityAtDeparture.sub(parkingOrbitVelocityAtDeparture)
+    const escapeOrbitVelocityAtStart = escapeOrbit.velocityAtT(interplanetaryDepartureTime)
+    const escapeBurnPrn = diveOrbit.globalToPrn(
+        escapeOrbitVelocityAtStart.sub(diveOrbit.velocityAtT(interplanetaryDepartureTime)),
+        0,  // at periapsis by design
+    )
 
-    const transferV1 = transferOrbit.velocityAtT(arrivalTime)
-    const planetV1 = targetPlanetOrbit.velocityAtT(arrivalTime)
-    const arrivalHev = planetV1.sub(transferV1)
+    /* Capture orbit is easier, since we know we'll do the capture burn at periapsis
+     */
+    const interplanetaryArrivalVelocity = interplanetaryTransferOrbit.velocityAtT(interplanetaryArrivalTime)
+    const arrivalPlanetEnterVelocity = interplanetaryArrivalVelocity.sub(targetPlanetOrbit.velocityAtT(interplanetaryArrivalTime))
+    const captureSma = targetPlanetGravity / (arrivalPlanetEnterVelocity.norm * arrivalPlanetEnterVelocity.norm)  // From [OMES 2.102]
+    const interceptSpeedAtParkingAltitude = Math.sqrt(
+        targetPlanetGravity / captureSma + 2 * targetPlanetGravity / targetParkingOrbitRadius
+    ) // From [OMES 2.101]
 
-    const targetParkingOrbitSpeed = Orbit.FromOrbitalElements(
+    const captureSpeed = Orbit.FromOrbitalElements(
+        targetPlanetGravity,
+        Orbit.smaEFromApsides(targetParkingOrbitRadius, targetPlanetSoi),
+    ).speedAtTa(0)
+    const captureBurnPrn = new Vector(captureSpeed - interceptSpeedAtParkingAltitude, 0, 0)
+
+    const parkingOrbitSpeed = Orbit.FromOrbitalElements(
         targetPlanetGravity,
         {sma: targetParkingOrbitRadius}
     ).speedAtTa(0)
-    const arrivalOrbit = Orbit.FromOrbitalElements(
-        targetPlanetGravity,
-        Orbit.semiMajorAxisEFromPeriapsisHyperbolicExcessVelocity(
-            targetPlanetGravity,
-            targetParkingOrbitRadius,
-            arrivalHev.norm,
-        )
-    )
-    const arrivalPeriapsisSpeed = arrivalOrbit.speedAtTa(0)
-    const captureBurn = Math.abs(targetParkingOrbitSpeed - arrivalPeriapsisSpeed)
+    const circularizationBurnPrn = new Vector(parkingOrbitSpeed - captureSpeed, 0, 0)
 
     return {
-        transferOrbit,
-        escapeBurnPrn: parkingOrbitAroundDepartingPlanet.globalToPrn(
-            escapeBurn,
-            parkingOrbitAroundDepartingPlanet.taAtT(departureTime),
-        ),
-        captureBurn,
-        totalDv: escapeBurn.norm + captureBurn,
-    };
+        diveBurnPrn,
+        diveOrbit,
+        escapeBurnPrn,
+        escapeOrbit,
+        transferOrbit: interplanetaryTransferOrbit,
+        captureBurnPrn,
+        circularizationBurnPrn,
+        totalDv: diveBurnPrn.norm + escapeBurnPrn.norm + captureBurnPrn.norm + circularizationBurnPrn.norm,
+    }
 }
 
 self.onmessage = (m) => {
@@ -109,6 +156,7 @@ self.onmessage = (m) => {
             input.targetPlanetOrbit,
             input.targetPlanetGravity,
             input.targetPlanetParkingOrbitRadius,
+            input.targetPlanetSoi,
             t0dt[0],
             t0dt[1],
         );
