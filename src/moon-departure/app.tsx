@@ -186,10 +186,6 @@ export default function App() {
     const plotOnClick = useCallback(async (t0, dt) => {
         const result = await asyncCalc([[t0, dt]])
         const r = result[0];
-        r.diveBurnPrn = Vector.FromObject(r.diveBurnPrn)
-        r.escapeBurnPrn = Vector.FromObject(r.escapeBurnPrn)
-        r.captureBurnPrn = Vector.FromObject(r.captureBurnPrn)
-        r.circularizationBurnPrn = Vector.FromObject(r.circularizationBurnPrn)
         setSelectedTransfer(r)
     }, [asyncCalc])
 
@@ -212,6 +208,39 @@ export default function App() {
 
     let maybeSelectedTransfer = <></>
     if(selectedTransfer != null) {
+        const gradientDescend = async () => {
+            const x = await asyncFindMinimumNd(
+                async (x) => {
+                    const e = 1
+                    const xAndGrad: Array<[number, number]> = [
+                        /* 0 */ [x[0], x[1]],
+                        /* 1 */ [x[0]-e, x[1]],
+                        /* 2 */ [x[0]+e, x[1]],
+                        /* 3 */ [x[0], x[1]-e],
+                        /* 4 */ [x[0], x[1]+e],
+                    ]
+                    const res = await asyncCalc(xAndGrad)
+                    setSelectedTransfer(res[0])
+                    return {
+                        fx: res[0].totalDv,
+                        grad: [
+                            (res[2].totalDv - res[1].totalDv) / (2*e),
+                            (res[4].totalDv - res[3].totalDv) / (2*e),
+                        ],
+                        all: res[0],
+                    }
+                },
+                [selectedTransfer.departureTime, selectedTransfer.travelTime],
+                60*60,
+            )
+            setSelectedTransfer((x.result as any).all)
+        }
+
+        selectedTransfer.diveBurnPrn = Vector.FromObject(selectedTransfer.diveBurnPrn)
+        selectedTransfer.escapeBurnPrn = Vector.FromObject(selectedTransfer.escapeBurnPrn)
+        selectedTransfer.captureBurnPrn = Vector.FromObject(selectedTransfer.captureBurnPrn)
+        selectedTransfer.circularizationBurnPrn = Vector.FromObject(selectedTransfer.circularizationBurnPrn)
+
         maybeSelectedTransfer = <div style={{margin: "1em"}}>
             <h3>Selected transfer details</h3>
             <table><tbody>
@@ -231,6 +260,7 @@ export default function App() {
             <tr><td>Circularization Burn</td><td>{(-selectedTransfer.circularizationBurnPrn.x).toFixed(1)}m/s retrograde</td></tr>
             <tr><td>total ∆v</td><td>{selectedTransfer.totalDv.toFixed(1)}m/s</td></tr>
             </tbody></table>
+            <button onClick={e => gradientDescend().then(() => {})}>Find local minimum</button>
         </div>
     }
 
@@ -371,6 +401,38 @@ function colorMap(x: number, xMin: number, xMax: number): [number, number, numbe
     }
     console.log(`out of bounds for color map: ${x} not in [${xMin};${xMax}]`)
     return prev.rgb
+}
+
+async function asyncFindMinimumNd(
+    funcGrad: (x: number[]) => Promise<{fx: number, grad: number[]}>,
+    x0: number[],
+    stepSize: number = 1,
+    tolerance: number = 1e-6,
+    maxSteps: number = 1000,
+): Promise<{x: number[], fx: number, result: object}> {
+    let x = [...x0]
+    let N = x.length
+    let fxGrad = await funcGrad(x)
+    let steps = 0
+    //console.log(`GD: f(${x}) => `, fxGrad)
+    while(true) {
+        if(++steps > maxSteps) break
+
+        const newX = []
+        for(let d=0; d<N; d++) {
+            newX[d] = x[d] - stepSize * Math.sign(fxGrad.grad[d])
+        }
+        const newFxGrad = await funcGrad(newX)
+        //console.log(`GD: f(${newX}) => `, newFxGrad)
+        if(newFxGrad.fx >= fxGrad.fx - tolerance) break  // increase or not decreasing enough
+        fxGrad = newFxGrad
+        x = newX
+    }
+    return {
+        x,
+        fx: fxGrad.fx,
+        result: fxGrad,
+    }
 }
 
 if(typeof window === 'object') { // @ts-ignore
