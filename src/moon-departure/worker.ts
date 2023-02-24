@@ -5,7 +5,7 @@ export type WorkerInput = {
     requestId?: any
     departingPlanetOrbit: Orbit
     parkingOrbitAroundDepartingPlanet: Orbit
-    minPeriapsis: number
+    minPeriapsis?: number
     targetPlanetOrbit: Orbit
     targetPlanetGravity: number
     targetPlanetParkingOrbitRadius: number
@@ -35,7 +35,7 @@ export type WorkerOutput = {
 function calcOne(
     departingPlanetOrbit: Orbit,
     parkingOrbitAroundDepartingPlanet: Orbit,
-    minDepartingPeriapsis: number,
+    minDepartingPeriapsis: number | null,
     targetPlanetOrbit: Orbit,
     targetPlanetGravity: number,
     targetParkingOrbitRadius: number,
@@ -48,18 +48,24 @@ function calcOne(
     const parkingOrbitAroundDepartingPlanetTaAtStart = parkingOrbitAroundDepartingPlanet.taAtT(departureTime)
     const probePositionAtStart = parkingOrbitAroundDepartingPlanet.positionAtTa(parkingOrbitAroundDepartingPlanetTaAtStart)
 
-    // Dive into planet's gravity well
-    let diveOrbit = Orbit.FromOrbitalElements(
-        parkingOrbitAroundDepartingPlanet.gravity,
-        Orbit.smaEFromApsides(probePositionAtStart.norm, minDepartingPeriapsis),
-    )
-    // Orientation of this orbit still needs to be determined, but we only need the period for now
-    const diveTravelTime = diveOrbit.period / 2
-    const interplanetaryDepartureTime = departureTime + diveTravelTime
+    let interplanetaryDepartureTime = departureTime
+    let interplanetaryTravelTime = travelTime
+    let diveOrbit = null
+    if(minDepartingPeriapsis != null) {
+        // Dive into planet's gravity well
+        diveOrbit = Orbit.FromOrbitalElements(
+            parkingOrbitAroundDepartingPlanet.gravity,
+            Orbit.smaEFromApsides(probePositionAtStart.norm, minDepartingPeriapsis),
+        )
+
+        // Orientation of this orbit still needs to be determined, but we only need the period for now
+        const diveTravelTime = diveOrbit.period / 2
+        interplanetaryDepartureTime = departureTime + diveTravelTime
+        interplanetaryTravelTime = travelTime - diveTravelTime
+        if(interplanetaryTravelTime <= 0) return null
+    }
 
     const departingPlanetPositionAtDeparture = departingPlanetOrbit.positionAtT(interplanetaryDepartureTime)
-    const interplanetaryTravelTime = travelTime - diveTravelTime
-    if(interplanetaryTravelTime <= 0) return null
     const interplanetaryArrivalTime = interplanetaryDepartureTime + interplanetaryTravelTime;
     const targetPlanetPositionAtEnd = targetPlanetOrbit.positionAtT(interplanetaryArrivalTime)
 
@@ -72,25 +78,29 @@ function calcOne(
     const departurePlanetEscapeVelocity = interplanetaryDepartureVelocity.sub(departingPlanetOrbit.velocityAtT(interplanetaryDepartureTime))
 
     const probeVelocityAtStart = parkingOrbitAroundDepartingPlanet.velocityAtT(departureTime)
-    const diveSpeedAtStart = diveOrbit.speedAtTa(Math.PI)
-    /* Now determine the direction of the diveVelocityAtStart vector
-     * It should be in the plane defined by probePositionAtStart and departurePlanetEscapeVelocity,
-     * and be perpendicular to probePositionAtStart (since we're at apoapsis of the dive orbit)
-     * Also, it should point away from the Escape Velocity vector, since we'll be swinging around the planet
-     */
-    const diveVelocityDirectionAtStart = probePositionAtStart.cross_product(probePositionAtStart.cross_product(departurePlanetEscapeVelocity))
-    const diveVelocityAtStart = diveVelocityDirectionAtStart.mul(diveSpeedAtStart/diveVelocityDirectionAtStart.norm)
+    let diveBurnPrn = null
+    let probePositionEscapeBurn = probePositionAtStart
+    if(minDepartingPeriapsis != null) {
+        const diveSpeedAtStart = diveOrbit.speedAtTa(Math.PI)
+        /* Now determine the direction of the diveVelocityAtStart vector
+         * It should be in the plane defined by probePositionAtStart and departurePlanetEscapeVelocity,
+         * and be perpendicular to probePositionAtStart (since we're at apoapsis of the dive orbit)
+         * Also, it should point away from the Escape Velocity vector, since we'll be swinging around the planet
+         */
+        const diveVelocityDirectionAtStart = probePositionAtStart.cross_product(probePositionAtStart.cross_product(departurePlanetEscapeVelocity))
+        const diveVelocityAtStart = diveVelocityDirectionAtStart.mul(diveSpeedAtStart/diveVelocityDirectionAtStart.norm)
 
-    const diveBurnPrn = parkingOrbitAroundDepartingPlanet.globalToPrn(
-        diveVelocityAtStart.sub(probeVelocityAtStart),
-        parkingOrbitAroundDepartingPlanetTaAtStart,
-    )
-    diveOrbit = Orbit.FromStateVector(
-        parkingOrbitAroundDepartingPlanet.gravity,
-        probePositionAtStart, diveVelocityAtStart, departureTime,
-    )
+        diveBurnPrn = parkingOrbitAroundDepartingPlanet.globalToPrn(
+            diveVelocityAtStart.sub(probeVelocityAtStart),
+            parkingOrbitAroundDepartingPlanetTaAtStart,
+        )
+        diveOrbit = Orbit.FromStateVector(
+            parkingOrbitAroundDepartingPlanet.gravity,
+            probePositionAtStart, diveVelocityAtStart, departureTime,
+        )
 
-    const probePositionEscapeBurn = diveOrbit.positionAtT(interplanetaryDepartureTime)
+        probePositionEscapeBurn = diveOrbit.positionAtT(interplanetaryDepartureTime)
+    }
 
     const escapeOrbit = Orbit.FromPositionAndHyperbolicExcessVelocityVector(
         parkingOrbitAroundDepartingPlanet.gravity,
@@ -99,9 +109,10 @@ function calcOne(
     )
     if(escapeOrbit == null) return null
     const escapeOrbitVelocityAtStart = escapeOrbit.velocityAtT(interplanetaryDepartureTime)
-    const escapeBurnPrn = diveOrbit.globalToPrn(
-        escapeOrbitVelocityAtStart.sub(diveOrbit.velocityAtT(interplanetaryDepartureTime)),
-        0,  // at periapsis by design
+    const orbitBeforeEscape = diveOrbit != null ? diveOrbit : parkingOrbitAroundDepartingPlanet
+    const escapeBurnPrn = orbitBeforeEscape.globalToPrn(
+        escapeOrbitVelocityAtStart.sub(orbitBeforeEscape.velocityAtT(interplanetaryDepartureTime)),
+        orbitBeforeEscape.taAtT(interplanetaryDepartureTime),
     )
 
     /* Capture orbit is easier, since we know we'll do the capture burn at periapsis
@@ -133,7 +144,8 @@ function calcOne(
         transferOrbit: interplanetaryTransferOrbit,
         captureBurnPrn,
         circularizationBurnPrn,
-        totalDv: diveBurnPrn.norm + escapeBurnPrn.norm + captureBurnPrn.norm + circularizationBurnPrn.norm,
+        totalDv: (diveBurnPrn != null ? diveBurnPrn.norm : 0) +
+            escapeBurnPrn.norm + captureBurnPrn.norm + circularizationBurnPrn.norm,
     }
 }
 

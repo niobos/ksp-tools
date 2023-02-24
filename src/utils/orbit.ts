@@ -381,6 +381,10 @@ export default class Orbit {
         return 2 * Math.PI * Math.sqrt(sma*sma*sma / gravity);
     };
     static smaEFromApsides(ap1: number, ap2: number): {sma: number, e: number} {
+        if(ap1 == null && ap2 == null) return null
+        if(ap2 == null) return {sma: ap1, e: 0}
+        if(ap1 == null) return {sma: ap2, e: 0}
+
         const apoapsis = ap1 >= ap2 ? ap1 : ap2;
         const periapsis = ap1 >= ap2 ? ap2 : ap1;
 

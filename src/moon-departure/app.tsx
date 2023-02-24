@@ -42,6 +42,7 @@ export default function App() {
         s => OrbitFromString(s, kspOrbits.Minmus, kspBodies[departingPlanet].gravity),
         OrbitToString,
     )
+    const [departingDoDive, setDepartingDoDive] = useFragmentState<boolean>('di', true)
     const [departingDivePeriapsis_, setDepartingDivePeriapsis] = useFragmentState<number>('da', null)
     const [targetPlanet, setTargetPlanet] = useFragmentState<string>(
         't',
@@ -143,7 +144,7 @@ export default function App() {
                 requestId,
                 departingPlanetOrbit: kspOrbits[departingPlanet],
                 parkingOrbitAroundDepartingPlanet: departingOrbit,
-                minPeriapsis: departingDivePeriapsis,
+                minPeriapsis: departingDoDive ? departingDivePeriapsis : null,
                 targetPlanetOrbit: kspOrbits[targetPlanet],
                 targetPlanetGravity: kspBodies[targetPlanet].gravity,
                 targetPlanetParkingOrbitRadius: arrivalParkingRadius,
@@ -152,7 +153,7 @@ export default function App() {
             }
             worker.postMessage(m)
         })
-    }, [departingPlanet, departingOrbit, departingDivePeriapsis, targetPlanet, arrivalParkingRadius])
+    }, [departingPlanet, departingOrbit, departingDoDive, departingDivePeriapsis, targetPlanet, arrivalParkingRadius])
 
     const plotColorFunc: PlotFuncType<SingleOutput> = useCallback((result, state) => {
         if (state == null) state = {minDv: Infinity}
@@ -246,10 +247,12 @@ export default function App() {
             <table><tbody>
             <tr><td>Departure</td><td>{formatValueYdhmsAbs(selectedTransfer.departureTime)}</td></tr>
             <tr><td>Total travel time</td><td>{formatValueYdhms(selectedTransfer.travelTime)}</td></tr>
-            <tr><td>Dive burn</td><td>{selectedTransfer.diveBurnPrn.norm.toFixed(1)}m/s
-                ({selectedTransfer.diveBurnPrn.x.toFixed(1)}m/s prograde,{" "}
-                {selectedTransfer.diveBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
-                {selectedTransfer.diveBurnPrn.z.toFixed(1)}m/s normal)</td></tr>
+            {selectedTransfer.diveBurnPrn != null ?
+                <tr><td>Dive burn</td><td>{selectedTransfer.diveBurnPrn.norm.toFixed(1)}m/s
+                    ({selectedTransfer.diveBurnPrn.x.toFixed(1)}m/s prograde,{" "}
+                    {selectedTransfer.diveBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
+                    {selectedTransfer.diveBurnPrn.z.toFixed(1)}m/s normal)</td></tr>
+                : <></>}
             <tr><td>Escape Burn</td><td>{selectedTransfer.escapeBurnPrn.norm.toFixed(1)}m/s
                 ({selectedTransfer.escapeBurnPrn.x.toFixed(1)}m/s prograde,{" "}
                 {selectedTransfer.escapeBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
@@ -299,6 +302,11 @@ export default function App() {
             />
         </td></tr>
         <tr><td>Dive periapsis</td><td>
+            <label><input
+                type="checkbox"
+                checked={departingDoDive}
+                onChange={e => setDepartingDoDive(e.target.checked)}
+            />Dive down to</label>{" "}
             <Altitude
                 value={departingDivePeriapsis}
                 onChange={v => setDepartingDivePeriapsis(v)}

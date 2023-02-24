@@ -6,6 +6,7 @@ export default class Vector {
     ) {};
 
     static FromObject(o: any): Vector {
+        if(o == null) return null
         return new Vector(o.x, o.y, o.z)
     }
     isEqual(other: Vector): boolean {
