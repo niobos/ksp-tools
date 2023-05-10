@@ -32,7 +32,7 @@ export default function Apside(props: ApsideProps) {
                 onFocus={onFocus}
                 onChange={r => props.onAltitudeChange != null ? props.onAltitudeChange(r) : null}
                 onBlur={onBlur}
-                readOnly={props.onAltitudeChange == null}
+                readOnly={props.readOnly}
                 primaryBody={props.primaryBody}
             /><span style={speedStyle}>, speed <FloatInput
                 decimals={1}
@@ -40,7 +40,7 @@ export default function Apside(props: ApsideProps) {
                 onFocus={onFocus}
                 onChange={v => props.onSpeedChange != null ? props.onSpeedChange(v) : null}
                 onBlur={onBlur}
-                readOnly={props.onSpeedChange == null}
+                readOnly={props.readOnly}
             />m/s</span>
         </>
 
@@ -57,7 +57,7 @@ export default function Apside(props: ApsideProps) {
                 onFocus={onFocus}
                 onChange={v => props.onSpeedChange != null ? props.onSpeedChange(v) : null}
                 onBlur={onBlur}
-                readOnly={props.onSpeedChange == null}
+                readOnly={props.readOnly}
             />m/s</span>
         </>
     }

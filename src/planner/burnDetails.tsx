@@ -9,18 +9,18 @@ export interface BurnDetailsProps {
 
 export default function BurnDetails(props: BurnDetailsProps) {
     return <>
-        Burn:
+        <h3>Burn:</h3>
         <table><tbody>
             <tr><td>Prograde</td><td><SiInput
-                value={props.value.x}
+                value={props.value.x} emptyValue={0}
                 onChange={v => props.onChange(new Vector(v, props.value.y, props.value.z))}
             />m/s</td></tr>
             <tr><td>Radial-in</td><td><SiInput
-                value={props.value.y}
+                value={props.value.y} emptyValue={0}
                 onChange={v => props.onChange(new Vector(props.value.x, v, props.value.z))}
             />m/s</td></tr>
             <tr><td>Normal</td><td><SiInput
-                value={props.value.z}
+                value={props.value.z} emptyValue={0}
                 onChange={v => props.onChange(new Vector(props.value.x, props.value.y, v))}
             />m/s</td></tr>
             <tr><td>Total</td><td>{formatValueSi(props.value.norm)}m/s</td></tr>

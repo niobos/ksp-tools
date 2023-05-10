@@ -24,7 +24,7 @@ export default function Sma(props: SmaProps) {
             value={props.value}
             onChange={props.onChange != null ? props.onChange : null}
             readOnly={props.readOnly}
-        />m{props.gravity != null ?
+        />m{(props.gravity != null) ?
             <>{" => "}period of <KerbalYdhmsInput
                 value={period}
                 onFocus={() => setEditingPeriod(period)}

@@ -873,7 +873,6 @@ export default class Orbit {
             const r2 = otherOrbit.positionAtT(t);
             const dist = r1.sub(r2).norm;
             return dist;
-            // Scale to be around 1.0 for better convergence
         };
 
         const dt = 1;

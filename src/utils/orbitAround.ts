@@ -45,11 +45,13 @@ export default class OrbitAround {
 
     nextEvent(
         t: number,
+        tEnd: number = Infinity,
     ): {
         t: number,
         type: orbitEvent,
         body: Body,
     } {
+        // First check events that already happened or are happening right now
         const ta = this.orbit.taAtT(t);
         const r = this.orbit.positionAtTa(ta);
         if(r.norm > this.body.soi * 1.01) return {  // rounding
@@ -68,6 +70,9 @@ export default class OrbitAround {
             body: this.body,
         }
 
+        /* For other events, we need to see which happens first.
+         * So calculate when they would happen and sort on time
+         */
         const events = [];
 
         const taExit = this.orbit.taAtDistance(this.body.soi);
@@ -93,9 +98,18 @@ export default class OrbitAround {
         }
         events.sort((a, b) => a.t - b.t);  // in-place
 
+        function smartMin(a, b) {
+            // Math.min(), but works with undefined, null, NaN
+            return a < b ? a : b
+        }
+
         for(let subBody of this.body.isOrbitedBy()) {
             const subBodyOrbit = kspOrbits[subBody.name];
-            const nextIntercept = this.orbit.nextIntercept(subBodyOrbit, t, events[0]?.t);
+            const nextIntercept = this.orbit.nextIntercept(
+                subBodyOrbit,
+                t,
+                smartMin(events[0]?.t, tEnd),
+            );
             if(nextIntercept != null) {
                 if(nextIntercept.separation < subBody.soi) {
                     try {
@@ -106,7 +120,7 @@ export default class OrbitAround {
                                 const sep = r.sub(rsb).norm;
                                 return sep - subBody.soi;
                             },
-                            (t+nextIntercept.t)/2, nextIntercept.t + 10,
+                            t, nextIntercept.t + 10,
                         );
                         events.push({
                             t: tsoi,

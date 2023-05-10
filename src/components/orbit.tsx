@@ -184,6 +184,7 @@ export default function Orbit(props: OrbitProps) {
                 if(props.onChange != null) props.onChange(orbit);
                 setEditingApside(edit);
             }}
+            readOnly={props.onChange == null}
         />
     </td></tr>
     <tr><td>Apoapsis</td><td>
@@ -206,6 +207,7 @@ export default function Orbit(props: OrbitProps) {
                 if(props.onChange != null) props.onChange(orbit);
                 setEditingApside(edit);
             }}
+            readOnly={props.onChange == null}
         />
     </td></tr>
     <tr><td>Argument of Periapsis</td><td>
