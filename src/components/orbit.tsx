@@ -243,7 +243,11 @@ export default function Orbit(props: OrbitProps) {
     <tr><td>Mean anomaly at epoch</td><td>
         <DegreesInput value={value.meanAnomalyAtEpoch}
                       placeholder={"any"} emptyValue={null}
-                      onChange={props.onChange != null ? ma0 => props.onChange(kspOrbit.FromOrbitWithUpdatedOrbitalElements(value, {ma0})) : null}
+                      onChange={props.onChange != null
+                          ? ma0 => {
+                              props.onChange(kspOrbit.FromOrbitWithUpdatedOrbitalElements(value, {ma0}))
+                          }
+                          : null}
                       readOnly={props.onChange == null}
         />º
     </td></tr>

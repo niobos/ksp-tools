@@ -39,7 +39,7 @@ export type ConicSegment = {
 };
 let segments: Array<ConicSegment> = [];
 
-export type workerMessageType = 'setStartTime'
+export type workerMessageType = 'setStartTime' 
     | 'setInitialOrbit'
     | 'setBurns'
     | 'calculateUntil';
@@ -53,6 +53,7 @@ self.onmessage = function(e) {
     switch(e.data?.type as workerMessageType) {
     case 'setStartTime':
         startTime = e.data.value
+        resetSegments()
         break;
     case 'setInitialOrbit':
         initialOrbit = OrbitAround.FromObject(e.data.value);
@@ -60,6 +61,7 @@ self.onmessage = function(e) {
         break;
     case 'setBurns':
         // See how much calculations we can keep from previous run
+        e.data.value.sort((a, b) => a.t - b.t)  // in-place sort
         let sameBurnsUntilTime;
         for(let burnIdx = 0; burnIdx < burns.length; burnIdx++) {
             if(burns[burnIdx].t !== e.data.value[burnIdx]?.t ||

@@ -1,114 +1,170 @@
+import './app.css';
 import * as React from "react";
-import {useEffect, useMemo, useState} from "react";
+import {ReactNode, useEffect, useMemo, useState} from "react";
 import ReactDOM from 'react-dom';
 import useFragmentState from "useFragmentState";
 import Orbit from "../utils/orbit";
 import OrbitAround from "../utils/orbitAround";
 import {bodies as kspBodies} from "../utils/kspBody";
 import Vector from "../utils/vector";
+import {Burn, ConicSegment, SegmentReason} from "./simWorker";
+import OrbitDetails from "../components/orbit";
+import {formatValueYdhmsAbs, KerbalAbsYdhmsInput} from "../components/formattedInput";
+import KspHierBody from "../components/kspHierBody";
 import {OrbitSummary} from "./orbitSummary";
-import {default as OrbitDetails} from "../components/orbit";
-import {formatValueYdhmsAbs, KerbalAbsYdhmsInput, KerbalYdhmsInput} from "../components/formattedInput";
+import {formatValueSi} from "formattedInput";
 import BurnDetails from "./burnDetails";
-import {Burn, ConicSegment, SegmentReason} from "./worker";
-import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
+import {arrayReplaceElement} from "../utils/list";
 
-import './app.css';
+type Seconds = number
 
+interface ExpanderProps {
+    state: boolean
+    onClick?: (newState: boolean) => void
+    children?: ReactNode
+}
+function Expander(props: ExpanderProps): JSX.Element {
+    return <div style={{display: 'inline', cursor: 'pointer'}}
+                onClick={e => {
+                    if(props.onClick != null) props.onClick(!props.state)
+                }}>
+        {props.state ? "▾" : "▸"}
+        {props.children}
+    </div>
+}
 
-interface DetailsProps {
-    time: number
-    setTime: (number) => void
-    missionStartTime?: number
-    burn?: Burn
-    setBurn?: (Burn) => void
+interface InitialOrbitProps {
+    startTime: Seconds
+    setStartTime: (Seconds) => void
+    initialOrbit: OrbitAround
+    setInitialOrbit: (OrbitAround) => void
+}
+function InitialOrbit(props: InitialOrbitProps): JSX.Element {
+    const [detailsOpen, setDetailsOpen] = useState(false)
+
+    let maybeRest = null
+    if(detailsOpen) {
+        maybeRest = <>
+            <p>Simulation start time: <KerbalAbsYdhmsInput
+                value={props.startTime}
+                onChange={props.setStartTime}
+            /></p>
+            <p>Around <KspHierBody
+                value={props.initialOrbit.body.name}
+                onChange={bodyName => {
+                    const body = kspBodies[bodyName];
+                    const orbit = Orbit.FromOrbitWithUpdatedOrbitalElements(
+                        props.initialOrbit.orbit,
+                        {gravity: body.gravity}
+                    )
+                    props.setInitialOrbit(new OrbitAround(
+                        body,
+                        orbit
+                    ))
+                }}
+            /></p>
+            <OrbitDetails
+                value={props.initialOrbit.orbit}
+                primaryBody={props.initialOrbit.body}
+                onChange={newOrbit => {
+                    props.setInitialOrbit(new OrbitAround(
+                        props.initialOrbit.body,
+                        newOrbit,
+                    ))
+                }}
+            />
+        </>
+    }
+
+    return <li className="Initial">
+        <Expander state={detailsOpen} onClick={setDetailsOpen}>{" "}
+            {formatValueYdhmsAbs(props.startTime)}
+            {" "}
+            Initial <OrbitSummary value={props.initialOrbit}/></Expander><br/>
+        {maybeRest}
+    </li>
+}
+
+interface BurnEventProps {
+    burn: Burn
+    onChange: (Burn) => void
+    orbit?: OrbitAround
+}
+function BurnEvent(props: BurnEventProps): JSX.Element {
+    const [detailsOpen, setDetailsOpen] = useState(false)
+
+    let maybeOrbit = null
+    if(props.orbit) {
+        maybeOrbit = <> to <OrbitSummary value={props.orbit}/></>;
+    }
+
+    let maybeDetails = null
+    if(detailsOpen) {
+        maybeDetails = <>
+            <p>Simulation start time: <KerbalAbsYdhmsInput
+                value={props.burn.t}
+                onChange={t => props.onChange(Burn.create({t: t, prn: props.burn.prn}))}
+            /></p>
+
+            <BurnDetails
+                value={props.burn.prn}
+                onChange={b => props.onChange(Burn.create({t: props.burn.t, prn: b}))}
+            />
+
+            {props.orbit ? <>New orbit:<br/>
+                <OrbitDetails
+                    value={props.orbit.orbit}
+                    primaryBody={props.orbit.body}
+                />
+            </> : <></>}
+        </>
+    }
+
+    return <li className="Burn">
+        <Expander state={detailsOpen} onClick={setDetailsOpen}>{" "}
+            {formatValueYdhmsAbs(props.burn.t)}
+            {" "}
+            {formatValueSi(props.burn.prn.norm)}m/s burn{maybeOrbit}</Expander><br/>
+        {maybeDetails}
+    </li>
+}
+
+interface SoiChangeProps {
+    t: Seconds
     orbit: OrbitAround
-    setOrbit?: (OrbitAround) => void
 }
-function Details(props: DetailsProps) {
-    let maybeBurnDetailsJsx = <></>;
-    if(props.burn != null) {
-        maybeBurnDetailsJsx = <><BurnDetails
-            value={props.burn.prn}
-            onChange={v => props.setBurn(props.burn.copy({prn: v}))}
-        /><input type="button" value="Remove burn"
-                 onClick={e => {
-                     props.setBurn(null)
-                 }}
-        /></>;
-    }
-    return <>
-        <p>Time: <KerbalAbsYdhmsInput
-            value={props.time}
-            onChange={props.setTime}
-            readOnly={props.setTime == null}
-        />UT<span style={{visibility: props.missionStartTime != null ? 'visible' : 'hidden'}}>, <KerbalYdhmsInput
-            value={props.time - props.missionStartTime}
-            onChange={v => props.setTime(v + props.missionStartTime)}
-            readOnly={props.setTime == null}
-        />MET</span></p>
-        {maybeBurnDetailsJsx}
-        <h3>(new) orbit:</h3>
-        <OrbitDetails
-            primaryBody={props.orbit.body}
-            value={props.orbit.orbit}
-            onChange={props.setOrbit != null ? o => {
-                props.setOrbit(new OrbitAround(
-                    props.orbit.body,
-                    o,
-                ))
-            } : null}
-        />
-    </>;
+function SoiChange(props: SoiChangeProps): JSX.Element {
+    return <li className="SoIChange">
+        {formatValueYdhmsAbs(props.t)}
+        {" "}
+        SoI change to <OrbitSummary value={props.orbit}/>
+    </li>
 }
 
-interface SegmentListProps {
-    segments: Array<ConicSegment>
-    activeSegment: number
-    setActiveSegment: (segment: number) => void
-    burns: Array<Burn>
-    simulationEnd: number
-    setSimulationEnd: (t: number) => void
-}
-function SegmentList(props: SegmentListProps) {
-    const segmentsJsx = [];
-    for (let segmentIdx = 0; segmentIdx < props.segments.length; segmentIdx++) {
-        const segment = props.segments[segmentIdx];
-        if(segment.reason == SegmentReason.CurrentSimulationTime) continue;
-        segmentsJsx.push(
-            <li key={segmentIdx} onClick={e => props.setActiveSegment(segmentIdx)}
-                className={(props.activeSegment === segmentIdx ? "active" : "") + " " + SegmentReason[segment.reason]}
-            >t={formatValueYdhmsAbs(segment.startT)}{" "}<OrbitSummary value={segment.orbit}/>
-            </li>,
-        )
-    }
-    const currentSimulationProgress = props.segments[props.segments.length-1]?.startT;
-    if(!(currentSimulationProgress >= props.simulationEnd)) {  // !(>=) to work with undefined
-        segmentsJsx.push(<li key={props.segments.length} className="processing">
-            calculating ({formatValueYdhmsAbs(currentSimulationProgress)})...
-        </li>);
-    }
-    for(let burnIdx=0; burnIdx < props.burns.length; burnIdx ++) {
-        const burn = props.burns[burnIdx]
-        if(burn.t <= currentSimulationProgress) continue
-        segmentsJsx.push(
-            <li key={"b"+burnIdx}
-                //onClick={e => props.setActiveSegment(segmentIdx)}
-                // className={(props.activeSegment === segmentIdx ? "active" : "") + " " + SegmentReason.Burn}
-                className={"Burn"}
-            >t={formatValueYdhmsAbs(burn.t)}
-            </li>,
-        )
-    }
-    segmentsJsx.push(<li key="end" className="end">
-        <KerbalAbsYdhmsInput value={props.simulationEnd} onChange={props.setSimulationEnd}/> end simulation
-    </li>);
+interface CollideProps {
 
-    return <ol id="segments">{segmentsJsx}</ol>
+}
+function Collide(props: CollideProps): JSX.Element {
+    return <li className="CollideOrAtmosphere">Collide</li>
+}
+
+interface CalculatingProps {
+    t?: Seconds
+}
+function Calculating(props: CalculatingProps): JSX.Element {
+    const maybeTime = props.t != null ? ` ${formatValueYdhmsAbs(props.t)}` : "";
+    return <li className="processing">Calculating{maybeTime}...</li>
+}
+
+interface EndOfSimulationProps {
+    t: Seconds
+}
+function EndOfSimulation(props: EndOfSimulationProps): JSX.Element {
+    return <li className="end">{formatValueYdhmsAbs(props.t)} End of simulation</li>
 }
 
 function App() {
-    const [startTime, setStartTime] = useFragmentState<number>('t0',
+    const [simulationStart, setSimulationStart] = useFragmentState<number>('t0',
         s => {
             const t = parseFloat(s);
             if(isNaN(t)) return 150322;
@@ -149,15 +205,15 @@ function App() {
         o => {
             return JSON.stringify(o.map(e => e.toObject()))
         }
-    );
+    )
     const [simulationEnd, setSimulationEnd] = useFragmentState<number>('te', 10*426*6*60*60)
 
     const [activeSegment, setActiveSegment] = useState<number | null>(0)
     const [segments, setSegments] = useState<Array<ConicSegment>>([])
 
-    const worker = useMemo(() => new Worker(new URL('./worker', import.meta.url)), []);
+    const simWorker = useMemo(() => new Worker(new URL('./simWorker', import.meta.url)), []);
     // ^^ BUG: useMemo is *not* *guaranteed* to remember previous values. This may leak workers.
-    worker.onmessage = (e) => {
+    simWorker.onmessage = (e) => {
         if(e.data?.type != 'segments') return
         setSegments(e.data.value.map(s => {
             // Message is plain JSON objects; upgrade these to instances of classes
@@ -166,90 +222,89 @@ function App() {
         }));
     };
     useEffect(() => {
-        worker.postMessage({
+        simWorker.postMessage({
             type: 'setStartTime',
-            value: startTime,
-        });
-    }, [initialOrbit]);
+            value: simulationStart,
+        })
+    }, [simulationStart])
     useEffect(() => {
-        worker.postMessage({
+        simWorker.postMessage({
             type: 'setInitialOrbit',
             value: initialOrbit,
-        });
-    }, [initialOrbit]);
+        })
+    }, [initialOrbit])
     useEffect(() => {
-        worker.postMessage({
+        simWorker.postMessage({
             type: 'setBurns',
             value: burns,
-        });
-    }, [burns]);
+        })
+    }, [burns])
     useEffect(() => {
-        worker.postMessage({
+        simWorker.postMessage({
             type: 'calculateUntil',
             value: simulationEnd,
-        });
-    }, [simulationEnd]);
+        })
+    }, [simulationEnd])
+
+    const events: Array<{t: Seconds, jsx: JSX.Element}> = [
+        {t: simulationStart, jsx: <InitialOrbit
+            key="initial"
+            startTime={simulationStart}
+            setStartTime={setSimulationStart}
+            initialOrbit={initialOrbit}
+            setInitialOrbit={setInitialOrbit}
+        />},
+    ]
+    const burnsAlreadyAdded = []
+    for(let segmentIdx in segments) {
+        const segment = segments[segmentIdx]
+        switch (segment.reason) {
+            case SegmentReason.Initial:
+                // ignore
+                break
+            case SegmentReason.Burn:
+                burnsAlreadyAdded.push(segment.burnIdx)
+                events.push({t: segment.startT, jsx: <BurnEvent
+                    key={`s${segmentIdx}`}
+                    orbit={segment.orbit}
+                    burn={burns[segment.burnIdx]}
+                    onChange={b => {setBurns(arrayReplaceElement(burns, segment.burnIdx, b))}}
+                />})
+                break
+            case SegmentReason.SoIChange:
+                events.push({t: segment.startT,
+                    jsx: <SoiChange key={`s${segmentIdx}`} t={segment.startT} orbit={segment.orbit}/>})
+                break
+            case SegmentReason.CollideOrAtmosphere:
+                events.push({t: segment.startT, jsx: <Collide key={`s${segmentIdx}`}/>})
+                break
+            case SegmentReason.CurrentSimulationTime:
+                // ignore
+                break
+        }
+    }
+    if(segments.length == 0) {
+        events.push({t: simulationStart, jsx: <Calculating key="calc" t={simulationStart}/>})
+    } else if(segments[segments.length-1].startT < simulationEnd) {
+        const calcT = segments[segments.length-1].startT
+        events.push({t: calcT, jsx: <Calculating key="calc" t={calcT}/>})
+    }
+    events.push({t: simulationEnd, jsx: <EndOfSimulation key="end" t={simulationEnd}/>})
+    for(let burnIdx = 0; burnIdx < burns.length; burnIdx++) {
+        if(burnsAlreadyAdded.includes(burnIdx)) continue
+        events.push({t: burns[burnIdx].t, jsx: <BurnEvent
+                key={`b${burnIdx}`}
+                burn={burns[burnIdx]}
+                onChange={b => setBurns(arrayReplaceElement(burns, burnIdx, b))}
+            />})
+    }
+    events.sort((a, b) => a.t - b.t)
+    const eventsJsx = events.map(e => e.jsx)
 
     return <><React.StrictMode>
         <h1>Mission planner</h1>
-        <div id="segments">
-            <h2>Segments</h2>
-            <SegmentList
-                burns={burns}
-                segments={segments}
-                activeSegment={activeSegment}
-                setActiveSegment={setActiveSegment}
-                simulationEnd={simulationEnd}
-                setSimulationEnd={setSimulationEnd}
-            />
-        </div>
-        <div id="details">
-            {(activeSegment < segments.length) ?
-                <><Details
-                    missionStartTime={startTime}
-                    time={segments[activeSegment].startT}
-                    setTime={(() => {
-                        if (activeSegment === 0) return setStartTime
-                        if (segments[activeSegment].reason === SegmentReason.Burn) {
-                            const burnIdx = segments[activeSegment].burnIdx
-                            return v => setBurns(arrayReplaceElement(burns, burnIdx, burns[burnIdx].copy({t: v})))
-                        }
-                        return null
-                    })()}
-                    burn={segments[activeSegment].burnIdx != null ? burns[segments[activeSegment].burnIdx] : null}
-                    setBurn={(() => {
-                        const burnIdx = segments[activeSegment].burnIdx;
-                        if(burnIdx != null) {
-                            return (b) => {
-                                if(b != null) setBurns(arrayReplaceElement(burns, burnIdx, b))
-                                else setBurns(arrayRemoveElement(burns, burnIdx))
-                            }
-                        }
-                        return null;
-                    })()}
-                    orbit={segments[activeSegment].orbit}
-                    setOrbit={activeSegment === 0 ? setInitialOrbit : null}
-                />
-                <input
-                    type="button" value="Add burn in this segment"
-                    onClick={e => {
-                        let newBurnTime = segments[activeSegment].startT
-                        if(segments[activeSegment + 1]?.startT != null) {
-                            newBurnTime = (newBurnTime + segments[activeSegment + 1]?.startT) / 2
-                        }
-                        setBurns(
-                            arrayInsertElement(
-                                burns,
-                                Burn.create({t: newBurnTime, prn: new Vector(0, 0, 0)})
-                            ).sort((a, b) => a.t - b.t)
-                        )
-                        setActiveSegment(activeSegment + 1)
-                    }}
-                />
-                </>
-                : null
-            }
-        </div>
+        <h2>Segments</h2>
+        <ol id="segments">{eventsJsx}</ol>
     </React.StrictMode></>;
 }
 

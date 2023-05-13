@@ -9,7 +9,6 @@ export interface BurnDetailsProps {
 
 export default function BurnDetails(props: BurnDetailsProps) {
     return <>
-        <h3>Burn:</h3>
         <table><tbody>
             <tr><td>Prograde</td><td><SiInput
                 value={props.value.x} emptyValue={0}

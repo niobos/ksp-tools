@@ -510,3 +510,16 @@ describe('next intercept', () => {
         expect(encounter.separation / 100).toBeCloseTo(1, 0);  // to within 100m
     });
 });
+
+describe('previous bugs', () => {
+    describe('position around Minmus', () => {
+        const o1 = Orbit.FromStateVector(
+            kspBodies['Minmus'].gravity,
+            new Vector(100e3, 0, 0),
+            new Vector(-1, 1000, 0),
+            0,
+        )
+
+        const p1 = o1.positionAtT(2205)
+    })
+});

@@ -1,20 +1,20 @@
-div#segments {
-    display: inline-block;
-    margin: 1em;
-    border: 1px solid black;
-    padding: 1em;
+ol#segments li.Initial {
+    list-style-type: "💫 ";
 }
-
-div#details {
-    display: inline-block;
-    vertical-align: top;
-    margin: 1em;
-    border: 1px solid black;
-    padding: 1em;
+ol#segments li.SoIChange {
+    list-style-type: "💫 ";
 }
-
-div#segments li.active {
-    background-color: #cccccc;
+ol#segments li.Burn {
+    list-style-type: "🚀 ";
+}
+ol#segments li.CollideOrAtmosphere {
+    list-style-type: "💥 ";
+}
+ol#segments li.end {
+    list-style-type: "🛑 ";
+}
+ol#segments li.processing {
+    list-style-type: "⚙️ ";
 }
 
 input.SiInput, input.FloatInput, input.DegreesInput {
@@ -33,23 +33,4 @@ input.warning {
 }
 input:read-only {
     background-color: #eeeeee;
-}
-
-ol#segments li.Initial {
-    list-style-type: "💫 ";
-}
-ol#segments li.SoIChange {
-    list-style-type: "💫 ";
-}
-ol#segments li.Burn {
-    list-style-type: "🚀 ";
-}
-ol#segments li.CollideOrAtmosphere {
-    list-style-type: "💥 ";
-}
-ol#segments li.end {
-    list-style-type: "🛑 ";
-}
-ol#segments li.processing {
-    list-style-type: "⚙️ ";
 }

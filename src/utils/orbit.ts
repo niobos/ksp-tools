@@ -968,10 +968,10 @@ export default class Orbit {
         const Z = 1e-7;
         if(z > Z) {
             const sqrt_z = Math.sqrt(z);
-            return (sqrt_z - Math.sin(sqrt_z)) / (sqrt_z*sqrt_z*sqrt_z);
+            return (sqrt_z - Math.sin(sqrt_z)) / (z*sqrt_z);
         } else if(z < -Z) {
             const sqrt_mz = Math.sqrt(-z);
-            return (Math.sinh(sqrt_mz) - sqrt_mz) / (sqrt_mz*sqrt_mz*sqrt_mz);
+            return (Math.sinh(sqrt_mz) - sqrt_mz) / ((-z)*sqrt_mz);
         } else {  // z near 0
             // the above expressions get unstable near 0. Use series-expansion instead
             let s = 0;
@@ -1193,22 +1193,36 @@ export default class Orbit {
         const v_r0 = this.v0.inner_product(this.r0) / this.r0.norm;
         const µ = this.gravity;
         const α = this._α;
-        return Orbit._findZero(
-            χ => {
-                const c1 = r_0 * v_r0 / Math.sqrt(µ) * χ;
-                const χχ = χ*χ;
-                const z = α * χχ;
-                const f = c1 * χ * C(z)
-                    + (1 - α * r_0) * χχ*χ * S(z)
-                    + r_0 * χ - Math.sqrt(µ) * dt;
-                const fp = c1 * (1 - z * S(z))
-                    + (1 - α * r_0) * χχ * C(z)
-                    + r_0;
-                return {f, fp};
-            },
-           Math.sqrt(µ) * Math.abs(α) * dt,
-            tolerance,
-        );
+        let χEstimate = Math.sqrt(µ) * Math.abs(α) * dt;
+        while(true) {
+            const χ = Orbit._findZero(
+                χ => {
+                    const c1 = r_0 * v_r0 / Math.sqrt(µ) * χ;
+                    const χχ = χ * χ;
+                    const z = α * χχ;
+                    const f = c1 * χ * C(z)
+                        + (1 - α * r_0) * χχ * χ * S(z)
+                        + r_0 * χ
+                        - Math.sqrt(µ) * dt;
+                    const fp = c1 * (1 - z * S(z))
+                        + (1 - α * r_0) * χχ * C(z)
+                        + r_0;
+                    return {f, fp};
+                },
+                χEstimate,
+                tolerance,
+            );
+            if (!isNaN(χ) && Math.abs(χ) != Infinity) return χ
+            /* For hyperbolic orbits, χEstimate may be too large so that we end up
+             * with (0*Inf) or (-Inf + Inf) in the formula for f
+             * In that case, reduce χEstimate toward zero and try again
+             */
+            χEstimate = χEstimate / 2
+            if(χEstimate < 1) {
+                console.log("orbit: ", this, " ∆t=", dt)
+                throw "Could not find universal anomaly"
+            }
+        }
     }
 
     _rAndχAtDt(dt: number): {r: Vector, χ: number} {

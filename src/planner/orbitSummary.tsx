@@ -9,7 +9,7 @@ export interface OrbitSummaryProps {
 
 export function OrbitSummary(props: OrbitSummaryProps) {
     if( props.value.orbit.distanceAtPeriapsis < props.value.body.radius + props.value.body.atmosphere) {
-        return <>Collision course with {props.value.body.name} (Pe=<span>
+        return <>collision course with {props.value.body.name} (Pe=<span>
                 {formatValueSi(props.value.orbit.distanceAtPeriapsis - props.value.body.radius)}mAGL
             </span>)
         </>;
@@ -23,7 +23,7 @@ export function OrbitSummary(props: OrbitSummaryProps) {
         </>;
     } else {
         return <>
-            Escape trajectory out of {props.value.body.name} with
+            escape trajectory out of {props.value.body.name} with
             Pe={formatValueSi(props.value.orbit.distanceAtPeriapsis - props.value.body.radius)}mAGL
         </>;
     }
