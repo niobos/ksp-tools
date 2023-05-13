@@ -1,13 +1,13 @@
-ol#segments li.Initial {
+ol#segments li.initial {
     list-style-type: "💫 ";
 }
 ol#segments li.SoIChange {
     list-style-type: "💫 ";
 }
-ol#segments li.Burn {
+ol#segments li.burn {
     list-style-type: "🚀 ";
 }
-ol#segments li.CollideOrAtmosphere {
+ol#segments li.collideOrAtmosphere {
     list-style-type: "💥 ";
 }
 ol#segments li.end {
@@ -22,7 +22,7 @@ input.SiInput, input.FloatInput, input.DegreesInput {
 }
 
 input.KerbalYdhmsInput {
-    width: 8em;
+    width: 10em;
 }
 input.KerbalAbsYdhmsInput {
     width: 10em;

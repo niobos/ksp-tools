@@ -20,7 +20,7 @@ export class Burn extends Data {
 
 let startTime: number = null
 let initialOrbit: OrbitAround = null
-let burns: Array<Burn> = []
+let burns: Array<Burn & {origBurnIdx: number}> = []
 let simulationEnd: number = null
 let nextIteration = null
 
@@ -61,18 +61,24 @@ self.onmessage = function(e) {
         break;
     case 'setBurns':
         // See how much calculations we can keep from previous run
-        e.data.value.sort((a, b) => a.t - b.t)  // in-place sort
+        const newBurns = e.data.value
+        for(let burnIdx = 0; burnIdx < newBurns.length; burnIdx++) {
+            // Don't use (let burnIdx in newBurns), as that returns string's
+            const burn = newBurns[burnIdx]
+            burn.origBurnIdx = burnIdx
+        }
+        newBurns.sort((a, b) => a.t - b.t)  // in-place sort
         let sameBurnsUntilTime;
-        for(let burnIdx = 0; burnIdx < burns.length; burnIdx++) {
-            if(burns[burnIdx].t !== e.data.value[burnIdx]?.t ||
-                burns[burnIdx].prn !== e.data.value[burnIdx]?.prn
+        for(let burnIdx in burns) {
+            if(burns[burnIdx].t !== newBurns[burnIdx]?.t ||
+                burns[burnIdx].prn !== newBurns[burnIdx]?.prn
             ) {
                 // different burn, recalculate from the time of the difference
-                sameBurnsUntilTime = smartMin(burns[burnIdx].t, e.data.value[burnIdx]?.t);
+                sameBurnsUntilTime = smartMin(burns[burnIdx].t, newBurns[burnIdx]?.t);
                 break;
             }
         }
-        burns = e.data.value;
+        burns = newBurns;
         resetSegments(sameBurnsUntilTime);
         break;
     case 'calculateUntil':
@@ -90,7 +96,7 @@ self.onmessage = function(e) {
          * runs if segments is [], or when the last segment.startT is below simulationEnd
          */
         if(nextIteration != null) clearTimeout(nextIteration);
-        nextIteration = setTimeout(calcNextSegment, 0);
+        nextIteration = setTimeout(nextBatch, 0);
         /* Run the calculation in small chunks, so we can receive new onmessage-calls
          * in between, and preempt a running calculation to restart with updated values
          */
@@ -158,14 +164,14 @@ function calcNextSegment() {
             orbit.body,
             Orbit.FromStateVector(orbit.orbit.gravity, r, vNew, t),
         );
-        segments.push({startT: t, reason: SegmentReason.Burn, orbit, burnIdx: nextBurnIdx})
+        segments.push({startT: t, reason: SegmentReason.Burn, orbit, burnIdx: burns[nextBurnIdx].origBurnIdx})
 
     } else if(nextEvent == null) {  // no event before simulationEnd
         segments.push({startT: simulationEnd, reason: SegmentReason.CurrentSimulationTime, orbit})
 
     } else if (nextEvent.type === orbitEvent.collideSurface || nextEvent.type === orbitEvent.enterAtmosphere) {
         segments.push({startT: nextEvent.t, reason: SegmentReason.CollideOrAtmosphere, orbit})
-        segments.push({startT: simulationEnd, reason: SegmentReason.CollideOrAtmosphere, orbit})  // to signal no more calculations are necessary
+        segments.push({startT: simulationEnd, reason: SegmentReason.CurrentSimulationTime, orbit})  // to signal no more calculations are necessary
 
     } else if (nextEvent.type === orbitEvent.enterSoI) {
         orbit = orbit.enterSoI(nextEvent.t, nextEvent.body)
@@ -179,13 +185,27 @@ function calcNextSegment() {
         // Note time for next iteration
         segments.push({startT: nextEvent.t, reason: SegmentReason.CurrentSimulationTime, orbit})
     }
+}
+
+function nextBatch() {
+    const start = +new Date()
+    let end = start
+
+    /* Batch up 100ms worth of simulation
+     * otherwise we lose a lot of time waiting for the setTimeout() to call us again
+     */
+    while(end - start < 100) {
+        calcNextSegment()
+        if(segments[segments.length-1].startT >= simulationEnd) break
+        end = +new Date()
+    }
 
     self.postMessage({
         type: 'segments',
         value: segments,
     });
     if(segments[segments.length-1].startT < simulationEnd) {
-        nextIteration = setTimeout(calcNextSegment, 0)
+        nextIteration = setTimeout(nextBatch, 0)
     } else {
         nextIteration = null
     }
