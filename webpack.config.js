@@ -13,6 +13,7 @@ const tsxPages = {
     'moon-departure': 'KSP - Interplanetary departure from a moon',
     'electricity': 'KSP - Electricity calculator',
     'planner': 'KSP - Mission planner',
+    'multiengine': 'KSP - Multi-engine planner',
 };
 
 const entries = {};

@@ -37,7 +37,7 @@ export type ConicSegment = {
     orbit: OrbitAround,
     burnIdx?: number,
 };
-let segments: Array<ConicSegment> = [];
+let segments: Array<ConicSegment> = []
 
 export type workerMessageType = 'setStartTime' 
     | 'setInitialOrbit'
@@ -148,6 +148,8 @@ function calcNextSegment() {
     let nextBurnIdx;
     for(nextBurnIdx = 0; nextBurnIdx < burns.length; nextBurnIdx++) {
         if(burns[nextBurnIdx].t > t) break
+        // TODO BUG: ^^ when burn is at the time of the SoI change, this doesn't trigger.
+        // Changing it to >= loops the same burn over and over again
     }
 
     if(burns[nextBurnIdx]?.t <= (nextEvent?.t ?? Infinity)) {

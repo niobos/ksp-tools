@@ -14,7 +14,7 @@ import KspHierBody from "../components/kspHierBody";
 import {OrbitSummary} from "./orbitSummary";
 import {formatValueSi} from "formattedInput";
 import BurnDetails from "./burnDetails";
-import {arrayReplaceElement} from "../utils/list";
+import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 
 type Seconds = number
 
@@ -39,6 +39,7 @@ interface EventProps {
     summary: ReactChild
     className?: string
     children?: ReactNode
+    addBurn?: (Burn) => void
 }
 function Event(props: EventProps): JSX.Element {
     const [detailsOpen, setDetailsOpen] = useState(false)
@@ -48,7 +49,11 @@ function Event(props: EventProps): JSX.Element {
             {formatValueYdhmsAbs(props.t)}
             {" "}
             {props.summary}</Expander><br/>
-        {detailsOpen ? props.children : null}
+        {detailsOpen ? <>{props.children}<p>
+            {props.addBurn != null ? <input type="button" value="Add burn"
+                   onClick={() => props.addBurn(Burn.create({t: props.t, prn: new Vector(0,0,0)}))}
+            /> : null}
+        </p></> : null}
     </li>
 }
 
@@ -98,7 +103,11 @@ interface BurnEventDetailsProps {
 }
 function BurnEventDetails(props: BurnEventDetailsProps): JSX.Element {
     return <>
-        <p>Simulation start time: <KerbalAbsYdhmsInput
+        <input type="button" value="Remove burn"
+               onClick={() => props.onChange(null)}
+        />
+
+        <p>Burn at: <KerbalAbsYdhmsInput
             value={props.burn.t}
             onChange={t => props.onChange(Burn.create({t: t, prn: props.burn.prn}))}
         /></p>
@@ -241,6 +250,7 @@ function App() {
             className="initial"
             t={simulationStart}
             summary={<>Initial <OrbitSummary value={initialOrbit}/></>}
+            addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
         >
             <InitialOrbitDetails
                 initialOrbit={initialOrbit}
@@ -265,6 +275,7 @@ function App() {
                         t={segment.startT}
                         className="burn"
                         summary={<>{formatValueSi(burn.prn.norm)}m/s burn to <OrbitSummary value={segment.orbit}/></>}
+                        addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
                     ><BurnEventDetails
                         burn={burn}
                         onChange={b => {setBurns(arrayReplaceElement(burns, segment.burnIdx, b))}}
@@ -277,6 +288,7 @@ function App() {
                         t={segment.startT}
                         className="SoIChange"
                         summary={<>SoI change to <OrbitSummary value={segment.orbit}/></>}
+                        addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
                     ><SoiChangeDetails
                         orbit={segment.orbit}
                     /></Event>)
@@ -287,6 +299,7 @@ function App() {
                         t={segment.startT}
                         className="collideOrAtmosphere"
                         summary={<>Collision</>}
+                        addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
                     ><CollideDetails/>
                 </Event>)
                 break
@@ -330,12 +343,17 @@ function App() {
                 t={burn.t}
                 className="burn"
                 summary={<>{formatValueSi(burn.prn.norm)}m/s burn</>}
+                addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
             ><BurnEventDetails
                 burn={burns[burnIdx]}
-                onChange={b => {setBurns(arrayReplaceElement(burns, burnIdx, b))}}
+                onChange={b => {setBurns(
+                    b != null
+                    ? arrayReplaceElement(burns, burnIdx, b)
+                    : arrayRemoveElement(burns, burnIdx)
+                )}}
             /></Event>)
     }
-    events.sort((a, b) => (a as any).t - (b as any).t)
+    events.sort((a, b) => a.props.t - b.props.t)
     const eventsJsx = events.map(e => e)
 
     return <><React.StrictMode>

@@ -27,3 +27,16 @@ export function arrayReplaceElement<T>(arr: T[], pos: number, newElement: T): T[
         ...arr.slice(pos+1),
     ];
 }
+
+export function arrayMoveElement<T>(arr: T[], pos: number, offset: number): T[] {
+    /* Mov element arr[pos] to be at arr[pos+offset]
+     * When offset would move the element past the end of the array,
+     * the element is placed at the end (or the beginning)
+     */
+    const el = arr[pos]
+    return arrayInsertElement(
+        arrayRemoveElement(arr, pos),
+        el,
+        pos + offset,
+    )
+}

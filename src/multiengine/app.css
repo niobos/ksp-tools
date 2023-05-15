@@ -1,0 +1,15 @@
+.error {
+    color: #ff0000;
+}
+
+input.Integer {
+    text-align: right;
+    width: 3em;
+}
+input.SiInput {
+    text-align: right;
+    width: 4em;
+}
+input.KerbalYdhmsInput {
+    width: 6em;
+}
