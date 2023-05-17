@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useMemo, useState} from 'react';
 import ReactDOM from 'react-dom';
 import useFragmentState from "useFragmentState";
 import {bodies as kspBodies, planets as kspPlanets} from "../utils/kspBody";
@@ -202,7 +202,7 @@ export default function App() {
         plotTypesJsx.push(<label key={pt}>
             <input type="radio" name="plotType"
                    checked={plotType == +pt}
-                   onChange={e => setPlotType(+pt)}
+                   onChange={() => setPlotType(+pt)}
             />{plotTypeRadios[pt]}
         </label>)
     }
@@ -263,7 +263,7 @@ export default function App() {
             <tr><td>Circularization Burn</td><td>{(-selectedTransfer.circularizationBurnPrn.x).toFixed(1)}m/s retrograde</td></tr>
             <tr><td>total ∆v</td><td>{selectedTransfer.totalDv.toFixed(1)}m/s</td></tr>
             </tbody></table>
-            <button onClick={e => gradientDescend().then(() => {})}>Find local minimum</button>
+            <button onClick={() => gradientDescend().then(() => {})}>Find local minimum</button>
         </div>
     }
 

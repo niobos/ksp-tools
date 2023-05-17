@@ -1,3 +1,4 @@
+import './app.css';
 import * as React from 'react';
 import {useState} from 'react';
 import ReactDOM from 'react-dom';
@@ -14,8 +15,7 @@ import FuelTank from "../components/fuelTank";
 import {fuelTanks} from "../utils/kspParts-fuelTanks";
 import {engines as kspEngines} from "../utils/kspParts-engine";
 import {fromPreset, objectMap} from "../utils/utils";
-
-import './app.css';
+import {massBeforeDv} from "../utils/rocket";
 
 function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry) {
     /* Calculate the mass of fuel tanks needed to get the desired ∆v
@@ -24,8 +24,7 @@ function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry)
      */
     if(payloadMassDry === undefined) payloadMassDry = payloadMass;
 
-    // ∆v = Isp * 9.81 * ln(m_wet / m_dry);
-    const wetDryRatio = Math.exp(dv / 9.81 / isp);
+    const wetDryRatio = massBeforeDv(1, dv, isp)
     if(wetDryRatio >= tankWetDryRatio) return NaN;
 
     /* m_wet     m_payload_w + m_empty_tanks + m_fuel
@@ -268,7 +267,7 @@ export default function App() {
         techLevelJsx.push(<label key={tl}>
             <input type="radio"
                    checked={techLevel === tl}
-                   onChange={e => setTechLevel(tl)}
+                   onChange={() => setTechLevel(tl)}
             />{tl}
         </label>);
     }

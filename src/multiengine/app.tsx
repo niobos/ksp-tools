@@ -6,8 +6,8 @@ import {FloatInput} from "../components/formatedInput";
 import {engines as kspEngines} from "../utils/kspParts-engine";
 import {Resources} from "../utils/kspParts";
 import {KerbalYdhmsInput} from "../components/formattedInput";
-import {SiInput} from "formattedInput";
 import {arrayInsertElement, arrayMoveElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
+import {dtForDv, dvForDm, dvForDt, massAfterDv, massBeforeDv} from "../utils/rocket";
 
 const FUEL_TYPES = ['lf', 'ox', 'mono', 'xe']
 // Don't list air, electricity, solid fuel or ore
@@ -99,17 +99,7 @@ interface BurnProps extends BurnSpec {
     maxDv: number
 }
 function Burn(props: BurnProps): JSX.Element {
-    /* https://space.stackexchange.com/a/27376
-     * ∆t = m0 * ve / F * (1 - exp(-∆v/ve))
-     * => ∆t * F / (m0 * ve) = 1 - exp(-∆v/ve)
-     * => exp(-∆v/ve) = 1 - ∆t * F / (m0 * ve)
-     * => -∆v/ve = ln(1 - ∆t * F / (m0 * ve))
-     * => ∆v = -ln(1 - ∆t * F / (m0 * ve)) * ve
-     */
-    const duration = props.startMass * props.combinedIsp * 9.81 / props.combinedThrust *
-        (1 - Math.exp(-props.dv / (props.combinedIsp * 9.81)))
-    const dvFromDt = dt => -Math.log(1 - dt * props.combinedThrust / (props.startMass * props.combinedIsp * 9.81)) *
-        props.combinedIsp * 9.81
+    const duration = dtForDv(props.dv, props.startMass, props.combinedThrust, props.combinedIsp)
 
     return <li>
         <input type="button" value="remove"
@@ -129,7 +119,10 @@ function Burn(props: BurnProps): JSX.Element {
         >{props.maxDv.toFixed(1)}m/s</a>) burn
         {" = "}<KerbalYdhmsInput
             value={duration}
-            onChange={dt => props.onChange({dv: dvFromDt(dt), engines: props.engines})}
+            onChange={dt => props.onChange({
+                dv: dvForDt(dt, props.startMass, props.combinedThrust, props.combinedIsp),
+                engines: props.engines
+            })}
         /> with:
         <ul>{props.engines.map((engine, idx) => <Engine
             key={idx}
@@ -149,8 +142,10 @@ function Burn(props: BurnProps): JSX.Element {
                        })}
             /></li>
         </ul>
-        Combined ISP: {props.combinedIsp}s<br/>
-        Combined thrust: {props.combinedThrust}kN, {(props.combinedThrust / props.startMass).toFixed(1)}m/s²<br/>
+        Combined ISP: {props.combinedIsp.toFixed(1)}s<br/>
+        Combined thrust: {props.combinedThrust.toFixed(1)}kN{", "}
+            {(props.combinedThrust / props.startMass).toFixed(1)}–
+            {(props.combinedThrust / props.endMass).toFixed(1)}m/s²<br/>
         Start mass: {props.startMass.toFixed(3)}t<br/>
         Fuel remaining:
         <ul>{FUEL_TYPES.map((fuelType, idx) => <li
@@ -194,18 +189,14 @@ function calcBurn(
         totalFuelMass += fuelRemaining[fuelType] * Resources.mass[fuelType]
     }
     const startMass = dryMass + totalFuelMass
-    /* ∆v = Isp * g0 * ln(m0 / mf)
-     * => exp( ∆v / (Isp*g0) ) = m0 / mf
-     * => mf = m0 / exp( ∆v / (Isp*g0) )
-     */
-    const endMass = startMass / Math.exp( burn.dv / isp / 9.81 )
+    const endMass = massAfterDv(startMass, burn.dv, isp)
     const consumedFuelMass = startMass - endMass
     fuelRemaining = fuelRemaining.sub(fuelRatio.scaled(consumedFuelMass / fuelRatio.mass))
 
     const minFuelRemaining = fuelRemaining.sub(fuelRatio.scaled(
         fuelRemaining.consumedAtRatio(fuelRatio)
     ))
-    const maxDv = isp * 9.81 * Math.log(startMass / (dryMass + minFuelRemaining.mass))
+    const maxDv = dvForDm(startMass, dryMass + minFuelRemaining.mass, isp)
 
     return {
         dv: burn.dv,
@@ -223,11 +214,7 @@ function calcFuelRequired(
 ): Resources {
     const {isp, fuelRatio} = combineEngines(burn.engines)
 
-    /* ∆v = Isp * g0 * ln(m0 / mf)
-     * => exp( ∆v / (Isp*g0) ) = m0 / mf
-     * => m0 = mf * exp( ∆v / (Isp*g0) )
-     */
-    const startMass = endMass * Math.exp(burn.dv / (isp * 9.81))
+    const startMass = massBeforeDv(endMass, burn.dv, isp)
     const fuelMass = startMass - endMass
     return fuelRatio.scaled(fuelMass / fuelRatio.mass)
 }
