@@ -1,6 +1,9 @@
 .error {
     color: #ff0000;
 }
+.zero {
+    color: #cccccc
+}
 
 input.Integer {
     text-align: right;

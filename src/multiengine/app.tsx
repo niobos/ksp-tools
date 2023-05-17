@@ -96,6 +96,7 @@ interface BurnProps extends BurnSpec {
     startMass: number
     endMass: number
     fuelRemaining: Resources
+    maxDv: number
 }
 function Burn(props: BurnProps): JSX.Element {
     /* https://space.stackexchange.com/a/27376
@@ -118,10 +119,14 @@ function Burn(props: BurnProps): JSX.Element {
         /><input type="button" value="move down"
                  onClick={() => props.onMove(1)}
         /><br/>
-        <SiInput
+        <FloatInput
+            decimals={1}
             value={props.dv}
             onChange={dv => props.onChange({dv, engines: props.engines})}
-        />m/s burn
+        />m/s (max: <a
+            href="javascript:return false"
+            onClick={() => props.onChange({dv: props.maxDv, engines: props.engines})}
+        >{props.maxDv.toFixed(1)}m/s</a>) burn
         {" = "}<KerbalYdhmsInput
             value={duration}
             onChange={dt => props.onChange({dv: dvFromDt(dt), engines: props.engines})}
@@ -145,12 +150,16 @@ function Burn(props: BurnProps): JSX.Element {
             /></li>
         </ul>
         Combined ISP: {props.combinedIsp}s<br/>
-        Combined thrust: {props.combinedThrust}kN<br/>
+        Combined thrust: {props.combinedThrust}kN, {(props.combinedThrust / props.startMass).toFixed(1)}m/s²<br/>
         Start mass: {props.startMass.toFixed(3)}t<br/>
         Fuel remaining:
         <ul>{FUEL_TYPES.map((fuelType, idx) => <li
             key={idx}
-            className={props.fuelRemaining[fuelType] < 0 ? "error" : ""}
+            className={
+                Math.abs(props.fuelRemaining[fuelType]) < 0.1
+                    ? "zero"
+                    : props.fuelRemaining[fuelType] < 0 ? "error" : ""
+            }
         >
             {props.fuelRemaining[fuelType].toFixed(1)} units{" = "}
             {(props.fuelRemaining[fuelType] * Resources.mass[fuelType]).toFixed(3)}t {fuelType}
@@ -193,6 +202,11 @@ function calcBurn(
     const consumedFuelMass = startMass - endMass
     fuelRemaining = fuelRemaining.sub(fuelRatio.scaled(consumedFuelMass / fuelRatio.mass))
 
+    const minFuelRemaining = fuelRemaining.sub(fuelRatio.scaled(
+        fuelRemaining.consumedAtRatio(fuelRatio)
+    ))
+    const maxDv = isp * 9.81 * Math.log(startMass / (dryMass + minFuelRemaining.mass))
+
     return {
         dv: burn.dv,
         engines: burn.engines,
@@ -201,6 +215,7 @@ function calcBurn(
         startMass,
         endMass,
         fuelRemaining,
+        maxDv,
     }
 }
 function calcFuelRequired(
