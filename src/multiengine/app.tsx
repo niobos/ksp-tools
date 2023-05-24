@@ -64,9 +64,6 @@ interface EngineProps extends EngineSpecs {
 }
 function Engine(props: EngineProps): JSX.Element {
     const engineSpec = resolveEngine(props.type)
-    // for kspEngine parts, use the vacuum stats:
-    if(Array.isArray(engineSpec.isp)) engineSpec.isp = engineSpec.isp[engineSpec.isp.length - 1]
-    if(Array.isArray(engineSpec.thrust)) engineSpec.thrust = engineSpec.thrust[engineSpec.thrust.length - 1]
 
     return <li>
         <input

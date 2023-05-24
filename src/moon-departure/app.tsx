@@ -242,7 +242,7 @@ export default function App() {
         selectedTransfer.captureBurnPrn = Vector.FromObject(selectedTransfer.captureBurnPrn)
         selectedTransfer.circularizationBurnPrn = Vector.FromObject(selectedTransfer.circularizationBurnPrn)
 
-        maybeSelectedTransfer = <div style={{margin: "1em"}}>
+        maybeSelectedTransfer = <div style={{margin: "1em", minWidth: '30em'}}>
             <h3>Selected transfer details</h3>
             <table><tbody>
             <tr><td>Departure</td><td>{formatValueYdhmsAbs(selectedTransfer.departureTime)}</td></tr>
@@ -351,7 +351,7 @@ export default function App() {
         </td></tr>
         </tbody></table>
         <h2>Plot</h2>
-        <div style={{display: "flex"}}>
+        <div style={{display: "flex", flexWrap: 'wrap'}}>
             <div style={{}}>
                 <div>{plotTypesJsx}</div>
                 <ColorMapPlot
