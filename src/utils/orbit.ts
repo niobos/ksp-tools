@@ -247,10 +247,11 @@ export default class Orbit {
 
         const A = Math.sin(dθ) * Math.sqrt(r1_norm * r2_norm / (1-Math.cos(dθ)));  // [OMES 5.35]
 
-        const y = (z) => r1_norm + r2_norm + A * (z * Orbit._S(z) - 1) / (Math.sqrt(Orbit._C(z)));  // [OMES 5.38]
+        const y = (z) => r1_norm + r2_norm + A * (z * Orbit._S(z) - 1) / Math.sqrt(Orbit._C(z));  // [OMES 5.38]
         const z = Orbit._findZero(
             (z) => {
                 const y_z = y(z);
+                if(y_z < 0) throw RangeError("Solving Lambert: y(z) is negative, why?")
                 const C_z = Orbit._C(z);
                 const S_z = Orbit._S(z);
                 const Cp_z = Orbit._Cp(z);
