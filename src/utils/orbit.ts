@@ -510,13 +510,18 @@ export default class Orbit {
                     const {turn: turnOfD} = turnFromVelocityAngle(d);
                     return turnOfD - turn;
                 },
-                1e-8 * (direction === "direct" ? 1 : -1),
-                (Math.PI - 1e-8) * (direction === "direct" ? 1 : -1),
+                1e-7 * (direction === "direct" ? 1 : -1),
+                (Math.PI - 1e-7) * (direction === "direct" ? 1 : -1),
             )
             const {orbit} = turnFromVelocityAngle(velocityDirection);
             return orbit;
         } catch(e) {
             if(e instanceof TypeError) return null;
+            if(e instanceof RangeError) {
+                // weird, shouldn't happen but swallow
+                console.log(`Error detected when bisecting. Possible rounding error, ignoring. ${e}`)
+                return null;
+            }
             throw e;
         }
     }
@@ -952,6 +957,15 @@ export default class Orbit {
         )
     }
 
+    isValid(): boolean {
+        return !(
+            isNaN(this.gravity)
+            || this.r0.isNaN()
+            || this.v0.isNaN()
+            || isNaN(this.t0)
+        )
+    }
+
     get _α(): number {
         // Reciprocal of the semi-major axis
         if(this._cache['_α'] === undefined) {
@@ -1119,7 +1133,7 @@ export default class Orbit {
         let fa = f_(a);
         let fb = f_(b);
         if(!(fa * fb < 0)) {
-            throw `Expected f(${a})=${fa} and f(${b})=${fb} to have different sign.`;
+            throw RangeError(`Expected f(${a})=${fa} and f(${b})=${fb} to have different sign.`);
         }
         while(Math.abs(a-b) > tolerance) {
             const x = (a + b) / 2;

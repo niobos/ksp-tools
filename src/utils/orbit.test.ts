@@ -520,6 +520,17 @@ describe('previous bugs', () => {
             0,
         )
 
-        const p1 = o1.positionAtT(2205)
+        const p1 = o1.positionAtT(2205)  // crashes (no longer)
+        expect(p1.norm).toBeGreaterThan(0)
+    })
+
+    describe('FromPositionAndHyperbolicExcessVelocityVector same sign error', () => {
+        const o1 = Orbit.FromPositionAndHyperbolicExcessVelocityVector(
+            kspBodies['Kerbin'].gravity,
+            new Vector(87614.25612076276, -674332.071107749, 7.392705806574268e-8),
+            new Vector(546.91521487867, 1489.6556244085168, -269.63249167823324),
+            "indirect",
+        )
+        expect(o1.energy).toBeGreaterThan(0)
     })
 });

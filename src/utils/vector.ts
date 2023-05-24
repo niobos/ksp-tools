@@ -19,6 +19,10 @@ export default class Vector<Type extends number=number> {
         )
     }
 
+    isNaN(): boolean {
+        return isNaN(this.x) || isNaN(this.y) || isNaN(this.z)
+    }
+
     static FromSpherical(r: number, i: number, a: number): Vector {
         // Inclination measured from positive z-axis
         return new Vector(
