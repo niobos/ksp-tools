@@ -267,6 +267,7 @@ export default class Orbit {
             },
             0,
         );
+        if(isNaN(z)) throw RangeError("Solving Lambert: did not converge")
 
         const y_z = y(z);
 

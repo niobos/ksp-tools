@@ -74,6 +74,7 @@ function calcOne(
         departingPlanetPositionAtDeparture, targetPlanetPositionAtEnd, interplanetaryTravelTime,
         "prograde", interplanetaryDepartureTime,
     )
+
     const interplanetaryDepartureVelocity = interplanetaryTransferOrbit.velocityAtT(interplanetaryDepartureTime)
     const departurePlanetEscapeVelocity = interplanetaryDepartureVelocity.sub(departingPlanetOrbit.velocityAtT(interplanetaryDepartureTime))
 
@@ -155,23 +156,29 @@ self.onmessage = (m) => {
     input.departingPlanetOrbit = Orbit.FromObject(input.departingPlanetOrbit)
     input.parkingOrbitAroundDepartingPlanet = Orbit.FromObject(input.parkingOrbitAroundDepartingPlanet)
     input.targetPlanetOrbit = Orbit.FromObject(input.targetPlanetOrbit)
+    //console.log(`Starting ${input.requestId}`)
 
     const out: WorkerOutput = {
         requestId: input.requestId,
         result: [],
     }
     for(let t0dt of input.departureAndTravelTimes) {
-        const transfer = calcOne(
-            input.departingPlanetOrbit,
-            input.parkingOrbitAroundDepartingPlanet,
-            input.minPeriapsis,
-            input.targetPlanetOrbit,
-            input.targetPlanetGravity,
-            input.targetPlanetParkingOrbitRadius,
-            input.targetPlanetSoi,
-            t0dt[0],
-            t0dt[1],
-        );
+        let transfer = null
+        try {
+            transfer = calcOne(
+                input.departingPlanetOrbit,
+                input.parkingOrbitAroundDepartingPlanet,
+                input.minPeriapsis,
+                input.targetPlanetOrbit,
+                input.targetPlanetGravity,
+                input.targetPlanetParkingOrbitRadius,
+                input.targetPlanetSoi,
+                t0dt[0],
+                t0dt[1],
+            );
+        } catch(e) {
+            console.log(e)
+        }
         out.result.push({
             departureTime: t0dt[0],
             travelTime: t0dt[1],
