@@ -2,15 +2,21 @@
  *  [OMES]: Howard D. Curtis - Orbital Mechanics for Engineering Students
  *          https://en.wikipedia.org/wiki/Orbital_Mechanics_for_Engineering_Students
  *          http://www.nssc.ac.cn/wxzygx/weixin/201607/P020160718380095698873.pdf
+ *  [Izzo]: Dario Izzo - Revisiting Lambert’s Problem
+ *          https://arxiv.org/pdf/1403.2705.pdf
  */
 
 import Vector from "./vector";
 
-// Some type aliases to help
+/* Some type aliases to help with units
+ * There is no unit-checking at all, this just help when writing code
+ */
 export type Seconds = number;
 export type Radians = number;
 export type Meter = number;
-export type MeterPerSecond = number;
+export type MeterPerSecond = number;  // m/s, velocity, speed
+export type Meter2PerSecond = number;  // m²/s, specific angular momentum
+export type Meter3PerSecond2 = number;  // m³ × s⁻², gravitational field
 
 export type OrbitalElements = {
     sma: Meter,  // m, parameter for parabolic orbits, negative for hyperbolic
@@ -19,7 +25,7 @@ export type OrbitalElements = {
     inc?: Radians,  // rad
     lon_an?: Radians,  // rad
 } | {
-    h: Vector,  // [m^2/s, m^2/s, m^2/s]
+    h: Vector<Meter2PerSecond>,  // [m^2/s, m^2/s, m^2/s]
     e: Vector,  // [unitless, unitless, unitless]
 };
 export type OrbitalPhase = {
@@ -34,9 +40,9 @@ export default class Orbit {
     _cache: object = {}
 
     static FromStateVector(
-        gravity: number,
-        position: Vector,
-        velocity: Vector,
+        gravity: Meter3PerSecond2,
+        position: Vector<Meter>,
+        velocity: Vector<MeterPerSecond>,
         time: Seconds = 0,
     ): Orbit {
         /**
@@ -56,7 +62,7 @@ export default class Orbit {
     }
 
     static FromOrbitalElements(
-        gravity: number,  // m^3 s^-2
+        gravity: Meter3PerSecond2,  // m^3 s^-2
         orbitalElements: OrbitalElements,
         orbitalPhase?: OrbitalPhase,
     ): Orbit {
@@ -223,17 +229,44 @@ export default class Orbit {
     }
 
     static FromLambert(
-        gravity: number,
-        position1: Vector,
-        position2: Vector,
+        gravity: Meter3PerSecond2,
+        position1: Vector<Meter>,
+        position2: Vector<Meter>,
         dt: Seconds,
         direction: "prograde" | "retrograde" = "prograde",
+        revolutions: number = 0,
+        path: "high" | "low" = "low",
         t0: Seconds = 0,
-    ): Orbit {
+    ): {orbit: Orbit, arc: Radians} {
         /* Solve the Lambert problem: find the orbit that will bring an object
          * from `position1` to `position2` in `dt` time, assuming a primary body
          * at the center of the coordinate system with gravity `gravity`.
+         *
+         * Optionally, perform `revolutions` revolutions around the attractor before arriving.
+         * Generally, there will be 2 elliptical orbits that satisfy the requirements,
+         * one with the empty focus point below the chord line ("low"), and a second one above ("high")
          */
+        if(revolutions != 0) {
+            throw RangeError("Multi-revolution not supported")
+        }
+        return this.FromLambertBate71(
+            gravity,
+            position1,
+            position2,
+            dt,
+            direction,
+            t0,
+        )
+    }
+
+    static FromLambertBate71(
+        gravity: Meter3PerSecond2,
+        position1: Vector<Meter>,
+        position2: Vector<Meter>,
+        dt: Seconds,
+        direction: "prograde" | "retrograde" = "prograde",
+        t0: Seconds = 0,
+    ): {orbit: Orbit, arc: Radians} {
         // [OMES Algorithm 5.2]
         const r1_norm = position1.norm;
         const r2_norm = position2.norm;
@@ -282,7 +315,10 @@ export default class Orbit {
         const v1 = position2.sub(position1.mul(f)).mul(1/g);  // [OMES 5.28]
         //const v2 = position2.mul(gp).sub(position1).mul(1/g);  // [OMES 5.29]
 
-        return Orbit.FromStateVector(gravity, position1, v1, t0);
+        return {
+            orbit: Orbit.FromStateVector(gravity, position1, v1, t0),
+            arc: dθ,
+        };
     }
 
     serialize(): string {
@@ -304,6 +340,7 @@ export default class Orbit {
     }
 
     get energy(): number {
+        /* in J/kg or m²/s² */
         if(this._cache['energy'] === undefined) {
             this._cache['energy'] = this.v0.norm * this.v0.norm / 2
                 - this.gravity / this.r0.norm;  // [OMES] 2.47
@@ -311,21 +348,21 @@ export default class Orbit {
         return this._cache['energy'];
     }
 
-    get specificAngularMomentumVector(): Vector {
+    get specificAngularMomentumVector(): Vector<Meter2PerSecond> {
         // specific angular momentum
         if(this._cache['h'] === undefined) {
             this._cache['h'] = this.r0.cross_product(this.v0);
         }
         return this._cache['h'];
     }
-    get specificAngularMomentum(): number {
+    get specificAngularMomentum(): Meter2PerSecond {
         if(this._cache['h_norm'] === undefined) {
             this._cache['h_norm'] = this.specificAngularMomentumVector.norm;
         }
         return this._cache['h_norm'];
     }
 
-    get eccentricityVector(): Vector {
+    get eccentricityVector(): Vector<number> {
         // eccentricity vector
         if(this._cache['e'] === undefined) {
             // [OMES] 2.30
@@ -347,12 +384,12 @@ export default class Orbit {
         // Semi-major axis
         return 1 / this._α;
     }
-    get parameter(): number {
+    get parameter(): Meter {
         // Returns the parameter of the orbit
         const h = this.specificAngularMomentum;
         return h*h / this.gravity;  // [OMES 2.43]
     }
-    get _smaOrParameter(): number {
+    get _smaOrParameter(): Meter {
         if(this.eccentricity === 1) {
             return this.parameter;
         }
@@ -369,14 +406,14 @@ export default class Orbit {
         }
         return this._cache['period'];
     }
-    static smaFromPeriod(gravity: number, period: Seconds): Meter {
+    static smaFromPeriod(gravity: Meter3PerSecond2, period: Seconds): Meter {
         /* Calculates the sma to get a given orbital period
          * in the given gravity field.
          */
         // https://en.wikipedia.org/wiki/Orbital_period
         return Math.pow(period*period / (4 * Math.PI * Math.PI) * gravity, 1/3);
     }
-    static periodFromSma(gravity: number, sma: Meter): Seconds {
+    static periodFromSma(gravity: Meter3PerSecond2, sma: Meter): Seconds {
         /* Calculate the period of an orbit
          * given the SMA and gravity field.
          *
@@ -417,7 +454,7 @@ export default class Orbit {
             sma * (1+e),
         ];
     }
-    static periapsisDistanceFromParabolicPeriapsisSpeed(gravity: number, speed: number): Meter {
+    static periapsisDistanceFromParabolicPeriapsisSpeed(gravity: Meter3PerSecond2, speed: MeterPerSecond): Meter {
         return 2 * gravity / (speed*speed); // [OMES 2.80]
     }
     get turnAngle(): Radians {
@@ -428,35 +465,35 @@ export default class Orbit {
             return 2 * Math.asin(1/this.eccentricity);  // [OMES 2.90]
         }
     }
-    get hyperbolicExcessVelocity(): number {
+    get hyperbolicExcessVelocity(): MeterPerSecond {
         if(this.energy < 0) return null
         else if(this.energy === 0) return 0;
         // else:
         return Math.sqrt(this.gravity / (-this.semiMajorAxis));  // [OMES 2.102]
     }
-    get trueAnomalyOfAsymptote(): number {
+    get trueAnomalyOfAsymptote(): Radians {
         if(this.energy < 0) return null  // elliptic, does not have an asymptote
         // else:  // parabolic, hyperbolic
         return Math.acos(Math.max(-1, Math.min(1,
             -1./this.eccentricity)))
     }
-    static semiMajorAxisFromHyperbolicExcessVelocity(gravity: number, v: number): Meter {
+    static semiMajorAxisFromHyperbolicExcessVelocity(gravity: Meter3PerSecond2, v: MeterPerSecond): Meter {
         return -gravity / (v*v);  // from [OMES 2.102]
     }
     static semiMajorAxisEFromApoapsisHyperbolicExcessVelocity(
-        gravity: number,
+        gravity: Meter3PerSecond2,
         apoapsisDistance: Meter,
-        hyperbolicExcessVelocity: number
-    ): {sma: number, e: number} {
+        hyperbolicExcessVelocity: MeterPerSecond
+    ): {sma: Meter, e: number} {
         const sma = Orbit.semiMajorAxisFromHyperbolicExcessVelocity(gravity, hyperbolicExcessVelocity);
         const e = apoapsisDistance / sma - 1;
         return {sma, e};
     }
     static semiMajorAxisEFromPeriapsisHyperbolicExcessVelocity(
-        gravity: number,
+        gravity: Meter3PerSecond2,
         periapsisDistance: Meter,
-        hyperbolicExcessVelocity: number
-    ): {sma: number, e: number} {
+        hyperbolicExcessVelocity: MeterPerSecond
+    ): {sma: Meter, e: number} {
         if(hyperbolicExcessVelocity === 0) {  // Parabolic
             return {
                 sma: 2 * periapsisDistance,  // parameter in parabolic case
@@ -468,9 +505,9 @@ export default class Orbit {
         return {sma, e};
     }
     static FromPositionAndHyperbolicExcessVelocityVector(
-        gravity: number,
-        position: Vector,
-        hyperbolicExcessVelocityVector: Vector,
+        gravity: Meter3PerSecond2,
+        position: Vector<Meter>,
+        hyperbolicExcessVelocityVector: Vector<MeterPerSecond>,
         direction: "direct" | "indirect",
         t0: Seconds = 0,
     ): Orbit {
@@ -527,7 +564,7 @@ export default class Orbit {
             throw e;
         }
     }
-    static optimalApoapsis(gravity: number, hyperbolicExcessVelocity: number): Meter {
+    static optimalApoapsis(gravity: Meter3PerSecond2, hyperbolicExcessVelocity: MeterPerSecond): Meter {
         /* Calculates the optimal (in ∆v terms) apoapsis to switch from
          * a hyperbolic orbit into/from a circular orbit.
          * The hyperbolic periapsis depends on the desired eccentricity, and equals the
@@ -546,7 +583,7 @@ export default class Orbit {
         return this._cache['inc'];
     }
 
-    get nodeLineVector(): Vector {
+    get nodeLineVector(): Vector<Meter> {
         /* Vector pointing to the ascending node */
         if(this._cache['N'] === undefined) {
             // part of [OMES Algorithm 4.1]
@@ -675,26 +712,26 @@ export default class Orbit {
         return h*h / this.gravity / (1 + e * Math.cos(θ))
     }
 
-    positionAtTa(θ: Radians): Vector {
+    positionAtTa(θ: Radians): Vector<Meter> {
         const r_norm = this.distanceAtTa(θ);
         const r_osculating_plane = Vector.FromSpherical(r_norm, Math.PI/2, θ);
         return this.perifocalToGlobal(r_osculating_plane);
     }
 
-    positionAtT(t: Seconds): Vector {
+    positionAtT(t: Seconds): Vector<Meter> {
         const dt = t - this.t0;
         if(dt === 0) return this.r0;
         const {r} = this._rAndχAtDt(dt);
         return r;
     }
 
-    speedAtTa(θ: Radians): number {
+    speedAtTa(θ: Radians): MeterPerSecond {
         const r = this.distanceAtTa(θ);
         const e = this.energy;
         return Math.sqrt(2 * (e + this.gravity / r));  // [OMES] 2.48
     }
 
-    flightAngleAtTa(θ: Radians): number {
+    flightAngleAtTa(θ: Radians): Radians {
         /* Calculate the Flight Angle, the angle between the velocity vector
          * and the local horizon (i.e. perpendicular to position vector).
          * Positive values means above the horizon; negative means below.
@@ -707,7 +744,7 @@ export default class Orbit {
         return Math.atan(tan_fa);
     }
 
-    velocityAtTa(θ: Radians): Vector {
+    velocityAtTa(θ: Radians): Vector<MeterPerSecond> {
         const s = this.speedAtTa(θ);
         const fa = this.flightAngleAtTa(θ);
         const v_pf = (new Vector(s, 0, 0))
@@ -718,12 +755,12 @@ export default class Orbit {
         return this.perifocalToGlobal(v_pf);
     }
 
-    velocityAtT(t: Seconds): Vector {
+    velocityAtT(t: Seconds): Vector<MeterPerSecond> {
         const {v} = this.stateVectorAtT(t);
         return v;
     }
 
-    stateVectorAtT(t: Seconds = 0): {r: Vector, v: Vector} {
+    stateVectorAtT(t: Seconds = 0): {r: Vector<Meter>, v: Vector<MeterPerSecond>} {
         if(t === this.t0) return {r: this.r0, v: this.v0};
 
         const dt = t - this.t0;

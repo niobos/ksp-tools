@@ -257,6 +257,8 @@ export default function App() {
                 ({selectedTransfer.escapeBurnPrn.x.toFixed(1)}m/s prograde,{" "}
                 {selectedTransfer.escapeBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
                 {selectedTransfer.escapeBurnPrn.z.toFixed(1)}m/s normal)</td></tr>
+            <tr><td>Interplanetary arc</td>
+                <td>{(selectedTransfer.transferAngle / Math.PI * 180).toFixed(0)}°</td></tr>
             <tr><td>Arrival Time</td>
                 <td>{formatValueYdhmsAbs(selectedTransfer.departureTime + selectedTransfer.travelTime)}</td></tr>
             <tr><td>Capture Burn</td><td>{(-selectedTransfer.captureBurnPrn.x).toFixed(1)}m/s retrograde</td></tr>

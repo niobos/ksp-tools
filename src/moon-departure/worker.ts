@@ -18,6 +18,7 @@ export type TransferResult = {
     escapeBurnPrn: Vector
     escapeOrbit: Orbit
     transferOrbit: Orbit
+    transferAngle: number
     captureBurnPrn: Vector
     circularizationBurnPrn: Vector
     totalDv: number
@@ -69,7 +70,7 @@ function calcOne(
     const interplanetaryArrivalTime = interplanetaryDepartureTime + interplanetaryTravelTime;
     const targetPlanetPositionAtEnd = targetPlanetOrbit.positionAtT(interplanetaryArrivalTime)
 
-    const interplanetaryTransferOrbit = Orbit.FromLambert(
+    const {orbit: interplanetaryTransferOrbit, arc: interplanetaryTransferArc} = Orbit.FromLambert(
         departingPlanetOrbit.gravity,
         departingPlanetPositionAtDeparture, targetPlanetPositionAtEnd, interplanetaryTravelTime,
         "prograde", interplanetaryDepartureTime,
@@ -143,6 +144,7 @@ function calcOne(
         escapeBurnPrn,
         escapeOrbit,
         transferOrbit: interplanetaryTransferOrbit,
+        transferAngle: interplanetaryTransferArc,
         captureBurnPrn,
         circularizationBurnPrn,
         totalDv: (diveBurnPrn != null ? diveBurnPrn.norm : 0) +

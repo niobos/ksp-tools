@@ -1,4 +1,4 @@
-import Orbit from "./orbit";
+import Orbit, {Meter, MeterPerSecond} from "./orbit";
 import Vector from "./vector";
 import {bodies, bodies as kspBodies} from "./kspBody";
 
@@ -7,8 +7,8 @@ const earthRadius = 6378e3;
 
 describe('OMES examples', () => {
     describe('example 2.9', () => {
-        const r0 = new Vector(8182.4e3, -6865.9e3, 0);
-        const v0 = new Vector(0.47572e3, 8.8116e3, 0);
+        const r0 = new Vector<Meter>(8182.4e3, -6865.9e3, 0);
+        const v0 = new Vector<MeterPerSecond>(0.47572e3, 8.8116e3, 0);
         const o = Orbit.FromStateVector(
             earthGravity,
             r0,
@@ -124,7 +124,7 @@ describe('OMES examples', () => {
         const r1 = new Vector(5000e3, 10000e3, 2100e3);
         const r2 = new Vector(-14600e3, 2500e3, 7000e3);
         const dt = 3600;
-        const o = Orbit.FromLambert(earthGravity, r1, r2, dt);
+        const {orbit: o} = Orbit.FromLambert(earthGravity, r1, r2, dt);
         expect(o.specificAngularMomentum / 1e6).toBeCloseTo(80470-3, 0);  // different, rounding?
         expect(o.semiMajorAxis/1e3).toBeCloseTo(20000+3, 0);  // different, rounding?
         expect(o.eccentricity).toBeCloseTo(0.4335);
@@ -144,7 +144,7 @@ describe('OMES examples', () => {
             5/180*Math.PI,
         );
         const dt = 13.5*3600;
-        const o = Orbit.FromLambert(earthGravity, r1, r2, dt);
+        const {orbit: o} = Orbit.FromLambert(earthGravity, r1, r2, dt);
         expect(o.distanceAtPeriapsis/1e3).toBeCloseTo(6538.2, 1);
         expect(o.tAtTa(0) - dt).toBeCloseTo(38396, 0);
     });
@@ -489,6 +489,40 @@ describe('Minmus departure', () => {
         expect(vr2.sub(vinf).norm).toBeCloseTo(0);
     });
 });
+
+describe('Lambert', () => {
+    describe('single-revolution', () => {
+        const lko = Orbit.FromOrbitalElements(
+            kspBodies['Kerbin'].gravity,
+            {sma: 700e3},
+        )
+        const {orbit, arc} = Orbit.FromLambert(
+            kspBodies['Kerbin'].gravity,
+            new Vector(700e3, 0, 0),
+            new Vector(0, 700e3, 0),
+            lko.period / 4,
+        )
+        expect(orbit.semiMajorAxis).toBeCloseTo(700e3, 0)
+        expect(arc).toBeCloseTo(Math.PI * 1/2)
+    })
+
+    describe('multi-revolution', () => {
+        const lko = Orbit.FromOrbitalElements(
+            kspBodies['Kerbin'].gravity,
+            {sma: 700e3},
+        )
+        const {orbit, arc} = Orbit.FromLambert(
+            kspBodies['Kerbin'].gravity,
+            new Vector(700e3, 0, 0),
+            new Vector(0, 700e3, 0),
+            lko.period * 5 / 4,
+            'prograde',
+            0,
+        )
+        expect(orbit.semiMajorAxis).toBeCloseTo(700e3, 0)
+        expect(arc).toBeCloseTo(Math.PI * 5/2)
+    })
+})
 
 describe('next intercept', () => {
     describe('test something', () => {
