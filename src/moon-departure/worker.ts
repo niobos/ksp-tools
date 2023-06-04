@@ -70,13 +70,15 @@ function calcOne(
     const interplanetaryArrivalTime = interplanetaryDepartureTime + interplanetaryTravelTime;
     const targetPlanetPositionAtEnd = targetPlanetOrbit.positionAtT(interplanetaryArrivalTime)
 
-    const {orbit: interplanetaryTransferOrbit, arc: interplanetaryTransferArc} = Orbit.FromLambert(
+    const {orbit: interplanetaryTransferOrbit,
+        arc: interplanetaryTransferArc,
+        v1: interplanetaryDepartureVelocity
+    } = Orbit.FromLambert(
         departingPlanetOrbit.gravity,
         departingPlanetPositionAtDeparture, targetPlanetPositionAtEnd, interplanetaryTravelTime,
         "prograde", interplanetaryDepartureTime,
     )
 
-    const interplanetaryDepartureVelocity = interplanetaryTransferOrbit.velocityAtT(interplanetaryDepartureTime)
     const departurePlanetEscapeVelocity = interplanetaryDepartureVelocity.sub(departingPlanetOrbit.velocityAtT(interplanetaryDepartureTime))
 
     const probeVelocityAtStart = parkingOrbitAroundDepartingPlanet.velocityAtT(departureTime)

@@ -17,6 +17,7 @@ import Vector from "../utils/vector";
 import ColorMapPlot, {PlotFuncType} from "./colorMapPlot";
 import './app.css';
 import Altitude from "../components/altitude";
+import {formatValueSi} from "formattedInput";
 
 let REQUEST_ID = 0;
 
@@ -238,6 +239,7 @@ export default function App() {
         }
 
         selectedTransfer.diveBurnPrn = Vector.FromObject(selectedTransfer.diveBurnPrn)
+        selectedTransfer.diveOrbit = Orbit.FromObject(selectedTransfer.diveOrbit)
         selectedTransfer.escapeBurnPrn = Vector.FromObject(selectedTransfer.escapeBurnPrn)
         selectedTransfer.captureBurnPrn = Vector.FromObject(selectedTransfer.captureBurnPrn)
         selectedTransfer.circularizationBurnPrn = Vector.FromObject(selectedTransfer.circularizationBurnPrn)
@@ -248,10 +250,16 @@ export default function App() {
             <tr><td>Departure</td><td>{formatValueYdhmsAbs(selectedTransfer.departureTime)}</td></tr>
             <tr><td>Total travel time</td><td>{formatValueYdhms(selectedTransfer.travelTime)}</td></tr>
             {selectedTransfer.diveBurnPrn != null ?
-                <tr><td>Dive burn</td><td>{selectedTransfer.diveBurnPrn.norm.toFixed(1)}m/s
-                    ({selectedTransfer.diveBurnPrn.x.toFixed(1)}m/s prograde,{" "}
-                    {selectedTransfer.diveBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
-                    {selectedTransfer.diveBurnPrn.z.toFixed(1)}m/s normal)</td></tr>
+                <>
+                    <tr><td>Dive burn</td><td>{selectedTransfer.diveBurnPrn.norm.toFixed(1)}m/s
+                        ({selectedTransfer.diveBurnPrn.x.toFixed(1)}m/s prograde,{" "}
+                        {selectedTransfer.diveBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
+                        {selectedTransfer.diveBurnPrn.z.toFixed(1)}m/s normal)</td></tr>
+                    <tr><td>Dive orbit</td><td>{formatValueSi(selectedTransfer.diveOrbit.distanceAtApoapsis)}m
+                        {" × "}{formatValueSi(selectedTransfer.diveOrbit.distanceAtPeriapsis)}m
+                        {", "}{formatValueSi(selectedTransfer.diveOrbit.distanceAtApoapsis - primaryBody.radius)}mAGL
+                        {" × "}{formatValueSi(selectedTransfer.diveOrbit.distanceAtPeriapsis - primaryBody.radius)}mAGL</td></tr>
+                </>
                 : <></>}
             <tr><td>Escape Burn</td><td>{selectedTransfer.escapeBurnPrn.norm.toFixed(1)}m/s
                 ({selectedTransfer.escapeBurnPrn.x.toFixed(1)}m/s prograde,{" "}

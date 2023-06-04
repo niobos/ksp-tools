@@ -234,10 +234,10 @@ export default class Orbit {
         position2: Vector<Meter>,
         dt: Seconds,
         direction: "prograde" | "retrograde" = "prograde",
+        t0: Seconds = 0,
         revolutions: number = 0,
         path: "high" | "low" = "low",
-        t0: Seconds = 0,
-    ): {orbit: Orbit, arc: Radians} {
+    ): {orbit: Orbit, arc: Radians, v1: Vector<MeterPerSecond>} {
         /* Solve the Lambert problem: find the orbit that will bring an object
          * from `position1` to `position2` in `dt` time, assuming a primary body
          * at the center of the coordinate system with gravity `gravity`.
@@ -246,6 +246,11 @@ export default class Orbit {
          * Generally, there will be 2 elliptical orbits that satisfy the requirements,
          * one with the empty focus point below the chord line ("low"), and a second one above ("high")
          */
+        if(dt <= 0) throw RangeError("∆t can't be <= 0")
+        if(gravity <= 0) throw RangeError("Need gravity to solve Lambert problem")
+
+        //this.FromLambertIzzo14(gravity, position1, position2, dt, direction, revolutions, path, t0)
+
         if(revolutions != 0) {
             throw RangeError("Multi-revolution not supported")
         }
@@ -259,6 +264,181 @@ export default class Orbit {
         )
     }
 
+    static FromLambertIzzo14(
+        gravity: Meter3PerSecond2,
+        position1: Vector<Meter>,
+        position2: Vector<Meter>,
+        dt: Seconds,
+        direction: "prograde" | "retrograde" = "prograde",
+        revolutions: number = 0,
+        path: "high" | "low" = "low",
+        t0: Seconds = 0,
+    ): {orbit: Orbit, arc: Radians, v1: Vector<MeterPerSecond>} {
+        /* Based on:
+         *  - [Izzo]
+         *  - https://github.com/darioizzo/lambert/blob/master/lambert.py
+         *  - https://github.com/poliastro/poliastro/blob/main/src/poliastro/core/iod.py
+         */
+        const chord = position2.sub(position1)
+        const r1_norm = position1.norm
+        const r2_norm = position2.norm
+        const c_norm = chord.norm
+        const r1_unit = position1.mul(1/r1_norm)
+        const r2_unit = position2.mul(1/r2_norm)
+        const h = position1.cross_product(position2)
+        const h_unit = h.mul(1/h.norm)
+
+        const semiperimeter = (r1_norm + r2_norm + c_norm) / 2
+        let lambda = Math.sqrt(1 - Math.min(c_norm / semiperimeter, 1.))
+
+        let t1_unit, t2_unit
+        if( h.z < 0 ) {
+            lambda = -lambda
+            t1_unit = r1_unit.cross_product(h_unit)
+            t2_unit = r2_unit.cross_product(h_unit)
+        } else {
+            t1_unit = h_unit.cross_product(r1_unit)
+            t2_unit = h_unit.cross_product(r2_unit)
+        }
+
+        if(direction === "retrograde") {
+            lambda = -lambda
+            t1_unit = t1_unit.mul(-1)
+            t2_unit = t2_unit.mul(-1)
+        }
+
+        const norm_time_of_flight = Math.sqrt(2 * gravity / (semiperimeter*semiperimeter*semiperimeter) ) * dt
+
+        function y_from_x_lambda(x: number, lambda: number) : number {
+            return Math.sqrt(1 - lambda*lambda * (1 - x*x))
+        }
+        function initial_guess(
+            norm_time_of_flight: number,
+            lambda: number,
+            revolutions: number,
+            path: "low" | "high",
+        ): number {
+            if(revolutions == 0) {
+                const lambda2 = lambda*lambda
+                const T0 = Math.acos(lambda) + lambda * Math.sqrt(1 - lambda2) + revolutions * Math.PI
+                const T1 = 2 * (1 - lambda2*lambda) / 3
+                if(norm_time_of_flight >= T0) {
+                    return (T0 / norm_time_of_flight) ** (2 / 3) - 1
+                } else if(norm_time_of_flight < T1) {
+                    return 5 / 2 * T1 / norm_time_of_flight * (T1 - norm_time_of_flight) / (1 - lambda2 * lambda2 * lambda) + 1
+                } else {
+                    return Math.exp(Math.log(2) * Math.log(norm_time_of_flight / T0) / Math.log(T1 / T0)) - 1
+                }
+            } else {
+                throw "multirev Not implemented"  // TODO
+            }
+        }
+        function compute_psi(x, y, lambda) {
+            if(-1 <= x && x < 1) {  // Elliptical orbit
+                return Math.acos(x * y + lambda * (1 - x * x))
+            } else if(x > 1) {  // Hyperbolic orbit
+                return Math.asinh((y - x * lambda) * Math.sqrt(x*x - 1))
+            } else {  // Parabolic orbit
+                return 0.0
+            }
+        }
+        function hyp2f1b(x) {
+            if(x >= 1.0) return Infinity
+            let res = 1.0
+            let term = 1.0
+            let ii = 0
+            while(true) {
+                term = term * (3 + ii) * (1 + ii) / (5 / 2 + ii) * x / (ii + 1)
+                const res_old = res
+                res += term
+                if(res_old == res) return res
+                ii += 1
+            }
+        }
+        function tof(x, y, T0, lambda, revolutions): number {
+            if(y == null) y = y_from_x_lambda(x, lambda)
+            let T_
+            if(revolutions == 0 && Math.sqrt(0.6) < x && x < Math.sqrt(1.4)) {
+                const eta = y - lambda * x
+                const S1 = (1 - lambda - x * eta) * 0.5
+                const Q = 4 / 3 * hyp2f1b(S1)
+                T_ = (eta ** 3 * Q + 4 * lambda * eta) * 0.5
+            } else {
+                const psi = compute_psi(x, y, lambda)
+                T_ = ((psi + revolutions * Math.PI) / Math.sqrt(Math.abs(1 - x ** 2)) - x + lambda * y)
+                    / (1 - x ** 2)
+            }
+            return T_ - T0
+        }
+        function householder(x_guess, norm_time_of_flight, lambda, revolutions, tolerance, num_iter) {
+            let x = x_guess
+            while(num_iter--) {
+                const y = y_from_x_lambda(x, lambda)
+                const f_x = tof(x, y, norm_time_of_flight, lambda, revolutions)
+                const T = f_x + norm_time_of_flight
+                const lambda2 = lambda*lambda
+                const lambda3 = lambda2*lambda
+                const x2 = x*x
+                const y3 = y*y*y
+                const fp_x = (3 * T * x - 2 + 2 * lambda2*lambda * x / y) / (1 - x2)
+                const fpp_x = (3 * T + 5 * x * fp_x + 2 * (1 - lambda2) * lambda3 / y3) / (1 - x2)
+                const fppp_x = (7 * x * fpp_x + 8 * fp_x - 6 * (1 - lambda2) * lambda2*lambda3 * x / y3*y*y) / (1 - x2)
+
+                const x_next = x_guess - f_x * (
+                    (fp_x**2 - f_x * fpp_x / 2)
+                    / (fp_x * (fp_x**2 - f_x * fpp_x) + fppp_x * f_x**2 / 6)
+                )
+
+                if(Math.abs(x_next - x) < tolerance) return x_next
+                x = x_next
+            }
+            throw "failed to converge"
+        }
+        function find_xy(
+            lambda: number,
+            norm_time_of_flight: number,
+            revolutions: number,
+            path: "low" | "high",
+            num_iter: number = 100,
+            tolerance: number = 1e-3,
+        ): {x: number, y: number} {
+            const max_revolutions = Math.floor(norm_time_of_flight / Math.PI)
+            const T00 = Math.acos(lambda) + lambda * Math.sqrt(1 - lambda*lambda)
+
+            if( norm_time_of_flight < T00 + max_revolutions * Math.PI && max_revolutions > 0) {
+                throw "Multi-rev TODO"  // TODO
+            }
+            if(revolutions > max_revolutions) {
+                throw RangeError(`No solutions found for ${revolutions} revolutions (max: ${max_revolutions}`)
+            }
+
+            const x_guess = initial_guess(norm_time_of_flight, lambda, revolutions, path)
+            const x = householder(x_guess, norm_time_of_flight, lambda, revolutions, tolerance, num_iter)
+            const y = y_from_x_lambda(x, lambda)
+
+            return {x, y}
+        }
+        const {x, y} = find_xy(lambda, norm_time_of_flight, revolutions, path)
+
+        const gamma = Math.sqrt(gravity * semiperimeter / 2)
+        const rho = (r1_norm - r2_norm) / c_norm
+        const sigma = Math.sqrt(1 - rho**2)
+
+        const v1_rad = gamma * ((lambda * y - x) - rho * (lambda * y + x)) / r1_norm
+        const v1_tan = gamma * sigma * (y + lambda * x) / r1_norm
+        const v1 = r1_unit.mul(v1_rad) + t1_unit.mul(v1_tan)
+
+        const v2_rad = -gamma * ((lambda * y - x) + rho * (lambda * y + x)) / r2_norm
+        const v2_tan = gamma * sigma * (y + lambda * x) / r2_norm
+        const v2 = r2_unit.mul(v2_rad) + t2_unit.mul(v2_tan)
+
+        return {
+            orbit: null,
+            arc: null,
+            v1,
+        }
+    }
+de
     static FromLambertBate71(
         gravity: Meter3PerSecond2,
         position1: Vector<Meter>,
@@ -266,7 +446,7 @@ export default class Orbit {
         dt: Seconds,
         direction: "prograde" | "retrograde" = "prograde",
         t0: Seconds = 0,
-    ): {orbit: Orbit, arc: Radians} {
+    ): {orbit: Orbit, arc: Radians, v1: Vector<MeterPerSecond>} {
         // [OMES Algorithm 5.2]
         const r1_norm = position1.norm;
         const r2_norm = position2.norm;
@@ -318,6 +498,7 @@ export default class Orbit {
         return {
             orbit: Orbit.FromStateVector(gravity, position1, v1, t0),
             arc: dθ,
+            v1: v1 as Vector<MeterPerSecond>,
         };
     }
 
