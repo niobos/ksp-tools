@@ -15,12 +15,16 @@ export type WorkerInput = {
 export type TransferResult = {
     diveBurnPrn: Vector
     diveOrbit: Orbit
+    escapeBurnT: number
     escapeBurnPrn: Vector
     escapeOrbit: Orbit
     transferOrbit: Orbit
     transferAngle: number
+    flybyArrivalSpeed: number
     captureBurnPrn: Vector
+    captureSpeed: number
     circularizationBurnPrn: Vector
+    parkingOrbitSpeed: number
     totalDv: number
 }
 export type SingleOutput = {
@@ -143,12 +147,16 @@ function calcOne(
     return {
         diveBurnPrn,
         diveOrbit,
+        escapeBurnT: interplanetaryDepartureTime,
         escapeBurnPrn,
         escapeOrbit,
         transferOrbit: interplanetaryTransferOrbit,
         transferAngle: interplanetaryTransferArc,
+        flybyArrivalSpeed: interceptSpeedAtParkingAltitude,
         captureBurnPrn,
+        captureSpeed,
         circularizationBurnPrn,
+        parkingOrbitSpeed,
         totalDv: (diveBurnPrn != null ? diveBurnPrn.norm : 0) +
             escapeBurnPrn.norm + captureBurnPrn.norm + circularizationBurnPrn.norm,
     }

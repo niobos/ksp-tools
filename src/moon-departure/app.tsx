@@ -68,7 +68,9 @@ export default function App() {
         planetOptions.push(<option key={planetName} value={planetName}>{planetName}</option>);
     }
 
-    const primaryBody = kspBodies[departingPlanet];
+    const departingPlanetOrbit = kspOrbits[departingPlanet]
+    const primaryBody = kspBodies[departingPlanet]
+    const targetPlanetOrbit = kspOrbits[targetPlanet]
 
     const departingDivePeriapsis = departingDivePeriapsis_ != null ? departingDivePeriapsis_ : (
         kspBodies[departingPlanet].radius
@@ -89,8 +91,8 @@ export default function App() {
     const latestDeparture = (() => {
         if(latestDeparture_ != null) return latestDeparture_
         const minPeriod = Math.min(
-            kspOrbits[departingPlanet].period,
-            kspOrbits[targetPlanet].period,
+            departingPlanetOrbit.period,
+            targetPlanetOrbit.period,
         )
         return earliestDeparture + 2*minPeriod
     })()
@@ -107,8 +109,8 @@ export default function App() {
         const roughTransferOrbit = Orbit.FromOrbitalElements(
             kspOrbits[departingPlanet].gravity,
             Orbit.smaEFromApsides(
-                kspOrbits[departingPlanet].semiMajorAxis,
-                kspOrbits[targetPlanet].semiMajorAxis,
+                departingPlanetOrbit.semiMajorAxis,
+                targetPlanetOrbit.semiMajorAxis,
             ),
         )
         const p = roughTransferOrbit.period
@@ -119,8 +121,8 @@ export default function App() {
         const roughTransferOrbit = Orbit.FromOrbitalElements(
             kspOrbits[departingPlanet].gravity,
             Orbit.smaEFromApsides(
-                kspOrbits[departingPlanet].semiMajorAxis,
-                kspOrbits[targetPlanet].semiMajorAxis,
+                departingPlanetOrbit.semiMajorAxis,
+                targetPlanetOrbit.semiMajorAxis,
             ),
         )
         return roughTransferOrbit.period
@@ -143,10 +145,10 @@ export default function App() {
             worker.addEventListener("message", handler)
             const m: WorkerInput = {
                 requestId,
-                departingPlanetOrbit: kspOrbits[departingPlanet],
+                departingPlanetOrbit,
                 parkingOrbitAroundDepartingPlanet: departingOrbit,
                 minPeriapsis: departingDoDive ? departingDivePeriapsis : null,
-                targetPlanetOrbit: kspOrbits[targetPlanet],
+                targetPlanetOrbit,
                 targetPlanetGravity: kspBodies[targetPlanet].gravity,
                 targetPlanetParkingOrbitRadius: arrivalParkingRadius,
                 targetPlanetSoi: kspBodies[targetPlanet].soi,
@@ -241,6 +243,8 @@ export default function App() {
         selectedTransfer.diveBurnPrn = Vector.FromObject(selectedTransfer.diveBurnPrn)
         selectedTransfer.diveOrbit = Orbit.FromObject(selectedTransfer.diveOrbit)
         selectedTransfer.escapeBurnPrn = Vector.FromObject(selectedTransfer.escapeBurnPrn)
+        selectedTransfer.escapeOrbit = Orbit.FromObject(selectedTransfer.escapeOrbit)
+        selectedTransfer.transferOrbit = Orbit.FromObject(selectedTransfer.transferOrbit)
         selectedTransfer.captureBurnPrn = Vector.FromObject(selectedTransfer.captureBurnPrn)
         selectedTransfer.circularizationBurnPrn = Vector.FromObject(selectedTransfer.circularizationBurnPrn)
 
@@ -259,18 +263,30 @@ export default function App() {
                         {" × "}{formatValueSi(selectedTransfer.diveOrbit.distanceAtPeriapsis)}m
                         {", "}{formatValueSi(selectedTransfer.diveOrbit.distanceAtApoapsis - primaryBody.radius)}mAGL
                         {" × "}{formatValueSi(selectedTransfer.diveOrbit.distanceAtPeriapsis - primaryBody.radius)}mAGL</td></tr>
+                    <tr><td>Escape Burn time</td><td>{formatValueYdhmsAbs(selectedTransfer.escapeBurnT)}</td></tr>
                 </>
                 : <></>}
             <tr><td>Escape Burn</td><td>{selectedTransfer.escapeBurnPrn.norm.toFixed(1)}m/s
                 ({selectedTransfer.escapeBurnPrn.x.toFixed(1)}m/s prograde,{" "}
                 {selectedTransfer.escapeBurnPrn.y.toFixed(1)}m/s radial-in,{" "}
-                {selectedTransfer.escapeBurnPrn.z.toFixed(1)}m/s normal)</td></tr>
-            <tr><td>Interplanetary arc</td>
-                <td>{(selectedTransfer.transferAngle / Math.PI * 180).toFixed(0)}°</td></tr>
+                {selectedTransfer.escapeBurnPrn.z.toFixed(1)}m/s normal)<br/>
+                to boost speed from {selectedTransfer.diveOrbit.speedAtTa(0).toFixed(1)}m/s
+                to {selectedTransfer.escapeOrbit.speedAtTa(0).toFixed(1)}m/s
+            </td></tr>
+            <tr><td>Interplanetary orbit</td>
+                <td>{formatValueSi(selectedTransfer.transferOrbit.distanceAtApoapsis)}m
+                    {" × "}{formatValueSi(selectedTransfer.transferOrbit.distanceAtPeriapsis)}m
+                    for {(selectedTransfer.transferAngle / Math.PI * 180).toFixed(0)}°</td></tr>
             <tr><td>Arrival Time</td>
                 <td>{formatValueYdhmsAbs(selectedTransfer.departureTime + selectedTransfer.travelTime)}</td></tr>
-            <tr><td>Capture Burn</td><td>{(-selectedTransfer.captureBurnPrn.x).toFixed(1)}m/s retrograde</td></tr>
-            <tr><td>Circularization Burn</td><td>{(-selectedTransfer.circularizationBurnPrn.x).toFixed(1)}m/s retrograde</td></tr>
+            <tr><td>Capture Burn</td><td>{(-selectedTransfer.captureBurnPrn.x).toFixed(1)}m/s retrograde<br/>
+                to reduce speed from {selectedTransfer.flybyArrivalSpeed.toFixed(1)}m/s
+                to {selectedTransfer.captureSpeed.toFixed(1)}m/s
+            </td></tr>
+            <tr><td>Circularization Burn</td><td>{(-selectedTransfer.circularizationBurnPrn.x).toFixed(1)}m/s retrograde<br/>
+                to reduce speed from {selectedTransfer.captureSpeed.toFixed(1)}m/s
+                to {selectedTransfer.parkingOrbitSpeed.toFixed(1)}m/s
+            </td></tr>
             <tr><td>total ∆v</td><td>{selectedTransfer.totalDv.toFixed(1)}m/s</td></tr>
             </tbody></table>
             <button onClick={() => gradientDescend().then(() => {})}>Find local minimum</button>
@@ -296,7 +312,9 @@ export default function App() {
                         {gravity: kspBodies[e.target.value].gravity}
                     ))
                 }}
-            >{planetOptions}</select>
+            >{planetOptions}</select> (
+            {formatValueSi(departingPlanetOrbit.distanceAtApoapsis)}m
+            {" × "}{formatValueSi(departingPlanetOrbit.distanceAtPeriapsis)}m)
         </td></tr>
         <tr><td>Departing orbit</td><td>
             <select value={moonPreset} onChange={e => {
@@ -326,7 +344,9 @@ export default function App() {
             <select
                 value={targetPlanet}
                 onChange={e => setTargetPlanet(e.target.value)}
-            >{planetOptions}</select>
+            >{planetOptions}</select> (
+            {formatValueSi(targetPlanetOrbit.distanceAtApoapsis)}m
+            {" × "}{formatValueSi(targetPlanetOrbit.distanceAtPeriapsis)}m)
         </td></tr>
         <tr><td>Capture Orbit Radius</td><td>
             <Altitude
