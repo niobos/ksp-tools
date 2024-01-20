@@ -19,10 +19,12 @@ type ValueType = Shade[]
 type DurationDuty = {
     duration: number,
     duty: number,
+    interval?: number,
 }
 type DurationInterval = {
     duration: number,
     interval: number,
+    duty?: number,
 }
 
 export function fromString(s: string): ValueType {
@@ -41,14 +43,16 @@ export function toString(v: ValueType): string {
 
 function calcOrbitalDarkness(body: Body, altitude: number): DurationDuty {
     const duration = orbitalDarkness(body.gravity, body.radius, altitude);
-    const duty = duration / Orbit.periodFromSma(body.gravity, body.radius + altitude);
-    return {duration, duty};
+    const interval = Orbit.periodFromSma(body.gravity, body.radius + altitude);
+    const duty = duration / interval;
+    return {duration, duty, interval};
 }
 
 function calcSolarNight(body: Body): DurationDuty {
+    const interval = body.solarDay;
     const duration = body.solarDay / 2;
     const duty = 0.5;
-    return {duration, duty};
+    return {duration, duty, interval};
 }
 
 export function calcShade(shades: ValueType): DurationInterval {
@@ -90,15 +94,19 @@ export function ShadeCalc(props) {
         let shadeJsx;
         if ('o' in shade) {  // orbital darkness
             const body = bodies[shade.o];
-            const {duration} = calcOrbitalDarkness(body, shade.a);
+            const {duration, interval} = calcOrbitalDarkness(body, shade.a);
             shadeJsx = <span>Orbital darkness
                 at {SiInput.format(shade.a)}mAGL
-                above {shade.o} ({KerbalYdhmsInput.formatValueSingleUnit(duration)})
+                above {shade.o} (
+                {KerbalYdhmsInput.formatValueSingleUnit(duration)}{" "}
+                every {KerbalYdhmsInput.formatValueSingleUnit(interval)})
             </span>;
         } else if ('s' in shade) {  // solar night
             const body = bodies[shade.s];
-            const {duration} = calcSolarNight(body);
-            shadeJsx = <span>Solar night on {shade.s} ({KerbalYdhmsInput.formatValueSingleUnit(duration)})</span>;
+            const {duration, interval} = calcSolarNight(body);
+            shadeJsx = <span>Solar night on {shade.s} (
+                {KerbalYdhmsInput.formatValueSingleUnit(duration)}{" "}
+                every {KerbalYdhmsInput.formatValueSingleUnit(interval)})</span>;
         } else if ('d' in shade) {  // custom
             shadeJsx = <span>
                 <KerbalYdhmsInput
