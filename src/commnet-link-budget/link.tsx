@@ -1,7 +1,7 @@
 import * as React from "react";
 import {useState} from "react";  // JSX support
 import Antenna from "../utils/kspParts-antenna";
-import {SiInput} from "../components/formatedInput";
+import {formatValueSi, SiInput} from "formattedInput";
 import KspHierBody from "../components/kspHierBody";
 import {bodiesHierFind} from "../utils/kspBody";
 import {orbits} from "../utils/kspOrbit";
@@ -56,7 +56,7 @@ export default function Link(props: LinkProps) {
                 setDistA("");
                 setDistB("");
             }}
-        />m (max range {SiInput.format(maxRange)}m)<br/>
+        />m (max range {formatValueSi(maxRange)}m)<br/>
         Distance between <KspHierBody
             customValue="Select body"
             value={distA} onChange={(b) => {

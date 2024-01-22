@@ -1,5 +1,5 @@
 import React from "react";
-import {FloatInput} from "./formatedInput";
+import {FloatInput} from "formattedInput";
 import {KspFund} from "./kspIcon";
 
 export default function FuelTank(props) {

@@ -2,7 +2,7 @@ import './app.css'
 import * as React from "react";
 import ReactDOM from 'react-dom';
 import useFragmentState from "useFragmentState";
-import {FloatInput} from "../components/formatedInput";
+import {FloatInput} from "formattedInput";
 import {engines as kspEngines} from "../utils/kspParts-engine";
 import {Resources} from "../utils/kspParts";
 import {KerbalYdhmsInput} from "../components/formattedInput";

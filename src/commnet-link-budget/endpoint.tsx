@@ -1,5 +1,5 @@
 import * as React from "react";  // JSX support
-import {SiInput} from "../components/formatedInput";
+import {SiInput} from "formattedInput";
 import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 import Antenna, {antennas as kspAntennas} from "../utils/kspParts-antenna";
 

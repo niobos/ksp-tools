@@ -5,7 +5,7 @@ import useFragmentState from 'useFragmentState';
 import {Location, sphericalGrid} from "../utils/location";
 import {groundstations as kspGroundstations} from "../utils/kspLocations";
 import {bodies as kspBodies} from "../utils/kspBody";
-import {SiInput} from "../components/formatedInput";
+import {formatValueSi, SiInput} from "formattedInput";
 import {useWorker} from "react-hooks-worker";
 import {CartesianGrid, Label, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,} from 'recharts';
 import {calcCoverageInput, calcCoverageOutput} from "./worker";
@@ -67,7 +67,7 @@ export default function App() {
     let maybeAltitude = <p>Since this is more than 90º, there is no altitude where 100% coverage is guaranteed.</p>;
     if(furthestAwayLocation.distanceToNearest < Math.PI/2) {
         const alt = (1/Math.cos(furthestAwayLocation.distanceToNearest) - 1) * kspBodies['Kerbin'].radius;
-        maybeAltitude = <p>Orbits with an altitude of at least {SiInput.format(alt)}mAGL
+        maybeAltitude = <p>Orbits with an altitude of at least {formatValueSi(alt)}mAGL
             will always have at least 1 ground station in line of sight.</p>;
     }
 

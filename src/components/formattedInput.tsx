@@ -26,9 +26,19 @@ export function formatValueYdhms(seconds: Seconds): string {
         units = units.slice(0, units.length-1);
     }
 
-    if(values.length === 0) return "0";
+    if(values.length === 0) return "0s";
     const parts = values.map((v, i) => '' + v + units[i]);
     return parts.join(' ');
+}
+export function formatValueYdhmsSingleUnit(seconds: Seconds): string {
+    const factors = [60, 60, 6, 426];
+    const units = ['s', 'm', 'h', 'd'];
+    while(seconds >= factors[0]) {
+        seconds /= factors[0];
+        units.shift();
+        factors.shift();
+    }
+    return seconds.toFixed(1) + units[0];
 }
 export function parseToYdhms(text: string): [number, number, number, number, number] {
     const re = /^((?<y>\d+) *y)? *((?<d>\d+) *d)? *((?<h>\d+) *h)? *((?<m>\d+) *m)? *((?<s>\d+(.\d*)?) *s?)?$/;
@@ -51,13 +61,16 @@ export function parseValueYdhms(text: string | number): Seconds {
         return 0;
     }
 }
-export function KerbalYdhmsInput(props: Omit<FormattedInputProps<Seconds>, "formatValue" | "parseString">) {
-    const formatedInputProps = Object.assign({}, props, {
-        formatValue: formatValueYdhms,
+export type KerbalYdhmsInputProps = Omit<FormattedInputProps<Seconds>, "formatValue" | "parseString"> & {
+    singleUnit?: boolean
+}
+export function KerbalYdhmsInput(props: KerbalYdhmsInputProps) {
+    const formattedInputProps = Object.assign({}, props, {
+        formatValue: props.singleUnit ? formatValueYdhmsSingleUnit : formatValueYdhms,
         parseString: parseValueYdhms,
         className: (props.className || '') + ' KerbalYdhmsInput',
     });
-    return FormattedInput(formatedInputProps);
+    return FormattedInput(formattedInputProps);
 }
 
 export function formatValueYdhmsAbs(seconds: Seconds): string {
@@ -88,12 +101,12 @@ export function parseValueYdhmsAbs(text: string | number): Seconds {
     }
 }
 export function KerbalAbsYdhmsInput(props: Omit<FormattedInputProps<Seconds>, "formatValue" | "parseString">) {
-    const formatedInputProps = Object.assign({}, props, {
+    const formattedInputProps = Object.assign({}, props, {
         formatValue: formatValueYdhmsAbs ,
         parseString: parseValueYdhmsAbs,
         className: (props.className || '') + ' KerbalAbsYdhmsInput',
     });
-    return FormattedInput(formatedInputProps);
+    return FormattedInput(formattedInputProps);
 }
 
 export type Degrees = number

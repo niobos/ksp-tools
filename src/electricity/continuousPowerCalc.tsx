@@ -6,7 +6,7 @@ import {
     arrayReplaceElement
 } from "../utils/list";
 import {probeCores} from "../utils/kspParts-other";
-import {FloatInput} from "../components/formatedInput";
+import {FloatInput} from "formattedInput";
 
 function formatPower(power) {
     const units = ['s', 'm', 'h', 'd'];

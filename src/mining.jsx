@@ -1,7 +1,7 @@
 import ReactDOM from "react-dom";
 import React from "react";
 import {Resources} from "./utils/kspParts";
-import {FloatInput} from "./components/formatedInput";
+import {FloatInput} from "formattedInput";
 import {addFragmentStateProperty} from "./utils/useFragmentState";
 
 class Mining extends React.PureComponent {

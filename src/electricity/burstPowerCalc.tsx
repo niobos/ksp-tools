@@ -2,7 +2,8 @@ import * as React from "react";
 import {useState} from "react";
 import {probeCores, reactionWheels} from "../utils/kspParts-other";
 import {engines} from "../utils/kspParts-engine";
-import {FloatInput, KerbalYdhmsInput} from "../components/formatedInput";
+import {FloatInput} from "formattedInput"
+import {KerbalYdhmsInput} from "../components/formattedInput";
 import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 
 function generateDeviceMap() {

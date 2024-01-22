@@ -3,7 +3,8 @@ import {useState} from "react";
 import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 import Orbit, {orbitalDarkness} from "../utils/orbit";
 import Body, {bodies} from "../utils/kspBody";
-import {KerbalYdhmsInput, SiInput} from "../components/formatedInput";
+import {formatValueSi, SiInput} from "formattedInput";
+import {formatValueYdhmsSingleUnit, KerbalYdhmsInput} from "../components/formattedInput";
 import KspHierBody from "../components/kspHierBody";
 
 type Shade = {
@@ -96,17 +97,17 @@ export function ShadeCalc(props) {
             const body = bodies[shade.o];
             const {duration, interval} = calcOrbitalDarkness(body, shade.a);
             shadeJsx = <span>Orbital darkness
-                at {SiInput.format(shade.a)}mAGL
+                at {formatValueSi(shade.a)}mAGL
                 above {shade.o} (
-                {KerbalYdhmsInput.formatValueSingleUnit(duration)}{" "}
-                every {KerbalYdhmsInput.formatValueSingleUnit(interval)})
+                {formatValueYdhmsSingleUnit(duration)}{" "}
+                every {formatValueYdhmsSingleUnit(interval)})
             </span>;
         } else if ('s' in shade) {  // solar night
             const body = bodies[shade.s];
             const {duration, interval} = calcSolarNight(body);
             shadeJsx = <span>Solar night on {shade.s} (
-                {KerbalYdhmsInput.formatValueSingleUnit(duration)}{" "}
-                every {KerbalYdhmsInput.formatValueSingleUnit(interval)})</span>;
+                {formatValueYdhmsSingleUnit(duration)}{" "}
+                every {formatValueYdhmsSingleUnit(interval)})</span>;
         } else if ('d' in shade) {  // custom
             shadeJsx = <span>
                 <KerbalYdhmsInput

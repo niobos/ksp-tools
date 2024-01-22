@@ -5,7 +5,7 @@ import ReactDOM from 'react-dom';
 import useFragmentState, {updatedHashValue} from 'useFragmentState';
 import {Size} from "../utils/kspParts";
 import {bodies as kspBodies} from "../utils/kspBody";
-import {FloatInput} from "../components/formatedInput";
+import {FloatInput} from "formattedInput";
 import KspHierBody from "../components/kspHierBody";
 import Multiselect from "../components/multiselect";
 import {KspFund} from "../components/kspIcon";
