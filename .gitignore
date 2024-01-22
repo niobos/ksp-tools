@@ -3,3 +3,5 @@
 /dev-deps
 /deps
 /doc
+*.js.map
+*.js

@@ -1,64 +1,58 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
-import KspHierBody from "../components/kspHierBody";
-import useFragmentState from 'useFragmentState';
-import PrimaryBody, {
-    fromString as primaryBodyFromString,
-    toString as primaryBodyToString,
-    resolve as primaryBodyResolve,
-} from "./primaryBody";
-import Orbit, {
-    fromString as orbitFromString,
-    toString as orbitToString
-} from "../components/orbit";
-import Preset from "../components/preset";
-import {bodies} from "../utils/kspBody";
-
-import "./app.css";
+import {useState} from "react";
+import {default as Body, bodies as kspBodies} from "../utils/kspBody"
+import {default as BodyComp} from "./body"
+import Orbit from "../utils/orbit"
+import {default as OrbitComp} from "../components/orbit"
+import Solution, {SolutionProps} from "./solution"
+import "./app.css"
+import solve, {Leg} from "./solver";
 
 function App() {
-    const [primaryBody, setPrimaryBody] = useFragmentState('p', primaryBodyFromString, primaryBodyToString);
-    const [orbit, setOrbit] = useFragmentState('o', orbitFromString, orbitToString)
+    const [primaryBody, setPrimaryBody] = useState<Body>(kspBodies["Kerbin"])
+    const [orbitStart, setOrbitStart] = useState<Orbit>(
+        Orbit.FromOrbitalElements(
+            primaryBody.gravity,
+            Orbit.smaEFromApsides(700e3, 900e3)
+        ))
+    const [orbitEnd, setOrbitEnd] = useState<Orbit>(
+        Orbit.FromOrbitalElements(
+            primaryBody.gravity,
+            Orbit.smaEFromApsides(1e6, 1.4e6)
+        ))
 
-    let orbitsAroundPrimaryBody = {};
-    if(typeof primaryBody === 'string') {
-        for(let secondary of bodies[primaryBody].isOrbitedBy()) {
-            orbitsAroundPrimaryBody[secondary.name] = secondary.name;
-        }
-    } else {  // list them all
-        for(let planet of bodies['Kerbol'].isOrbitedBy()) {
-            orbitsAroundPrimaryBody[planet.name] = {
-                [planet.name]: planet.name,
-            }
-            const moons = planet.isOrbitedBy();
-            if(moons.length > 0) {
-                for(let moon of planet.isOrbitedBy()) {
-                    orbitsAroundPrimaryBody[planet.name][moon.name] = moon.name;
-                }
-            }
-        }
-    }
+    const solutions = solve(orbitStart, orbitEnd)
 
-    return <div>
+    return <>
         <h1>Changing orbits</h1>
-        <h2>Primary body</h2>
-        <KspHierBody customValue="Custom"
-                     value={typeof primaryBody === 'string' ? primaryBody : ""}
-                     onChange={setPrimaryBody}
+        <BodyComp
+            value={primaryBody}
+            onChange={(b) => setPrimaryBody(b)}
         />
-        <PrimaryBody value={primaryBody}
-                     onChange={setPrimaryBody}
+        <h2>Start orbit</h2>
+        <OrbitComp
+            key={"orbitStart"}
+            primaryBody={primaryBody}
+            value={orbitStart}
+            onChange={(o) => setOrbitStart(o)}
         />
-        <h2>Orbit</h2>
-        <Preset options={orbitsAroundPrimaryBody}
-                value={typeof orbit === 'string' ? orbit : ""}
-                onChange={(v, o) => setOrbit(v)}
+        <h2>Transfer</h2>
+        <ol className="solutions">
+            {solutions.map((s, i) => <li className="solution" key={i}>
+                <Solution
+                    name={s.name}
+                    legs={s.legs}
+                /></li>)}
+        </ol>
+        <h2>Target orbit</h2>
+        <OrbitComp
+            key={"orbitTarget"}
+            primaryBody={primaryBody}
+            value={orbitEnd}
+            onChange={(o) => setOrbitEnd(o)}
         />
-        <Orbit value={orbit as any}  // TODO: fix 'as any'
-               onChange={setOrbit}
-               primaryBody={primaryBodyResolve(primaryBody)}
-        />
-    </div>;
+    </>
 }
 
 if(typeof window === 'object') { // @ts-ignore

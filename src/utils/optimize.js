@@ -87,7 +87,7 @@ export function find_minimum_1d(f, options, status) {
 }
 
 export function find_minimum_nd(f, x0, init_step=100, err=0.1) {
-    /* Naive, unoptimized multi-dimentional optimizer
+    /* Naive, unoptimized multi-dimensional optimizer
      * I tried to use https://github.com/yanceyou/bfgs-algorithm/blob/master/lib/BFGSAlgorithm.js,
      * but that didn't even converge.
      *
@@ -105,7 +105,7 @@ export function find_minimum_nd(f, x0, init_step=100, err=0.1) {
                 return x;
             }
 
-            x0[dim] = ksp.find_minimum_1d((x) => f(x_(x)), {
+            x0[dim] = find_minimum_1d((x) => f(x_(x)), {
                 guess: x0[dim],
                 initialIncrement: init_step,
                 tolerance: err

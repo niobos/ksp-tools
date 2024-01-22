@@ -1,7 +1,13 @@
-input.SiInput, input.FloatInput, input.DegreesInput {
-    width: 4em;
+ol.solutions {
+    padding-inline-start: 0;
+    white-space: nowrap;
+    overflow-x: scroll;
 }
 
-input.KerbalYdhmsInput {
-    width: 8em;
+li.solution {
+    display: inline-block;
+    vertical-align: top;
+    border: 1px solid grey;
+    padding: 1em;
+    margin: 0.5em;
 }

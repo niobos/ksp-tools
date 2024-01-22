@@ -1,6 +1,6 @@
 import {Data} from "dataclass";
 
-const GRAVITATIONAL_CONSTANT = 6.67430e-11;
+export const GRAVITATIONAL_CONSTANT = 6.67430e-11;
 
 export default class Body extends Data {
     mass?: number  // kg
