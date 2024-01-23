@@ -13,6 +13,7 @@ interface OrbitProps {
     value: kspOrbit
     onChange?: (value: kspOrbit) => void
     primaryBody?: Body
+    phasing?: boolean
 }
 
 export function fromString(s: string, defaultOrbit?: kspOrbit, gravity: number = 1): kspOrbit {
@@ -150,6 +151,8 @@ export default function Orbit(props: OrbitProps) {
         apsis2speed = editingApside[1].speed;
     }
 
+    const phasing = props.phasing ?? true
+
     return <table><tbody>
     <tr><td>Semi-major axis</td><td>
         <Sma value={value.semiMajorAxis}
@@ -240,7 +243,7 @@ export default function Orbit(props: OrbitProps) {
                       readOnly={props.onChange == null}
         />º
     </td></tr>
-    <tr><td>Mean anomaly at epoch</td><td>
+    <tr style={{display: phasing ? "table-row" : "none"}}><td>Mean anomaly at epoch</td><td>
         <DegreesInput value={value.meanAnomalyAtEpoch}
                       placeholder={"any"} emptyValue={null}
                       onChange={props.onChange != null

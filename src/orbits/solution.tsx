@@ -1,31 +1,26 @@
 import * as React from "react"
 import "./solution.css"
+import {CalculatedTrajectory} from "./solver";
 import {formatValueYdhms} from "../components/formattedInput";
-import {Leg} from "./solver";
 import {formatValueSi} from "formattedInput";
 
 export interface SolutionProps {
-    name: string
-    legs: Leg[]
+    trajectory: CalculatedTrajectory
 }
 
 export default function Solution(props: SolutionProps) {
-    const totalDv = 0
-    const totalTime = 0
-    const burns = <></>
+    const legs = props.trajectory.legs
 
     return <>
-        <div className="name">{props.name}</div>
-        <div className="total_dv">{totalDv.toFixed(1)} m/s,{" "}
-            {formatValueYdhms(totalTime)}</div>
-        <ol className="burns">{props.legs.map((leg, i) => [
+        <div className="total_dv">{props.trajectory.dv.toFixed(1)} m/s</div>
+        <ol className="burns">{legs.map((leg, i) => [
             <li key={i + "b"} className="burn">
                 t={formatValueYdhms(leg.burn.t)}{", "}
-                ta={(leg.ta / Math.PI * 180).toFixed(1)}º<br/>
-                ∆v={leg.burn.prnDv.norm.toFixed(1)}m/s (
-                {leg.burn.prnDv.x.toFixed(1)}{", "}
-                {leg.burn.prnDv.y.toFixed(1)}{", "}
-                {leg.burn.prnDv.z.toFixed(1)})</li>,
+                ta={(leg.burn.ta / Math.PI * 180).toFixed(1)}º<br/>
+                ∆v={leg.burn.dvPrn.norm.toFixed(1)}m/s (
+                {leg.burn.dvPrn.x.toFixed(1)}{", "}
+                {leg.burn.dvPrn.y.toFixed(1)}{", "}
+                {leg.burn.dvPrn.z.toFixed(1)})</li>,
 
             <li key={i + "o"} className="orbit">
                 SMA={formatValueSi(leg.nextOrbit.semiMajorAxis)}m{", "}

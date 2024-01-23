@@ -210,7 +210,7 @@ export default class Orbit {
         changes: object,
     ): Orbit {
         let gravity = orbit.gravity;
-        if('gravity' in changes) gravity = changes['gravity'];
+        if('gravity' in changes) gravity = changes['gravity'] as number;
 
         const elements = {
             sma: orbit._smaOrParameter,
@@ -246,7 +246,7 @@ export default class Orbit {
          * Generally, there will be 2 elliptical orbits that satisfy the requirements,
          * one with the empty focus point below the chord line ("low"), and a second one above ("high")
          */
-        if(dt <= 0) throw RangeError("∆t can't be <= 0")
+        if(dt <= 0) throw RangeError("∆t can't be <= 0, got " + dt)
         if(gravity <= 0) throw RangeError("Need gravity to solve Lambert problem")
 
         //this.FromLambertIzzo14(gravity, position1, position2, dt, direction, revolutions, path, t0)
@@ -838,7 +838,8 @@ de
 
             let θ;
             if(e_norm > 0) {
-                θ = Math.acos(e.inner_product(this.r0) / (e_norm * r));
+                // Cap acos() argument to [-1; 1] to avoid NaN due to rounding
+                θ = Math.acos(Math.min(Math.max(e.inner_product(this.r0) / (e_norm * r), -1), 1));
             } else {  // special case for circular; arbitrarily choose argP to be 1x
                 θ = Math.acos(this._periapsisUnitVector.inner_product(this.r0) / r);
             }
