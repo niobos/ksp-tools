@@ -16,8 +16,10 @@ export type Leg = {
 
 export type Trajectory = {
     sourceOrbitTa: Angle
+    dt1Transformed: number  // transformed dt such that 0 is the geometric mean of src & dst, and ±1 gives the source & dst periods
+    midpointScaled: Vector  // scaled such that 1 => largest_orbit_apoapsis
+    dt2Transformed: number  // transformed dt such that 0 is the geometric mean of src & dst, and ±1 gives the source & dst periods
     destOrbitTa: Angle
-    dtTransformed: number  // transformed dt such that 0 is the geometric mean of src & dst, and ±1 gives the source & dst periods
 }
 export type CalculatedTrajectory = Trajectory & {
     legs: Leg[]
@@ -26,11 +28,13 @@ export type CalculatedTrajectory = Trajectory & {
 
 export function sameTrajectory(a: Trajectory, b: Trajectory): boolean {
     return (Math.abs(a.sourceOrbitTa - b.sourceOrbitTa) < 0.01)  &&
-        (Math.abs(a.destOrbitTa - b.destOrbitTa) < 0.01) &&
-        (Math.abs(a.dtTransformed - b.dtTransformed) < 0.01)
+        (Math.abs(a.dt1Transformed - b.dt1Transformed) < 0.01) &&
+        (Math.abs(a.midpointScaled.sub(b.midpointScaled).norm) < 0.01) &&
+        (Math.abs(a.dt2Transformed - b.dt2Transformed) < 0.01) &&
+        (Math.abs(a.destOrbitTa - b.destOrbitTa) < 0.01)
 }
 export function dedupTrajectories(trs: Trajectory[]): void {
-    for(let field of ["sourceOrbitTa", "destOrbitTa", "dtInSourceOrbitPeriod"]) {
+    for(let field of ["sourceOrbitTa", "dt1Transformed", "midpointScaled", "dt2Transformed", "destOrbitTa"]) {
         trs.sort((a, b) => a[field] - b[field])  // in-place
         for (let i = 0; i < trs.length; i++) {
             if (i == 0) continue
@@ -65,22 +69,35 @@ function calcTrajectory(
     const p2 = destOrbit.positionAtTa(t.destOrbitTa)
     const v2 = destOrbit.velocityAtTa(t.destOrbitTa)
 
+    const largestOrbitApoapsis = Math.max(sourceOrbit.distanceAtApoapsis, destOrbit.distanceAtApoapsis)
+    const midpoint = t.midpointScaled.mul(largestOrbitApoapsis)
+
     const geoMeanPeriod = Math.sqrt(sourceOrbit.period * destOrbit.period)
     const geoMeanPeriodScale = Math.sqrt(sourceOrbit.period / destOrbit.period)
-    const dt = geoMeanPeriod * Math.pow(geoMeanPeriodScale, t.dtTransformed)
+    const dt1 = geoMeanPeriod * Math.pow(geoMeanPeriodScale, t.dt1Transformed)
+    const dt2 = geoMeanPeriod * Math.pow(geoMeanPeriodScale, t.dt2Transformed)
 
     try {
-        const {orbit: transferOrbit, arc, v1: transferV1} = Orbit.FromLambert(
-            sourceOrbit.gravity, p1, p2, dt,
+        const {orbit: transferOrbit1, arc: arc1, v1: transfer1V1} = Orbit.FromLambert(
+            sourceOrbit.gravity, p1, midpoint, dt1,
+        )
+        const {orbit: transferOrbit2, arc: arc2, v1: transfer2V1} = Orbit.FromLambert(
+            sourceOrbit.gravity, midpoint, p2, dt2,
         )
         // TODO: do we want to check both prograde & retrograde?
 
-        const dv1 = transferV1.sub(v1)
-        const p1TransferPerifocal = transferOrbit.globalToPerifocal(p1)
-        const transferTa1 = Math.atan2(p1TransferPerifocal.y, p1TransferPerifocal.x)
-        const transferTa2 = transferTa1 + arc;
-        const transferV2 = transferOrbit.velocityAtTa(transferTa2)
-        const dv2 = v2.sub(transferV2)
+        const dv1 = transfer1V1.sub(v1)
+        const p1Transfer1Perifocal = transferOrbit1.globalToPerifocal(p1)
+        const transfer1Ta1 = Math.atan2(p1Transfer1Perifocal.y, p1Transfer1Perifocal.x)
+        const transfer1Ta2 = transfer1Ta1 + arc1;
+        const transfer1V2 = transferOrbit1.velocityAtTa(transfer1Ta2)
+
+        const dv2 = transfer2V1.sub(transfer1V2)
+        const midpointTransfer2Perifocal = transferOrbit2.globalToPerifocal(midpoint)
+        const transfer2Ta1 = Math.atan2(midpointTransfer2Perifocal.y, midpointTransfer2Perifocal.x)
+        const transfer2Ta2 = transfer2Ta1 + arc2;
+        const transfer2V2 = transferOrbit2.velocityAtTa(transfer2Ta2)
+        const dv3 = v2.sub(transfer2V2)
 
         const legs: Leg[] = []
         const t0 = sourceOrbit.tAtTa(t.sourceOrbitTa);
@@ -90,13 +107,21 @@ function calcTrajectory(
                 t: t0,
                 dvPrn: sourceOrbit.globalToPrn(dv1, t.sourceOrbitTa),
             },
-            nextOrbit: transferOrbit,
+            nextOrbit: transferOrbit1,
         })
         legs.push({
             burn: {
-                ta: transferTa2,
-                t: t0 + dt,
-                dvPrn: transferOrbit.globalToPrn(dv2, transferTa2)
+                ta: transfer1Ta2,
+                t: t0 + dt1,
+                dvPrn: transferOrbit1.globalToPrn(dv2, transfer1Ta2),
+            },
+            nextOrbit: transferOrbit2,
+        })
+        legs.push({
+            burn: {
+                ta: transfer2Ta2,
+                t: t0 + dt1 + dt2,
+                dvPrn: transferOrbit2.globalToPrn(dv3, transfer2Ta2)
             },
             nextOrbit: destOrbit,
         })
@@ -127,8 +152,10 @@ self.onmessage = (m) => {
                 input.sourceOrbit, input.destOrbit,
                 {
                     sourceOrbitTa: x[0],
-                    destOrbitTa: x[1],
-                    dtTransformed: x[2],
+                    dt1Transformed: x[1],
+                    midpointScaled: new Vector(x[2], x[3], x[4]),
+                    dt2Transformed: x[5],
+                    destOrbitTa: x[6],
                 }
             )
             if(ct == null) {
@@ -138,8 +165,10 @@ self.onmessage = (m) => {
         }
         const {fmin} = Orbit._findMinimum(cost, [
             /* sourceOrbitTa */ Math.random() * 2 * Math.PI,
+            /* dt1Transformed */ Math.random() * 4 - 2,
+            /* midpoint */ 0.1 + Math.random() * 2, 0.1 + Math.random() * 2, 0.1 + Math.random() * 2,
+            /* dt2Transformed */ Math.random() * 4 - 2,
             /* destOrbitTa */ Math.random() * 2 * Math.PI,
-            /* dtTransformed */ Math.random() * 4 - 2,
         ], 0.01)
 
         if(fmin.ct != null) candidates.push(fmin.ct)
