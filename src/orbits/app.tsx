@@ -7,7 +7,7 @@ import Orbit from "../utils/orbit"
 import {default as OrbitComp, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit"
 import Solution from "./solution"
 import "./app.css"
-import {CalculatedTrajectory, SolverInput, Trajectory} from "./solver";
+import {CalculatedTrajectory, dedupTrajectories, SolverInput, Trajectory} from "./solver";
 import Vector from "../utils/vector";
 import useFragmentState from "useFragmentState";
 
@@ -38,25 +38,25 @@ function App() {
     const [orbitStart, setOrbitStart] = useFragmentState<Orbit>('f',
         s => OrbitFromString(
             s,
-            Orbit.FromOrbitalElements(primaryBody.gravity, Orbit.smaEFromApsides(700e3, 700e3)),
+            Orbit.FromOrbitalElements(primaryBody.gravity, Orbit.smaEFromApsides(700e3, 750e3)),
             primaryBody.gravity),
         OrbitToString,
         )
     const [orbitEnd, setOrbitEnd] = useFragmentState<Orbit>('t',
         s => OrbitFromString(
-            s, Orbit.FromOrbitalElements(primaryBody.gravity, Orbit.smaEFromApsides(15e6, 15e6)),
+            s, Orbit.FromOrbitalElements(primaryBody.gravity, Orbit.smaEFromApsides(15e6, 15.5e6)),
             primaryBody.gravity),
         OrbitToString,
     )
 
     const solver = useMemo(() => new Worker(new URL('./solver', import.meta.url)), [])
-    const asyncCalc = useCallback((candidates: Trajectory[] = null, iterations: number) => {
+    const calcBatch = useCallback((numTries: number) => {
         return new Promise<Array<CalculatedTrajectory>>((resolve, _) => {
             const requestId = REQUEST_ID++;
             const handler = (m: MessageEvent) => {
                 if(m.data.requestId != requestId) return
                 solver.removeEventListener("message", handler)
-                const out = m.data.sortedResult
+                const out = m.data.result
                 resolve(out)
             }
             solver.addEventListener("message", handler)
@@ -64,29 +64,33 @@ function App() {
                 requestId,
                 sourceOrbit: orbitStart,
                 destOrbit: orbitEnd,
-                candidates,
-                iterations,
+                numTries,
             }
             solver.postMessage(m)
         })
     }, [orbitStart, orbitEnd])
 
     const [solutions, setSolutions] = useState<Array<CalculatedTrajectory>>([])
-    const [generations, setGenerations] = useState<number>(0)
+    const [tries, setTries] = useState<number>(0)
     const doCalc = async () => {
         let bestDv = Infinity
         let lastChanged = 0
-        let candidates: CalculatedTrajectory[] = null
-        let batchSize = 1
+        let bestTrajectories: CalculatedTrajectory[] = []
         //console.log("Restarting calculations")
+        let batchSize = 100
         let iterations = 0
         while(true) {
             const batchStart = +(new Date())
-            candidates = await asyncCalc(candidates, batchSize)
+            const trajectories = await calcBatch(batchSize)
             iterations += batchSize
-            //console.log("Got results in main thread: ", candidates)
-            const bestCandidates = candidates.slice(0, 5)  // extract top-5 for display
-            setSolutions(bestCandidates.map(t => {
+            //console.log("Got results in main thread: ", trajectories)
+
+            bestTrajectories.push(...trajectories)
+            dedupTrajectories(bestTrajectories)
+            bestTrajectories.sort((a, b) => a.dv - b.dv)  // in-place
+            bestTrajectories = bestTrajectories.slice(0, 5)  // keep top 5
+
+            setSolutions(bestTrajectories.map(t => {
                 t.legs = t.legs.map(l => {
                     l.nextOrbit = Orbit.FromObject(l.nextOrbit)
                     l.burn.dvPrn = Vector.FromObject(l.burn.dvPrn)
@@ -94,12 +98,12 @@ function App() {
                 })
                 return t
             }))
-            setGenerations(iterations)
+            setTries(iterations)
 
-            if(bestCandidates[0].dv < bestDv) {
-                bestDv = bestCandidates[0].dv
+            if(bestTrajectories[0].dv < bestDv) {
+                bestDv = bestTrajectories[0].dv
                 lastChanged = 0
-            } else if(lastChanged++ > 10) break
+            } else if(lastChanged++ > 10) break  // stop after 10*500ms of not improving
 
             const batchDuration = +(new Date()) - batchStart
             if(batchDuration < 200) {
@@ -110,10 +114,10 @@ function App() {
                 //console.log(`Batch size of ${batchSize} took ${batchDuration}ms => ${batchDuration / batchSize} per request`)
             }
         }
-        //console.log("Best found: ", candidates[0])
+        console.log("Best found: ", bestTrajectories[0])
     }
     useEffect(() => {
-        doCalc().then(() => {})
+        doCalc().then(() => {})  // async wrapper
     }, [orbitStart, orbitEnd])
 
     return <>
@@ -140,7 +144,7 @@ function App() {
             onChange={(o) => setOrbitStart(o)}
         />
         <h2>Transfer</h2>
-        <p>Top 5 solutions after {generations} generations:</p>
+        <p>Top 5 solutions after {tries} tries:</p>
         <ol className="solutions">
             {solutions.map((s, i) => <li className="solution" key={i}>
                 <Solution trajectory={s}/>

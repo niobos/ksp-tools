@@ -428,9 +428,9 @@ export default class Orbit {
         const v1_tan = gamma * sigma * (y + lambda * x) / r1_norm
         const v1 = r1_unit.mul(v1_rad) + t1_unit.mul(v1_tan)
 
-        const v2_rad = -gamma * ((lambda * y - x) + rho * (lambda * y + x)) / r2_norm
-        const v2_tan = gamma * sigma * (y + lambda * x) / r2_norm
-        const v2 = r2_unit.mul(v2_rad) + t2_unit.mul(v2_tan)
+        // const v2_rad = -gamma * ((lambda * y - x) + rho * (lambda * y + x)) / r2_norm
+        // const v2_tan = gamma * sigma * (y + lambda * x) / r2_norm
+        // const v2 = r2_unit.mul(v2_rad) + t2_unit.mul(v2_tan)
 
         return {
             orbit: null,
@@ -1127,7 +1127,7 @@ de
             if(prevSepP != null && prevSepP < 0 && separationP > 0) {
                 // we jumped over a local minimum
                 const min = Orbit._findMinimum(
-                    x => d(x[0]) / (this.semiMajorAxis + otherOrbit.semiMajorAxis),  // normalize to be scaled around 1.0
+                    x => {return {cost: d(x[0]) / (this.semiMajorAxis + otherOrbit.semiMajorAxis)}},  // normalize to be scaled around 1.0
                     [prevT],  // start searching from previousT
                     // This avoids overshooting to before prevT
                 );
@@ -1358,6 +1358,10 @@ de
         }
         while(Math.abs(a-b) > tolerance) {
             const x = (a + b) / 2;
+            if(x == a || x == b) {
+                // We've reached floating point limits, give up
+                return x
+            }
             const fx = f_(x);
             if(fx === 0) return x;
             if(fx * fa > 0) {  // same sign
@@ -1373,13 +1377,13 @@ de
         return (a+b)/2;
     }
 
-    static _findMinimum(
-        f: (x: number[]) => number,
+    static _findMinimum<T = {}>(
+        f: (x: number[]) => {cost: number} & T,
         x0: number[],
         initialStep: number = 1,
         dxStep: number = 1,
         tolerance: number = 1e-8,
-    ): {xmin: number[], fmin: number} {
+    ): {xmin: number[], fmin: {cost: number} & T} {
         let x = [...x0];  // copy
         let error = Infinity;
         let remainingIterations = 1000;
@@ -1387,14 +1391,14 @@ de
         while(error > tolerance && --remainingIterations) {
             const fx = f(x);
             if(previousFx != null) {
-                error = Math.abs(fx - previousFx);
+                error = Math.abs(fx.cost - previousFx.cost);
             }
             previousFx = fx;
             const gradientX = x.map((xi, i) => {
                 const xdx = [...x];
                 xdx[i] += dxStep;
                 const fxdx = f(xdx);
-                return (fxdx - fx) / dxStep;
+                return (fxdx.cost - fx.cost) / dxStep;
             });
 
             // Rough line-search in the direction of -gradientX
@@ -1408,9 +1412,9 @@ de
                     xNext[i] = x[i] - a * gradientX[i];
                 }
                 const fxNext = f(xNext);
-                if(a >= 1 && fxNext < fxPrevA) {  // we descended, keep searching forward
+                if(a >= 1 && fxNext.cost < fxPrevA.cost) {  // we descended, keep searching forward
                     a = 2*a;
-                } else if(a <= 1 && fxNext >= fxPrevA) {  // we ascended, take smaller steps
+                } else if(a <= 1 && fxNext.cost >= fxPrevA.cost) {  // we ascended, take smaller steps
                     a = a/2;
                 } else {
                     break;

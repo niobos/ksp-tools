@@ -1,6 +1,5 @@
 import Orbit from "../utils/orbit";
 import Vector from "../utils/vector";
-import {randomNormal, randomBool} from "../utils/random";
 
 type Angle = number
 type Seconds = number
@@ -18,41 +17,40 @@ export type Leg = {
 export type Trajectory = {
     sourceOrbitTa: Angle
     destOrbitTa: Angle
-    dtInSourceOrbitPeriod: number  // use Source Orbit Period as unit to make this dimensionless
+    dtTransformed: number  // transformed dt such that 0 is the geometric mean of src & dst, and ±1 gives the source & dst periods
 }
 export type CalculatedTrajectory = Trajectory & {
     legs: Leg[]
     dv: number
 }
 
+export function sameTrajectory(a: Trajectory, b: Trajectory): boolean {
+    return (Math.abs(a.sourceOrbitTa - b.sourceOrbitTa) < 0.01)  &&
+        (Math.abs(a.destOrbitTa - b.destOrbitTa) < 0.01) &&
+        (Math.abs(a.dtTransformed - b.dtTransformed) < 0.01)
+}
+export function dedupTrajectories(trs: Trajectory[]): void {
+    for(let field of ["sourceOrbitTa", "destOrbitTa", "dtInSourceOrbitPeriod"]) {
+        trs.sort((a, b) => a[field] - b[field])  // in-place
+        for (let i = 0; i < trs.length; i++) {
+            if (i == 0) continue
+            if (sameTrajectory(trs[i - 1], trs[i])) {
+                trs.splice(i, 1)
+                i--
+            }
+        }
+    }
+}
+
 export type SolverInput = {
     requestId?: any
     sourceOrbit: Orbit
     destOrbit: Orbit
-    candidates?: Trajectory[]
-    populationSize?: number
-    iterations?: number
+    numTries: number
 }
 export type SolverOutput = {
     requestId?: any
-    sortedResult: CalculatedTrajectory[]
-}
-
-export function seedTrajectories(populationSize: number): Trajectory[] {
-    const num = Math.pow(populationSize, 1/3)
-    const out: Trajectory[] = []
-    for(let i = 0; i < num; i++) {
-        for(let j = 0; j < num; j++) {
-            for (let k = 0; k < num; k++) {
-                out.push({
-                    sourceOrbitTa: i / num * 2 * Math.PI,
-                    destOrbitTa: j / num * 2 * Math.PI,
-                    dtInSourceOrbitPeriod: 1/20 * 100 * (k+1) / num,  // range from 1/10 to 10x of a half period
-                })
-            }
-        }
-    }
-    return out
+    result: CalculatedTrajectory[]
 }
 
 function calcTrajectory(
@@ -66,7 +64,10 @@ function calcTrajectory(
     const v1 = sourceOrbit.velocityAtTa(t.sourceOrbitTa)
     const p2 = destOrbit.positionAtTa(t.destOrbitTa)
     const v2 = destOrbit.velocityAtTa(t.destOrbitTa)
-    const dt = sourceOrbit.period * t.dtInSourceOrbitPeriod
+
+    const geoMeanPeriod = Math.sqrt(sourceOrbit.period * destOrbit.period)
+    const geoMeanPeriodScale = Math.sqrt(sourceOrbit.period / destOrbit.period)
+    const dt = geoMeanPeriod * Math.pow(geoMeanPeriodScale, t.dtTransformed)
 
     try {
         const {orbit: transferOrbit, arc, v1: transferV1} = Orbit.FromLambert(
@@ -109,106 +110,46 @@ function calcTrajectory(
     }
 }
 
-function fitness(trajectory: CalculatedTrajectory): number {
-    const f = 1000 / trajectory.dv  // 1000 is useless, but makes reading the numbers during debugging easier
-    if(isNaN(f)) return 0
-    return f
-}
-
-function weightedPick(options: CalculatedTrajectory[], fitnesSum: number): number {
-    const pick = Math.random() * fitnesSum
-    let sum = 0
-    for(let i = 0; i < options.length; i++) {
-        sum += fitness(options[i])
-        if(sum >= pick) return i;
-    }
-    debugger  // unreachable
-}
-
-function xor(...args: boolean[]): boolean {
-    let o = false
-    for(let b of args) {
-        o = b ? !o : o
-    }
-    return o
-}
-
-function crossOver(parent1: Trajectory, parent2: Trajectory): Trajectory {
-    return {
-        sourceOrbitTa: (randomBool() ? parent1 : parent2).sourceOrbitTa,
-        destOrbitTa: (randomBool() ? parent1 : parent2).destOrbitTa,
-        dtInSourceOrbitPeriod: (randomBool() ? parent1 : parent2).dtInSourceOrbitPeriod,
-    }
-}
-
-function mutate(trajectory: Trajectory): Trajectory {
-    const o = Object.assign({}, trajectory)
-    const mutationChance = 0.05
-    const TWO_PI = 2 * Math.PI
-    if(Math.random() < mutationChance) o.sourceOrbitTa = (o.sourceOrbitTa + randomNormal()*0.1) % TWO_PI  // ±0.1 rad = ±6º
-    if(Math.random() < mutationChance) o.destOrbitTa = (o.destOrbitTa + randomNormal()*0.1) % TWO_PI  // ±0.1 rad = ±6º
-    if(Math.random() < mutationChance) o.dtInSourceOrbitPeriod *= 1 + (2*randomNormal()-1)*.10  // ±10%
-    return o
-}
 
 self.onmessage = (m) => {
+    if(m.data.type == 'webpackOk') return
+
     // const startTime = +(new Date())
     const input: SolverInput = m.data
     input.sourceOrbit = Orbit.FromObject(input.sourceOrbit)
     input.destOrbit = Orbit.FromObject(input.destOrbit)
-    if(input.populationSize == null) input.populationSize = 1000
-    if(input.iterations == null) input.iterations = 1
     // console.log(`Starting ${input.requestId}`)
 
-    let candidates: CalculatedTrajectory[]
-    let calculations = 0
-    let iteration = 0
-    if(input.candidates == null || input.candidates.length == 0) {
-        candidates = seedTrajectories(input.populationSize).map(t => {
-            calculations++
-            return calcTrajectory(input.sourceOrbit, input.destOrbit, t)
-        })
-            .filter(c => c != null)
-            .sort((a, b) => a.dv - b.dv)  // in-place
-        iteration++
-    } else {
-        candidates = input.candidates as CalculatedTrajectory[]
-    }
-
-    while(iteration++ < input.iterations) {
-        const nextGeneration: Trajectory[] = [
-            candidates[0]  // always keep best candidate
-        ]
-
-        let fitnessSum = 0
-        for(let candidate of candidates) {
-            fitnessSum += fitness(candidate)
+    const candidates: CalculatedTrajectory[] = []
+    for(let i = 0; i < input.numTries; i++) {
+        const cost = (x) => {
+            const ct = calcTrajectory(
+                input.sourceOrbit, input.destOrbit,
+                {
+                    sourceOrbitTa: x[0],
+                    destOrbitTa: x[1],
+                    dtTransformed: x[2],
+                }
+            )
+            if(ct == null) {
+                return {cost: Infinity, ct: ct}
+            }
+            return {cost: ct.dv, ct: ct}
         }
+        const {fmin} = Orbit._findMinimum(cost, [
+            /* sourceOrbitTa */ Math.random() * 2 * Math.PI,
+            /* destOrbitTa */ Math.random() * 2 * Math.PI,
+            /* dtTransformed */ Math.random() * 4 - 2,
+        ], 0.01)
 
-        while(nextGeneration.length < input.populationSize) {
-            const parent1Idx = weightedPick(candidates, fitnessSum)
-            const parent2Idx = weightedPick(candidates, fitnessSum)
-
-            const parent1 = candidates[parent1Idx];
-            const parent2 = candidates[parent2Idx];
-            let child = crossOver(parent1, parent2)
-            child = mutate(child)
-            nextGeneration.push(child)
-        }
-        candidates = nextGeneration.map(t => {
-            calculations++
-            return calcTrajectory(input.sourceOrbit, input.destOrbit, t)
-        })
-            .filter(c => c != null)
-            .sort((a, b) => a.dv - b.dv)  // in-place
+        if(fmin.ct != null) candidates.push(fmin.ct)
     }
 
     const out: SolverOutput = {
         requestId: input.requestId,
-        sortedResult: candidates,
+        result: candidates,
     }
     self.postMessage(out)
     // const duration = (+(new Date()) - startTime)
-    // console.log(`Worker did ${input.iterations} iterations for ${candidates.length} candidates, ` +
-    //     `${calculations} calculations in ${duration}ms => ${duration / calculations}ms per trajectory`)
+    // console.log(`Worker did ${input.numTries} tries in ${duration}ms => ${duration / input.numTries}ms per trajectory`)
 }
