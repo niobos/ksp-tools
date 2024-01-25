@@ -12,6 +12,7 @@ export default function Solution(props: SolutionProps) {
     const legs = props.trajectory.legs
 
     return <>
+        <div className="name">{props.trajectory.name}</div>
         <div className="total_dv">{props.trajectory.dv.toFixed(1)} m/s</div>
         <ol className="burns">{legs.map((leg, i) => [
             <li key={i + "b"} className="burn">
@@ -29,8 +30,8 @@ export default function Solution(props: SolutionProps) {
                 ap={formatValueSi(leg.nextOrbit.distanceAtApoapsis)}m)<br/>
                 argp={(leg.nextOrbit.argumentOfPeriapsis / Math.PI * 180).toFixed(1)}º{", "}
                 inc={(leg.nextOrbit.inclination / Math.PI * 180).toFixed(1)}º,<br/>
-                lan={(leg.nextOrbit.longitudeAscendingNode / Math.PI * 180).toFixed(1)}º{", "}
-                ma0={(leg.nextOrbit.meanAnomalyAtEpoch / Math.PI * 180).toFixed(1)}º
+                lan={(leg.nextOrbit.longitudeAscendingNode / Math.PI * 180).toFixed(1)}º
+                {/*{", "}ma0={(leg.nextOrbit.meanAnomalyAtEpoch / Math.PI * 180).toFixed(1)}º*/}
             </li>
         ]).flat()}</ol>
     </>

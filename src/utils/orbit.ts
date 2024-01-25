@@ -35,6 +35,72 @@ export type OrbitalPhase = {
     t0?: Seconds,  // s
 }
 
+export class Nodes {
+    /* Helper class to postpone calculations of Ascending/Descending Nodes
+     */
+    private _cache = {}
+
+    constructor(
+        private _myOrbit: Orbit,
+        private _otherOrbit: Orbit,
+    ) {}
+
+    get _directionAscendingNodeMy(): Vector {
+        if(this._cache["dirAn"] == null) {
+            let directionAscendingNode = this._myOrbit.specificAngularMomentumVector
+                .cross_product(this._otherOrbit.specificAngularMomentumVector)
+            if(directionAscendingNode.norm == 0) {  // coplanar orbits
+                // arbitrarily choose periapsis
+                directionAscendingNode = this._myOrbit.eccentricityVector
+            }
+            this._cache["dirAn"] = directionAscendingNode
+        }
+        return this._cache["dirAn"]
+    }
+
+    get relativeInclination(): Radians {
+        if(this._cache['relInc'] == null) {
+            this._cache['relInc'] = this._myOrbit.specificAngularMomentumVector
+                .angle_to(this._otherOrbit.specificAngularMomentumVector)
+        }
+        return this._cache['relInc']
+    }
+
+    get _directionAscendingNodePerifocalMy(): Vector {
+        if(this._cache["dirAnPfMy"] == null) {
+            this._cache["dirAnPfMy"] = this._myOrbit.globalToPerifocal(this._directionAscendingNodeMy)
+        }
+        return this._cache["dirAnPfMy"]
+    }
+    get ascendingNodeTa(): Radians {
+        if(this._cache["anTa"] == null) {
+            const dirAnPfMy = this._directionAscendingNodePerifocalMy
+            this._cache["anTa"] = Math.atan2(dirAnPfMy.y, dirAnPfMy.x)
+        }
+        return this._cache["anTa"]
+    }
+    get descendingNodeTa(): Radians {
+        return (this.ascendingNodeTa + Math.PI) % (2*Math.PI)
+    }
+
+    get _directionAscendingNodePerifocalOther(): Vector {
+        if(this._cache["dirAnPfOther"] == null) {
+            this._cache["dirAnPfOther"] = this._otherOrbit.globalToPerifocal(this._directionAscendingNodeMy)
+        }
+        return this._cache["dirAnPfOther"]
+    }
+    get ascendingNodeOtherTa(): Radians {
+        if(this._cache["anOtherTa"] == null) {
+            const dirAnPfOther = this._directionAscendingNodePerifocalOther
+            this._cache["anOtherTa"] = Math.atan2(dirAnPfOther.y, dirAnPfOther.x)
+        }
+        return this._cache["anOtherTa"]
+    }
+    get descendingNodeOtherTa(): Radians {
+        return (this.ascendingNodeOtherTa + Math.PI) % (2*Math.PI)
+    }
+}
+
 // noinspection JSNonASCIINames,NonAsciiCharacters
 export default class Orbit {
     _cache: object = {}
@@ -544,7 +610,7 @@ de
     }
 
     get eccentricityVector(): Vector<number> {
-        // eccentricity vector
+        // eccentricity vector, points to periapsis
         if(this._cache['e'] === undefined) {
             // [OMES] 2.30
             const h = this.specificAngularMomentumVector;
@@ -1011,9 +1077,41 @@ de
         const e = this.eccentricity;
         return Math.acos((h*h / (µ * r) - 1) / e); // from [OMES 2.35]
     }
-    // ta of nodes vs other orbit  // TODO
-    // dv for inclination change  // TODO
-    // dv for apsis push  // TODO
+
+    nodesVs(other: Orbit): Nodes {
+        return new Nodes(this, other)
+    }
+    dvPrnForInclinationChange(ta: Radians, angle: Radians): Vector<MeterPerSecond> {
+        /* Returns the needed burn in (Prograde, Radial-in, Normal) coordinates
+         * to change the orbit's inclination by `angle` at true anomaly `ta`.
+         * The new orbit will have its Ascending Node vs the old orbit at `ta`.
+         */
+        /* https://en.wikipedia.org/w/index.php?title=Orbital_inclination_change&oldid=998215180 seems wrong
+         * (see Talk, or try to make an inclination change at w+f=pi)
+         */
+        const p = this.positionAtTa(ta)
+        const v = this.velocityAtTa(ta)
+        const vRotated = v.rotated(p, angle)
+        const dv = vRotated.sub(v)
+        return dv
+    }
+
+    static dvPForApsis(gravity, rCurrent, rOtherFrom, rOtherTo) {
+        /* Calculate ∆v required to change the altitude of the opposite apsis.
+         *  rCurrent: current apsis altitude
+         *  rOtherFrom: current opposite apsis altitude
+         *  rOtherTo: desired opposite apsis altitude
+         * returns prograde ∆v to perform the change
+         */
+        const dv = Math.sqrt(2 * gravity / rCurrent) * (
+            Math.sqrt(
+                rOtherTo / (rCurrent + rOtherTo)
+            ) - Math.sqrt(
+                rOtherFrom / (rCurrent + rOtherFrom)
+            )
+        )
+        return dv
+    }
 
     globalToPerifocal(g: Vector): Vector {
         // [OMES 4.43]

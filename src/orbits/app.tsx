@@ -1,13 +1,13 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {default as Body, bodies as kspBodies, GRAVITATIONAL_CONSTANT} from "../utils/kspBody"
 import {default as BodyComp} from "./body"
 import Orbit from "../utils/orbit"
 import {default as OrbitComp, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit"
 import Solution from "./solution"
 import "./app.css"
-import {CalculatedTrajectory, dedupTrajectories, SolverInput, Trajectory} from "./solver";
+import {CalculatedTrajectory} from "./solver";
 import Vector from "../utils/vector";
 import useFragmentState from "useFragmentState";
 
@@ -49,83 +49,42 @@ function App() {
         OrbitToString,
     )
 
-    const solver = useMemo(() => new Worker(new URL('./solver', import.meta.url)), [])
-    const calcBatch = useCallback((numTries: number) => {
-        return new Promise<Array<CalculatedTrajectory>>((resolve, _) => {
-            const requestId = REQUEST_ID++;
-            const handler = (m: MessageEvent) => {
-                if(m.data.requestId != requestId) return
-                solver.removeEventListener("message", handler)
-                const out = m.data.result
-                resolve(out)
-            }
-            solver.addEventListener("message", handler)
-            const m: SolverInput = {
-                requestId,
-                sourceOrbit: orbitStart,
-                destOrbit: orbitEnd,
-                numTries,
-            }
-            solver.postMessage(m)
-        })
-    }, [orbitStart, orbitEnd])
-
     const [solutions, setSolutions] = useState<Array<CalculatedTrajectory>>([])
-    const [tries, setTries] = useState<number>(0)
-    const doCalc = async () => {
-        let bestDv = Infinity
-        let lastChanged = 0
-        let bestTrajectories: CalculatedTrajectory[] = []
-        //console.log("Restarting calculations")
-        let batchSize = 100
-        let iterations = 0
-        while(true) {
-            const batchStart = +(new Date())
-            const trajectories = await calcBatch(batchSize)
-            iterations += batchSize
-            //console.log("Got results in main thread: ", trajectories)
-
-            bestTrajectories.push(...trajectories)
-            dedupTrajectories(bestTrajectories)
-            bestTrajectories.sort((a, b) => a.dv - b.dv)  // in-place
-            bestTrajectories = bestTrajectories.slice(0, 5)  // keep top 5
-
-            setSolutions(bestTrajectories.map(t => {
+    const worker = useMemo(() => new Worker(new URL('./solver', import.meta.url)), [])
+    useEffect(() => {
+        const handler = (m) => {
+            if(m.data.requestId != REQUEST_ID) return
+            const trajectories = m.data.result
+            const newSolutions = trajectories.map(t => {
                 t.legs = t.legs.map(l => {
                     l.nextOrbit = Orbit.FromObject(l.nextOrbit)
                     l.burn.dvPrn = Vector.FromObject(l.burn.dvPrn)
                     return l
                 })
                 return t
-            }))
-            setTries(iterations)
-
-            if(bestTrajectories[0].dv < bestDv) {
-                bestDv = bestTrajectories[0].dv
-                lastChanged = 0
-            } else if(lastChanged++ > 10) break  // stop after 10*500ms of not improving
-
-            const batchDuration = +(new Date()) - batchStart
-            if(batchDuration < 200) {
-                batchSize = batchSize * 2
-            } else if(batchDuration > 500) {
-                batchSize = Math.max(Math.floor(batchSize / 2), 1)
-            } else {
-                //console.log(`Batch size of ${batchSize} took ${batchDuration}ms => ${batchDuration / batchSize} per request`)
-            }
+            })
+            setSolutions((prevSolutions) =>
+                [...prevSolutions, ...newSolutions].sort((a, b) => a.dv - b.dv))
         }
-        console.log("Best found: ", bestTrajectories[0])
-    }
+        worker.addEventListener("message", handler)
+        //return () => { worker.removeEventListener("message", handler) }
+        // if worker changes, no need to clean up previous worker
+    }, [worker])
     useEffect(() => {
-        doCalc().then(() => {})  // async wrapper
+        setSolutions([])
+        const requestId = ++REQUEST_ID;
+        worker.postMessage({
+            requestId,
+            sourceOrbit: orbitStart,
+            destOrbit: orbitEnd,
+        })
     }, [orbitStart, orbitEnd])
 
     return <>
         <h1>Changing orbits</h1>
         <p>
-            This tool will try to find a 2-burn transfer between the given orbits around the given body.
-            It will do so by starting out with a random set of transfers, and running a Genetic Algorithm on
-            the transfers to select for lowest ∆v.
+            This tool will try various strategies to transfer from one orbit to another.
+            There is no guarantee that the optimal solution is found.
         </p>
         <BodyComp
             value={primaryBody}
@@ -144,7 +103,6 @@ function App() {
             onChange={(o) => setOrbitStart(o)}
         />
         <h2>Transfer</h2>
-        <p>Top 5 solutions after {tries} tries:</p>
         <ol className="solutions">
             {solutions.map((s, i) => <li className="solution" key={i}>
                 <Solution trajectory={s}/>
