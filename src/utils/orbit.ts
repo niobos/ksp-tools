@@ -104,6 +104,115 @@ export class Nodes {
     }
 }
 
+export abstract class LambertSolution {
+    abstract get orbit(): Orbit
+    abstract get arc(): Radians
+    abstract get v1(): Vector<MeterPerSecond>
+    abstract get v2(): Vector<MeterPerSecond>
+}
+
+class LambertBate71 extends LambertSolution {
+    private _cache = {}
+
+    _gravity: Meter3PerSecond2
+    _position1: Vector<Meter>
+    _position2: Vector<Meter>
+    _t0: Seconds
+
+    _A: number
+    _z: number
+    _y_z: number
+    _arc: Radians
+
+    constructor(
+        gravity: Meter3PerSecond2,
+        position1: Vector<Meter>,
+        position2: Vector<Meter>,
+        dt: Seconds,
+        direction: "prograde" | "retrograde" = "prograde",
+        t0: Seconds = 0,
+    ) {
+        super()
+        this._gravity = gravity
+        this._position1 = position1
+        this._position2 = position2
+        this._t0 = t0
+
+        // [OMES Algorithm 5.2]
+        const r1_norm = position1.norm;
+        const r2_norm = position2.norm;
+
+        let dθ = position1.angle_to(position2);  // [OMES 5.26]
+        const dθ_quadrant = position1.cross_product(position2);
+        if((direction === "prograde" && dθ_quadrant.z < 0)
+            || (direction === "retrograde" && dθ_quadrant.z >= 0)) {
+            dθ = 2*Math.PI - dθ;
+        }
+        this._arc = dθ
+
+        const A = Math.sin(dθ) * Math.sqrt(r1_norm * r2_norm / (1-Math.cos(dθ)));  // [OMES 5.35]
+        this._A = A
+
+        const y = (z) => r1_norm + r2_norm + A * (z * Orbit._S(z) - 1) / Math.sqrt(Orbit._C(z));  // [OMES 5.38]
+        const z = Orbit._findZero(
+            (z) => {
+                const y_z = y(z);
+                if(y_z < 0) throw RangeError("Solving Lambert: y(z) is negative, why?")
+                const C_z = Orbit._C(z);
+                const S_z = Orbit._S(z);
+                const Cp_z = Orbit._Cp(z);
+                const Sp_z = Orbit._Sp(z);
+                const yp_z = A / 4 * Math.sqrt(C_z);
+                const f = Math.pow(y_z / C_z, 3/2) * S_z
+                    + A * Math.sqrt(y_z) - Math.sqrt(gravity) * dt;  // [OMES 5.40]
+                const fp = 1 / (2 * Math.sqrt(y_z * Math.pow(C_z, 5))) * (
+                    (2 * C_z * Sp_z - 3 * Cp_z * S_z) * y_z*y_z
+                    + (A * Math.pow(C_z, 5/2) + 3 * C_z * S_z * y_z) * yp_z
+                );  // [OMES 5.41]
+                return {f, fp};
+            },
+            0,
+        );
+        if(isNaN(z)) throw RangeError("Solving Lambert: did not converge")
+
+        this._z = z
+        this._y_z = y(z)
+    }
+
+    get arc(): Radians { return this._arc }
+
+    // [OMES 5.46]
+    get f(): number { return 1 - this._y_z / this._position1.norm }
+    get g(): number { return this._A * Math.sqrt(this._y_z / this._gravity) }
+    get fp(): number { return Math.sqrt(this._gravity)
+        / (this._position1.norm * this._position2.norm)
+        * Math.sqrt(this._y_z / Orbit._C(this._z))
+        * (this._z * Orbit._S(this._z) - 1) }
+    get gp(): number { return 1 - this._y_z / this._position2.norm }
+
+    get v1(): Vector<MeterPerSecond> {
+        if(this._cache["v1"] == null) {
+            this._cache["v1"] = this._position2.sub(this._position1.mul(this.f)).mul(1/this.g);  // [OMES 5.28]
+
+        }
+        return this._cache["v1"]
+    }
+    get v2(): Vector<MeterPerSecond> {
+        if(this._cache["v2"] == null) {
+            this._cache["v2"] = this._position2.mul(this.gp).sub(this._position1).mul(1/this.g);  // [OMES 5.29]
+
+        }
+        return this._cache["v2"]
+    }
+
+    get orbit(): Orbit {
+        if(this._cache["orbit"] == null) {
+            this._cache["orbit"] = Orbit.FromStateVector(this._gravity, this._position1, this.v1, this._t0)
+        }
+        return this._cache["orbit"]
+    }
+}
+
 // noinspection JSNonASCIINames,NonAsciiCharacters
 export default class Orbit {
     _cache: object = {}
@@ -306,7 +415,7 @@ export default class Orbit {
         t0: Seconds = 0,
         revolutions: number = 0,
         path: "high" | "low" = "low",
-    ): {orbit: Orbit, arc: Radians, v1: Vector<MeterPerSecond>} {
+    ): LambertSolution {
         /* Solve the Lambert problem: find the orbit that will bring an object
          * from `position1` to `position2` in `dt` time, assuming a primary body
          * at the center of the coordinate system with gravity `gravity`.
@@ -316,14 +425,14 @@ export default class Orbit {
          * one with the empty focus point below the chord line ("low"), and a second one above ("high")
          */
         if(dt <= 0) throw RangeError("∆t can't be <= 0, got " + dt)
-        if(gravity <= 0) throw RangeError("Need gravity to solve Lambert problem")
+        if(gravity <= 0) throw RangeError("Need gravity to solve Lambert problem, got " + gravity)
 
         //this.FromLambertIzzo14(gravity, position1, position2, dt, direction, revolutions, path, t0)
 
         if(revolutions != 0) {
             throw RangeError("Multi-revolution not supported")
         }
-        return this.FromLambertBate71(
+        return new LambertBate71(
             gravity,
             position1,
             position2,
@@ -342,7 +451,7 @@ export default class Orbit {
         revolutions: number = 0,
         path: "high" | "low" = "low",
         t0: Seconds = 0,
-    ): {orbit: Orbit, arc: Radians, v1: Vector<MeterPerSecond>} {
+    ): LambertSolution {
         /* Based on:
          *  - [Izzo]
          *  - https://github.com/darioizzo/lambert/blob/master/lambert.py
@@ -497,78 +606,16 @@ export default class Orbit {
         const v1_tan = gamma * sigma * (y + lambda * x) / r1_norm
         const v1 = r1_unit.mul(v1_rad) + t1_unit.mul(v1_tan)
 
-        // const v2_rad = -gamma * ((lambda * y - x) + rho * (lambda * y + x)) / r2_norm
-        // const v2_tan = gamma * sigma * (y + lambda * x) / r2_norm
-        // const v2 = r2_unit.mul(v2_rad) + t2_unit.mul(v2_tan)
+        const v2_rad = -gamma * ((lambda * y - x) + rho * (lambda * y + x)) / r2_norm
+        const v2_tan = gamma * sigma * (y + lambda * x) / r2_norm
+        const v2 = r2_unit.mul(v2_rad) + t2_unit.mul(v2_tan)
 
         return {
             orbit: null,
             arc: null,
             v1,
+            v2,
         }
-    }
-de
-    static FromLambertBate71(
-        gravity: Meter3PerSecond2,
-        position1: Vector<Meter>,
-        position2: Vector<Meter>,
-        dt: Seconds,
-        direction: "prograde" | "retrograde" = "prograde",
-        t0: Seconds = 0,
-    ): {orbit: Orbit, arc: Radians, v1: Vector<MeterPerSecond>} {
-        // [OMES Algorithm 5.2]
-        const r1_norm = position1.norm;
-        const r2_norm = position2.norm;
-
-        let dθ = position1.angle_to(position2);  // [OMES 5.26]
-        const dθ_quadrant = position1.cross_product(position2);
-        if((direction === "prograde" && dθ_quadrant.z < 0)
-            || (direction === "retrograde" && dθ_quadrant.z >= 0)) {
-            dθ = 2*Math.PI - dθ;
-        }
-
-        const A = Math.sin(dθ) * Math.sqrt(r1_norm * r2_norm / (1-Math.cos(dθ)));  // [OMES 5.35]
-
-        const y = (z) => r1_norm + r2_norm + A * (z * Orbit._S(z) - 1) / Math.sqrt(Orbit._C(z));  // [OMES 5.38]
-        const z = Orbit._findZero(
-            (z) => {
-                const y_z = y(z);
-                if(y_z < 0) throw RangeError("Solving Lambert: y(z) is negative, why?")
-                const C_z = Orbit._C(z);
-                const S_z = Orbit._S(z);
-                const Cp_z = Orbit._Cp(z);
-                const Sp_z = Orbit._Sp(z);
-                const yp_z = A / 4 * Math.sqrt(C_z);
-                const f = Math.pow(y_z / C_z, 3/2) * S_z
-                    + A * Math.sqrt(y_z) - Math.sqrt(gravity) * dt;  // [OMES 5.40]
-                const fp = 1 / (2 * Math.sqrt(y_z * Math.pow(C_z, 5))) * (
-                    (2 * C_z * Sp_z - 3 * Cp_z * S_z) * y_z*y_z
-                    + (A * Math.pow(C_z, 5/2) + 3 * C_z * S_z * y_z) * yp_z
-                );  // [OMES 5.41]
-                return {f, fp};
-            },
-            0,
-        );
-        if(isNaN(z)) throw RangeError("Solving Lambert: did not converge")
-
-        const y_z = y(z);
-
-        // [OMES 5.46]
-        const f = 1 - y_z / r1_norm;
-        const g = A * Math.sqrt(y_z / gravity);
-        // const fp = Math.sqrt(gravity) / (r1_norm * r2_norm) * Math.sqrt(y_z / Orbit._C(z)) * (
-        //     z * Orbit._S(z) - 1
-        // );
-        // const gp = 1 - y_z / r2_norm;
-
-        const v1 = position2.sub(position1.mul(f)).mul(1/g);  // [OMES 5.28]
-        //const v2 = position2.mul(gp).sub(position1).mul(1/g);  // [OMES 5.29]
-
-        return {
-            orbit: Orbit.FromStateVector(gravity, position1, v1, t0),
-            arc: dθ,
-            v1: v1 as Vector<MeterPerSecond>,
-        };
     }
 
     serialize(): string {
