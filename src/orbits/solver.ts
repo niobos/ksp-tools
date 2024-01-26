@@ -69,40 +69,51 @@ function doBurn(source: Orbit, ta: Radians, burn: Vector): Orbit {
     )
 }
 
-const coplanarStrategies: Array<(s: Orbit, d: Orbit) => CalculatedTrajectory[]> = []
+const coplanarStrategies: Array<(s: Orbit, d: Orbit) => CalculatedTrajectory[]> = [
+    // Order strategies fast to slow, so we can present partial results while slower strategies calculate
+]
 
-coplanarStrategies.push((sourceOrbit: Orbit, destOrbit: Orbit) => {
+// https://space.stackexchange.com/questions/19910/optimal-change-of-argument-of-periapsis
+// https://space.stackexchange.com/questions/16931/is-the-ideal-transfer-between-two-arbitrary-planar-orbits-always-a-bi-tangential
+
+function coplanarApsisV2(sourceOrbit: Orbit, destOrbit: Orbit, apsis: "apoapsis" | "periapsis"): CalculatedTrajectory {
+    /* At `apsis`, burn to match distance at other side;
+     * 180º later, burn to match destOrbit's velocity
+     */
+    const name = `${apsis.substring(0, 2)}, v2`
     const legs: Leg[] = []
 
-    // At periapsis, burn to match distance at TA=π
-    const posSourceApoapsis = sourceOrbit.positionAtTa(Math.PI)
-    const sourceApoapsisInDestPerifocal = destOrbit.globalToPerifocal(posSourceApoapsis)
-    const destTaOfSourceApoapsis = Math.atan2(sourceApoapsisInDestPerifocal.y, sourceApoapsisInDestPerifocal.x)
-    const destDistanceAtSourceApoapsis = destOrbit.distanceAtTa(destTaOfSourceApoapsis)
+    const srcTaStart = apsis == "periapsis" ? 0 : Math.PI
+    const positionStart = sourceOrbit.positionAtTa(srcTaStart)
+    const positionSrcEnd = sourceOrbit.positionAtTa(srcTaStart + Math.PI)
+    const directionEndDestPerifocal = destOrbit.globalToPerifocal(positionSrcEnd)
+    const destTaEnd = Math.atan2(directionEndDestPerifocal.y, directionEndDestPerifocal.x)
+    const distanceEnd = destOrbit.distanceAtTa(destTaEnd)
+
     const dvApoPushPrograde = Orbit.dvPForApsis(
         sourceOrbit.gravity,
-        sourceOrbit.distanceAtPeriapsis,
-        sourceOrbit.distanceAtApoapsis,
-        destDistanceAtSourceApoapsis,
+        positionStart.norm,
+        positionSrcEnd.norm,
+        distanceEnd,
     )
     const dvApoPushPrn = new Vector(dvApoPushPrograde, 0, 0);
-    const dvApoPush = sourceOrbit.prnToGlobal(dvApoPushPrn, 0)
+    const dvApoPush = sourceOrbit.prnToGlobal(dvApoPushPrn, srcTaStart)
     const transferOrbit = Orbit.FromStateVector(
         sourceOrbit.gravity,
-        sourceOrbit.positionAtTa(0),  // periapsis
-        sourceOrbit.velocityAtTa(0).add(dvApoPush),
+        positionStart,
+        sourceOrbit.velocityAtTa(srcTaStart).add(dvApoPush),
         0,
     )
     const transferTa1 = transferOrbit.taAtT(0)
     legs.push({
-        burn: {dvPrn: dvApoPushPrn, ta: 0, t: null},
+        burn: {dvPrn: dvApoPushPrn, ta: srcTaStart, t: null},
         nextOrbit: transferOrbit,
     })
 
     // 180º later, match speed to dest orbit
     const transferTa2 = transferTa1 + Math.PI
     const vTransfer = transferOrbit.velocityAtTa(transferTa2)
-    const vDest = destOrbit.velocityAtTa(destTaOfSourceApoapsis)
+    const vDest = destOrbit.velocityAtTa(destTaEnd)
     const dv = vDest.sub(vTransfer)
     const shouldDestOrbit = doBurn(transferOrbit, transferTa2, dv)
     legs.push({
@@ -111,14 +122,23 @@ coplanarStrategies.push((sourceOrbit: Orbit, destOrbit: Orbit) => {
     })
 
     const ct = {
-        name: "ap, v2",
+        name,
         legs: legs,
         dv: legs.reduce((sum, leg) => sum + leg.burn.dvPrn.norm, 0),
     }
-    return [ct]
+    return ct
+}
+coplanarStrategies.push((sourceOrbit: Orbit, destOrbit: Orbit) => {
+    return [
+        coplanarApsisV2(sourceOrbit, destOrbit, "apoapsis"),
+        coplanarApsisV2(sourceOrbit, destOrbit, "periapsis"),
+    ]
 })
 
-const strategies: Array<(s: Orbit, d: Orbit) => CalculatedTrajectory[]> = []
+
+const strategies: Array<(s: Orbit, d: Orbit) => CalculatedTrajectory[]> = [
+    // Order strategies fast to slow, so we can present partial results while slower strategies calculate
+]
 
 for(let coplanarStrategy of coplanarStrategies) {
     /* We can convert a coplanar strategy into a full strategy
@@ -128,49 +148,59 @@ for(let coplanarStrategy of coplanarStrategies) {
         const inclBurn = matchRelativeInclination(src, dst)
         if(inclBurn == null) return coplanarStrategy(src, dst)
 
-        const {bestTa, bestBurn} = inclBurn
-        const nextOrbit = doBurn(src, bestTa, bestBurn)
-        const incChangeLeg = {
-            burn: {ta: bestTa, dvPrn: src.globalToPrn(bestBurn, bestTa), t: null},
-            nextOrbit,
-        }
+        const correctInclination = (ta, burn, name): CalculatedTrajectory[] => {
+            const nextOrbit = doBurn(src, ta, burn)
+            const incChangeLeg = {
+                burn: {ta: ta, dvPrn: src.globalToPrn(burn, ta), t: null},
+                nextOrbit,
+            }
 
-        const coplanarTrajectories = coplanarStrategy(nextOrbit, dst)
-        const trajectories: CalculatedTrajectory[] = []
-        for(let coplanarTrajectory of coplanarTrajectories) {
-            trajectories.push({
-                name: `incl, ${coplanarTrajectory.name}`,
-                legs: [incChangeLeg, ...coplanarTrajectory.legs],
-                dv: bestBurn.norm + coplanarTrajectory.dv,
-            })
+            const trajectories: CalculatedTrajectory[] = []
+            const coplanarTrajectories = coplanarStrategy(nextOrbit, dst)
+            for(let coplanarTrajectory of coplanarTrajectories) {
+                trajectories.push({
+                    name: name(coplanarTrajectory.name),
+                    legs: [incChangeLeg, ...coplanarTrajectory.legs],
+                    dv: burn.norm + coplanarTrajectory.dv,
+                })
+            }
+            return trajectories
         }
-        return trajectories
+        return [
+            ...correctInclination(inclBurn.anTa, inclBurn.anBurn, (cpName) => `inclAn, ${cpName}`),
+            ...correctInclination(inclBurn.dnTa, inclBurn.dnBurn, (cpName) => `inclDn, ${cpName}`),
+        ]
     })
 
     strategies.push((src: Orbit, dst: Orbit): CalculatedTrajectory[] => {
         const inclBurn = matchRelativeInclination(dst, src)
-        if(inclBurn == null) return []  // same strategies were already returned in "do Incl first", so swallow them
-
-        const {bestTa: bestTaRev, bestBurn: bestBurnRev} = inclBurn
-        const dstCoplanar = doBurn(dst, bestTaRev, bestBurnRev)
+        if(inclBurn == null) return []  // same strategies were already returned in "do Incl first" (above), so swallow them
+        const {anTa: taRev, anBurn: burnRev} = inclBurn
+        const dstCoplanar = doBurn(dst, taRev, burnRev)
+        // The True anomaly and burn may be different between AN and DN, but the resulting rotated orbit is the same
 
         const coplanarTrajectories = coplanarStrategy(src, dstCoplanar)
         const trajectories: CalculatedTrajectory[] = []
         for(let coplanarTrajectory of coplanarTrajectories) {
             const lastTransferOrbit = coplanarTrajectory.legs[coplanarTrajectory.legs.length-1].nextOrbit
-            const {bestTa, bestBurn} = matchRelativeInclination(lastTransferOrbit, dst)
-            const bestBurnPrn = lastTransferOrbit.globalToPrn(bestBurn, bestTa)
-            const shouldDstOrbit = doBurn(lastTransferOrbit, bestTa, bestBurn)
-            const incChangeLeg = {
-                burn: {t: null, ta: bestTa, dvPrn: bestBurnPrn},
-                nextOrbit: shouldDstOrbit,
-            }
 
-            trajectories.push({
-                name: `${coplanarTrajectory.name}, incl`,
-                legs: [...coplanarTrajectory.legs, incChangeLeg],
-                dv: coplanarTrajectory.dv + bestBurn.norm,
-            })
+            const inclBurn = matchRelativeInclination(lastTransferOrbit, dst)
+            const correctInclination = (ta, burn, name) => {
+                const burnPrn = lastTransferOrbit.globalToPrn(burn, ta)
+                const shouldDstOrbit = doBurn(lastTransferOrbit, ta, burn)
+                const incChangeLeg = {
+                    burn: {t: null, ta: ta, dvPrn: burnPrn},
+                    nextOrbit: shouldDstOrbit,
+                }
+
+                return {
+                    name,
+                    legs: [...coplanarTrajectory.legs, incChangeLeg],
+                    dv: coplanarTrajectory.dv + burn.norm,
+                }
+            }
+            trajectories.push(correctInclination(inclBurn.anTa, inclBurn.anBurn, `${coplanarTrajectory.name}, inclAn`))
+            trajectories.push(correctInclination(inclBurn.dnTa, inclBurn.dnBurn, `${coplanarTrajectory.name}, inclDn`))
         }
         return trajectories
     })

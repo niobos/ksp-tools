@@ -84,12 +84,14 @@ export class Nodes {
     }
 
     get _directionAscendingNodePerifocalOther(): Vector {
+        // We keep Ascending/Descending from *this* perspective
         if(this._cache["dirAnPfOther"] == null) {
             this._cache["dirAnPfOther"] = this._otherOrbit.globalToPerifocal(this._directionAscendingNodeMy)
         }
         return this._cache["dirAnPfOther"]
     }
     get ascendingNodeOtherTa(): Radians {
+        // We keep Ascending/Descending from *this* perspective
         if(this._cache["anOtherTa"] == null) {
             const dirAnPfOther = this._directionAscendingNodePerifocalOther
             this._cache["anOtherTa"] = Math.atan2(dirAnPfOther.y, dirAnPfOther.x)
@@ -97,6 +99,7 @@ export class Nodes {
         return this._cache["anOtherTa"]
     }
     get descendingNodeOtherTa(): Radians {
+        // We keep Ascending/Descending from *this* perspective
         return (this.ascendingNodeOtherTa + Math.PI) % (2*Math.PI)
     }
 }
