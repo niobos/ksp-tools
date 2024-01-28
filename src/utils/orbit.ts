@@ -1555,14 +1555,14 @@ export default class Orbit {
             let fxPrevA = fx;
             let remainingJumps = 100;
             while(--remainingJumps) {
-                const xNext = [...xPrevA];
+                const xNext = [...x];
                 for (let i = 0; i < x0.length; i++) {
-                    xNext[i] = x[i] - a * gradientX[i];
+                    xNext[i] -= a * gradientX[i];
                 }
                 const fxNext = f(xNext);
-                if(a >= 1 && fxNext.cost < fxPrevA.cost) {  // we descended, keep searching forward
+                if(a >= initialStep && fxNext.cost < fxPrevA.cost) {  // we descended, keep searching forward
                     a = 2*a;
-                } else if(a <= 1 && fxNext.cost >= fxPrevA.cost) {  // we ascended, take smaller steps
+                } else if(a <= initialStep && fxNext.cost >= fxPrevA.cost) {  // we ascended, take smaller steps
                     a = a/2;
                 } else {
                     break;
@@ -1572,7 +1572,7 @@ export default class Orbit {
             }
             x = xPrevA;
         }
-        return {xmin: x, fmin: previousFx};
+        return {xmin: x, fmin: f(x)};
     }
 
     _universalAnomalyAtDt(

@@ -44,7 +44,8 @@ function App() {
         )
     const [orbitEnd, setOrbitEnd] = useFragmentState<Orbit>('t',
         s => OrbitFromString(
-            s, Orbit.FromOrbitalElements(primaryBody.gravity, Orbit.smaEFromApsides(15e6, 15.5e6)),
+            s, Orbit.FromOrbitalElements(primaryBody.gravity,
+                {...Orbit.smaEFromApsides(15e6, 15.5e6), inc: 5*Math.PI/180}),
             primaryBody.gravity),
         OrbitToString,
     )
@@ -102,12 +103,10 @@ function App() {
             phasing={false}
             onChange={(o) => setOrbitStart(o)}
         />
-        <h2>Transfer</h2>
-        <ol className="solutions">
-            {solutions.map((s, i) => <li className="solution" key={i}>
-                <Solution trajectory={s}/>
-            </li>)}
-        </ol>
+        <p><input type="button" value="Swap orbits" onClick={() => {
+            setOrbitStart(orbitEnd)
+            setOrbitEnd(orbitStart)
+        }}/></p>
         <h2>Target orbit</h2>
         <OrbitComp
             key={"orbitTarget"}
@@ -116,6 +115,12 @@ function App() {
             phasing={false}
             onChange={(o) => setOrbitEnd(o)}
         />
+        <h2>Transfer</h2>
+        <ol className="solutions">
+            {solutions.map((s, i) => <li className="solution" key={i}>
+                <Solution trajectory={s}/>
+            </li>)}
+        </ol>
     </>
 }
 

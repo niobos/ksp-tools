@@ -16,7 +16,6 @@ export default function Solution(props: SolutionProps) {
         <div className="total_dv">{props.trajectory.dv.toFixed(1)} m/s</div>
         <ol className="burns">{legs.map((leg, i) => [
             <li key={i + "b"} className="burn">
-                t={formatValueYdhms(leg.burn.t)}{", "}
                 ta={(leg.burn.ta / Math.PI * 180).toFixed(1)}º<br/>
                 ∆v={leg.burn.dvPrn.norm.toFixed(1)}m/s (
                 {leg.burn.dvPrn.x.toFixed(1)}{", "}
