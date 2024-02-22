@@ -25,9 +25,9 @@ function resolveEngine(engineType: string | EngineParams): EngineParams {
         const engineSpec = kspEngines[engineType]
         engineType = {
             name: engineType,
-            isp: engineSpec.isp[1],  // vacuum ISP
+            isp: engineSpec.isp(0),  // vacuum ISP
             consumption: engineSpec.consumption,
-            thrust: engineSpec.thrust[1],  // vacuum thrust
+            thrust: engineSpec.thrust(0),  // vacuum thrust
         }
     }
     return engineType

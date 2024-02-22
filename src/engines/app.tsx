@@ -13,7 +13,7 @@ import SortableTable from "../components/sortableTable";
 import Preset from "../components/preset";
 import FuelTank from "../components/fuelTank";
 import {fuelTanks} from "../utils/kspParts-fuelTanks";
-import {engines as kspEngines} from "../utils/kspParts-engine";
+import {engines as kspEngines, g0} from "../utils/kspParts-engine";
 import {fromPreset, objectMap} from "../utils/utils";
 import {massBeforeDv} from "../utils/rocket";
 
@@ -180,6 +180,7 @@ export default function App() {
         }
         if (skip) continue;
 
+        const pressureAtm = pressure == 'atm' ? 1 : 0;
         const pressureIndex = pressure === 'atm' ? 0 : 1;
 
 
@@ -191,15 +192,15 @@ export default function App() {
              * => (F - a * m_engine) * n = a * m_payload
              * => n = a * m_payload / (F - a*m_engine)
              */
-            numEngines = Math.max(1, Math.ceil(mass * acceleration / (engine.thrust[pressureIndex] - acceleration * engine.mass)));
+            numEngines = Math.max(1, Math.ceil(mass * acceleration / (engine.thrust(pressureAtm) - acceleration * engine.mass)));
             fuelTankMass = 0;
             totalMass = mass + engine.mass * numEngines;
             emptyMass = mass + engine.emptied().mass * numEngines;
-            actualDv = engine.isp[pressureIndex] * 9.81 * Math.log(totalMass / emptyMass);
+            actualDv = engine.isp(pressureAtm) * g0 * Math.log(totalMass / emptyMass);
 
         } else {  // Normal rocket engine or jet engine
             function calcNumEngines() {
-                let n = Math.ceil(totalMass * acceleration / engine.thrust[pressureIndex]);
+                let n = Math.ceil(totalMass * acceleration / engine.thrust(pressureAtm));
                 if(n === Infinity || isNaN(n) || n === 0) n = 1;
                 return n;
             }
@@ -208,7 +209,7 @@ export default function App() {
 
             while(true) {
                 fuelTankMass = calcFuelTankMass(
-                    dv, engine.isp[pressureIndex],
+                    dv, engine.isp(pressureAtm),
                     mass + numEngines * engine.mass,
                     tankValue.fullEmptyRatio,
                     mass + numEngines * engine.emptied().mass,
@@ -218,12 +219,12 @@ export default function App() {
                 if (!isNaN(fuelTankMass)) {
                     totalMass = mass + engine.mass * numEngines + fuelTankMass;
                     emptyMass = mass + engine.emptied().mass * numEngines + fuelTankMass / tankValue.fullEmptyRatio;
-                    actualDv = engine.isp[pressureIndex] * 9.81 * Math.log(totalMass / emptyMass);
+                    actualDv = engine.isp(pressureAtm) * g0 * Math.log(totalMass / emptyMass);
                 } else {
                     // max attainable ∆v with infinite fueltanks
                     totalMass = mass + engine.mass * numEngines;
                     emptyMass = mass + engine.emptied().mass * numEngines;
-                    actualDv = engine.isp[pressureIndex] * 9.81 * Math.log(tankValue.fullEmptyRatio);
+                    actualDv = engine.isp(pressureAtm) * g0 * Math.log(tankValue.fullEmptyRatio);
                 }
 
                 const newNumEngines = calcNumEngines();  // iterate
@@ -233,7 +234,7 @@ export default function App() {
                 numEngines = newNumEngines;
             }
         }
-        const accelerationFull = engine.thrust[pressureIndex] * numEngines / totalMass;
+        const accelerationFull = engine.thrust(pressureAtm) * numEngines / totalMass;
 
         if( (accelerationFull < acceleration * .99) ||
             (actualDv < dv * .99) || isNaN(actualDv)) {
@@ -247,15 +248,15 @@ export default function App() {
         engineOptions.push({
             name,
             n: numEngines,
-            thrustPerEngine: engine.thrust[pressureIndex],
-            isp: engine.isp[pressureIndex],
+            thrustPerEngine: engine.thrust(pressureAtm),
+            isp: engine.isp(pressureAtm),
             cost: engine.cost * numEngines + fuelTankMass * tankValue.cost,
             engineMass: engine.mass * numEngines,
             fuelTankMass,
             totalMass: totalMass,
             dv: actualDv,
             accelerationFull: accelerationFull,
-            accelerationEmpty: engine.thrust[pressureIndex] * numEngines / emptyMass,
+            accelerationEmpty: engine.thrust(pressureAtm) * numEngines / emptyMass,
             size: [...engine.size].map(s => s.shortDescription).join(', '),
             gimbal: engine.gimbal,
             alternator: Math.max(0, -engine.consumption.scaled(numEngines).el),
