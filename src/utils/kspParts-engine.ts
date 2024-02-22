@@ -1,11 +1,13 @@
 import Part, {Resources, Size, TechTreeNode} from "./kspParts"
+import Spline from 'cubic-spline'
+import {thrustFromIspMdot} from "./rocket";
 
 export const g0 = 9.80665;
 
 export class Engine extends Part {
     gimbal: number = 0;  // degrees
     thrustCurve: [number, number];  // atm, vac
-    ispCurve: [number, number];  // atm, vac
+    ispCurve: Array<[number, number]>;  // [[pressure, isp], ...] cubic spline control points, sorted!
     throttleControl: boolean = true;
 
     thrust(pressureAtm: number): number {
@@ -14,8 +16,23 @@ export class Engine extends Part {
     }
 
     isp(pressureAtm: number): number {
-        if(pressureAtm == 0) return this.ispCurve[1]
-        return this.ispCurve[0]
+        /* https://forum.kerbalspaceprogram.com/topic/110443-how-does-ksp-calculate-isp-for-engines/?do=findComment&comment=1958890
+         *  It's a standard cubic spline, keyed from values and slopes.
+         */
+
+        let curve = this.ispCurve
+        if(! Array.isArray(curve[0])) {
+            // Legacy [atm, vac] data
+            curve = [[0, (curve as any)[1]], [1, (curve as any)[0]]]
+        }
+
+        if(pressureAtm < curve[0][0]) return curve[0][1]  // Cap on <0
+        // extrapolate >end
+
+        const x = curve.map(cp => cp[0])
+        const y = curve.map(cp => cp[1])
+        const s = new Spline(x, y)
+        return s.at(pressureAtm)
     }
 }
 
@@ -26,7 +43,7 @@ export const engines = {
         size: new Set([Size.RADIAL]),
         gimbal: 8,
         thrustCurve: [15.172, 16],
-        ispCurve: [275, 290],
+        ispCurve: [[0, 290], [1, 275], [7, 0.001]],
         consumption: Resources.create({lf: 0.506, ox: 0.619}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/24-77_%22Twitch%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
@@ -37,7 +54,7 @@ export const engines = {
         size: new Set([Size.TINY]),
         gimbal: 3,
         thrustCurve: [16.563, 20],
-        ispCurve: [265, 320],
+        ispCurve: [[0, 320], [1, 265], [7, 0.001]],
         consumption: Resources.create({lf: 0.574, ox: 0.701}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/48-7S_%22Spark%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.PropulsionSystems,
@@ -48,7 +65,7 @@ export const engines = {
         size: new Set([Size.SMALL, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [250, 300],
-        ispCurve: [175, 210],
+        ispCurve: [[0, 210], [1, 175], [6, 0.001]],
         consumption: Resources.create({sf: 19.423}),
         content: Resources.create({sf: 820}),
         throttleControl: false,
@@ -61,7 +78,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 3,
         thrustCurve: [162.295, 180.0],
-        ispCurve: [275, 305],
+        ispCurve: [[0, 305], [1, 275], [9, 0.001]],
         consumption: Resources.create({lf: 5.416, ox: 6.62}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/CR-7_R.A.P.I.E.R._Engine",
         techTreeNode: TechTreeNode.AerospaceTech,
@@ -72,7 +89,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 3,
         thrustCurve: [465.642, 0],
-        ispCurve: [3200, 0],
+        ispCurve: [[0, 0], [1, 3200]],
         consumption: Resources.create({lf: 0.669, air: 4.015}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/CR-7_R.A.P.I.E.R._Engine",
         techTreeNode: TechTreeNode.AerospaceTech,
@@ -83,7 +100,7 @@ export const engines = {
         size: new Set([Size.TINY, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [26.512, 30.0],
-        ispCurve: [190, 215],
+        ispCurve: [[0, 215], [1, 190], [7, 0.001]],
         consumption: Resources.create({sf: 1.897}),
         content: Resources.create({sf: 90.0}),
         throttleControl: false,
@@ -96,7 +113,7 @@ export const engines = {
         size: new Set([Size.TINY, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [11.012, 12.5],
-        ispCurve: [185, 210],
+        ispCurve: [[0, 210], [1, 185], [7, 0.001]],
         consumption: Resources.create({sf: 0.809}),
         content: Resources.create({sf: 40}),
         throttleControl: false,
@@ -109,7 +126,7 @@ export const engines = {
         size: new Set([Size.TINY]),
         gimbal: 0,
         thrustCurve: [0.048, 2.0],
-        ispCurve: [100, 4200],
+        ispCurve: [[0, 4200], [1, 100], [1.2, 0.001]],
         consumption: Resources.create({xe: 0.486, el: 8.74}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/IX-6315_%22Dawn%22_Electric_Propulsion_System",
         techTreeNode: TechTreeNode.IonPropulsion,
@@ -120,7 +137,7 @@ export const engines = {
         size: new Set([Size.TINY]),
         gimbal: 0,
         thrustCurve: [20.6, 0],
-        ispCurve: [6400, 0],
+        ispCurve: [[0, 0], [1, 6400]],
         consumption: Resources.create({lf: 0.064, air: 1.402, el: -1}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-20_%22Juno%22_Basic_Jet_Engine",
         techTreeNode: TechTreeNode.Aviation,
@@ -131,7 +148,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 0,
         thrustCurve: [120, 0],
-        ispCurve: [10500, 0],
+        ispCurve: [[0, 0], [1, 10500]],
         consumption: Resources.create({lf: 0.233, air: 29.601, el: -4}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-33_%22Wheesley%22_Turbofan_Engine",
         techTreeNode: TechTreeNode.Aerodynamics,
@@ -142,7 +159,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 10,
         thrustCurve: [107.885, 0],
-        ispCurve: [9000, 0],
+        ispCurve: [[0, 0], [1, 9000]],
         consumption: Resources.create({lf: 0.193, air: 7.705, el: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-404_%22Panther%22_Afterburning_Turbofan",
         techTreeNode: TechTreeNode.SupersonicFlight,
@@ -153,7 +170,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 10,
         thrustCurve: [219.476, 0],
-        ispCurve: [4000, 0],
+        ispCurve: [[0, 0], [1, 4000]],
         consumption: Resources.create({lf: 0.663, air: 7.954, el: -5}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-404_%22Panther%22_Afterburning_Turbofan",
         techTreeNode: TechTreeNode.SupersonicFlight,
@@ -164,7 +181,7 @@ export const engines = {
         size: new Set([Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [360, 0],
-        ispCurve: [12600, 0],
+        ispCurve: [[0, 0], [1, 12600]],
         consumption: Resources.create({lf: 0.583, air: 132.272, el: -16}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-90_%22Goliath%22_Turbofan_Engine",
         techTreeNode: TechTreeNode.HeavyAerodynamics,
@@ -175,7 +192,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 1,
         thrustCurve: [386.657, 0],
-        ispCurve: [4000, 0],
+        ispCurve: [[0, 0], [1, 4000]],
         consumption: Resources.create({lf: 0.663, air: 5.303, el: -5}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-X4_%22Whiplash%22_Turbo_Ramjet_Engine",
         techTreeNode: TechTreeNode.HypersonicFlight,
@@ -197,7 +214,7 @@ export const engines = {
         size: new Set([Size.EXTRA_LARGE]),
         gimbal: 4,
         thrustCurve: [1205.882, 2000.0],
-        ispCurve: [205, 340],
+        ispCurve: [[0, 340], [1, 205], [5, 0.001]],
         consumption: Resources.create({lf: 53.985, ox: 65.982, el: -12}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Kerbodyne_KR-2L%2B_%22Rhino%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
@@ -208,7 +225,7 @@ export const engines = {
         size: new Set([Size.LARGE, Size.RADIAL]),
         gimbal: 1.5,
         thrustCurve: [1866.667, 2000],
-        ispCurve: [280, 300],
+        ispCurve: [[0, 300], [1, 280], [9, 0.001]],
         consumption: Resources.create({lf: 61.183, ox: 74.779}),
         content: Resources.create({lf: 2880, ox: 3520}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LFB_KR-1x2_%22Twin-Boar%22_Liquid_Fuel_Engine",
@@ -220,7 +237,7 @@ export const engines = {
         size: new Set([Size.LARGE, Size.RADIAL]),
         gimbal: 1.5,
         thrustCurve: [1866.667, 2000],
-        ispCurve: [280, 300],
+        ispCurve: [[0, 300], [1, 280], [9, 0.001]],
         consumption: Resources.create({lf: 61.183, ox: 74.779}),
         content: Resources.create({lf: 2880, ox: 3520}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LFB_KR-1x2_%22Twin-Boar%22_Liquid_Fuel_Engine",
@@ -232,7 +249,7 @@ export const engines = {
         size: new Set([Size.TINY, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [0.508, 2],
-        ispCurve: [80, 315],
+        ispCurve: [[0, 315], [1, 80], [3, 0.001]],
         consumption: Resources.create({lf: 0.058, ox: 0.071}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-1_%22Ant%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.PropulsionSystems,
@@ -243,7 +260,7 @@ export const engines = {
         size: new Set([Size.RADIAL]),
         gimbal: 10,
         thrustCurve: [1.793, 2.0],
-        ispCurve: [260, 290],
+        ispCurve: [[0, 290], [1, 260], [8, 0.001]],
         consumption: Resources.create({lf: 0.063, ox: 0.077}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-1R_%22Spider%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
@@ -254,7 +271,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 4,
         thrustCurve: [14.783, 60.0],
-        ispCurve: [85, 345],
+        ispCurve: [[0, 345], [1, 85], [3, 0.001]],
         consumption: Resources.create({lf: 1.596, ox: 1.951}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-909_%22Terrier%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.AdvancedRocketry,
@@ -265,7 +282,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 0,
         thrustCurve: [13.875, 60.0],
-        ispCurve: [185, 800],
+        ispCurve: [[0, 800], [1, 185], [2, 0.001]],
         consumption: Resources.create({lf: 1.53, el: -5}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-N_%22Nerv%22_Atomic_Rocket_Motor",
         techTreeNode: TechTreeNode.NuclearPropulsion,
@@ -276,7 +293,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 0,
         thrustCurve: [205.161, 240.0],
-        ispCurve: [265, 310],
+        ispCurve: [[0, 310], [1, 265], [7, 0.001]],
         consumption: Resources.create({lf: 7.105, ox: 8.684, el: -7}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-T30_%22Reliant%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.GeneralRocketry,
@@ -287,7 +304,7 @@ export const engines = {
         size: new Set([Size.SMALL]),
         gimbal: 3,
         thrustCurve: [167.969, 215],
-        ispCurve: [250, 320],
+        ispCurve: [[0, 320], [1, 250], [6, 0.001]],
         consumption: Resources.create({lf: 6.166, ox: 7.536, el: -6}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-T45_%22Swivel%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.BasicRocketry,
@@ -320,7 +337,7 @@ export const engines = {
         size: new Set([Size.RADIAL]),
         gimbal: 8,
         thrustCurve: [108.197, 120],
-        ispCurve: [275, 305],
+        ispCurve: [[0, 305], [1, 275], [9, 0.001]],
         consumption: Resources.create({lf: 3.611, ox: 4.413}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk-55_%22Thud%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.AdvancedRocketry,
@@ -331,7 +348,7 @@ export const engines = {
         size: new Set([Size.RADIAL]),
         gimbal: 6,
         thrustCurve: [9.6, 20],
-        ispCurve: [120, 250],
+        ispCurve: [[0, 250], [1, 120], [4, 0.001]],
         consumption: Resources.create({mono: 2.039}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/O-10_%22Puff%22_MonoPropellant_Fuel_Engine",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
@@ -353,7 +370,7 @@ export const engines = {
         size: new Set([Size.LARGE]),
         gimbal: 2,
         thrustCurve: [568.75, 650],
-        ispCurve: [280, 320],
+        ispCurve: [[0, 320], [1, 280], [6, 0.001]],
         consumption: Resources.create({lf: 18.642, ox: 22.784, el: -10}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-I5_%22Skipper%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavyRocketry,
@@ -375,7 +392,7 @@ export const engines = {
         size: new Set([Size.LARGE]),
         gimbal: 5,
         thrustCurve: [64.286, 250.0],
-        ispCurve: [90, 350],
+        ispCurve: [[0, 350], [1, 90], [3, 0.001]],
         consumption: Resources.create({lf: 6.555, ox: 8.012, el: -8}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-L10_%22Poodle%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavyRocketry,
@@ -386,7 +403,7 @@ export const engines = {
         size: new Set([Size.LARGE]),
         gimbal: 2,
         thrustCurve: [1379.032, 1500],
-        ispCurve: [285, 310],
+        ispCurve: [[0, 310], [1, 285], [9, 0.001]],
         consumption: Resources.create({lf: 44.407, ox: 54.275, el: -12}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-M3_%22Mainsail%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
@@ -408,7 +425,7 @@ export const engines = {
         size: new Set([Size.SMALL, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [197.897, 227.0],
-        ispCurve: [170, 195],
+        ispCurve: [[0, 195], [1, 170], [7, 0.001]],
         consumption: Resources.create({sf: 15.827}),
         content: Resources.create({sf: 375}),
         throttleControl: false,
@@ -421,7 +438,7 @@ export const engines = {
         size: new Set([Size.SMALL, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [162.909, 192.0],
-        ispCurve: [140, 165],
+        ispCurve: [[0, 165], [1, 140], [6, 0.001]],
         consumption: Resources.create({sf: 15.821}),
         content: Resources.create({sf: 140}),
         throttleControl: false,
@@ -445,7 +462,7 @@ export const engines = {
         size: new Set([Size.SMALL, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [593.864, 670],
-        ispCurve: [195, 220],
+        ispCurve: [[0, 220], [1, 195], [7, 0.001]],
         consumption: Resources.create({sf: 41.407}),
         content: Resources.create({sf: 2600}),
         throttleControl: false,
@@ -458,7 +475,7 @@ export const engines = {
         size: new Set([Size.LARGE, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [1515.217, 1700],
-        ispCurve: [205, 230],
+        ispCurve: [[0, 230], [1, 205], [7, 0.001]],
         consumption: Resources.create({sf: 100.494}),
         content: Resources.create({sf: 8000}),
         throttleControl: false,
@@ -471,7 +488,7 @@ export const engines = {
         size: new Set([Size.LARGE, Size.RADIAL]),
         gimbal: 1,
         thrustCurve: [2948.936, 3300],
-        ispCurve: [210, 235],
+        ispCurve: [[0, 235], [1, 210], [7, 0.001]],
         consumption: Resources.create({sf: 190.926}),
         content: Resources.create({sf: 16400}),
         throttleControl: false,
@@ -484,7 +501,7 @@ export const engines = {
         size: new Set([Size.SMALL, Size.RADIAL]),
         gimbal: 10.5,
         thrustCurve: [936.508, 1000],
-        ispCurve: [295, 315],
+        ispCurve: [[0, 315], [1, 295], [12, 0.001]],
         consumption: Resources.create({lf: 29.135, ox: 35.609, el: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/S3_KS-25_%22Vector%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
@@ -495,7 +512,7 @@ export const engines = {
         size: new Set([Size.EXTRA_LARGE]),
         gimbal: 2,
         thrustCurve: [3746.032, 4000],
-        ispCurve: [295, 315],
+        ispCurve: [[0, 315], [1, 295], [12, 0.001]],
         consumption: Resources.create({lf: 116.539, ox: 142.437, el: -12}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/S3_KS-25x4_%22Mammoth%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
@@ -506,7 +523,7 @@ export const engines = {
         size: new Set([Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [13.792, 18],
-        ispCurve: [118, 154],
+        ispCurve: [[0, 154], [1, 118], [6, 0.001]],
         consumption: Resources.create({sf: 1.589}),
         content: Resources.create({sf: 8}),
         throttleControl: false,
@@ -519,7 +536,7 @@ export const engines = {
         size: new Set([Size.SMALL, Size.RADIAL]),
         gimbal: 0,
         thrustCurve: [153.529, 180],
-        ispCurve: [290, 340],
+        ispCurve: [[0, 340], [1, 290], [5, 230], [10, 170], [20, 0.001]],
         consumption: Resources.create({lf: 4.859, ox: 5.938, el: -5}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/T-1_Toroidal_Aerospike_%22Dart%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HypersonicFlight,

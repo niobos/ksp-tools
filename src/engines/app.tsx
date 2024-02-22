@@ -65,7 +65,7 @@ export default function App() {
     const [mass, setMass] = useFragmentState('m', 1.5);
     const [acceleration, setAcceleration] = useFragmentState('a', 14.715);
     const [gravity, setGravity] = useState('Kerbin' as string | number);  // not stored in fragment
-    const [pressure, setPressure] = useFragmentState('p', 'vac');
+    const [pressure, setPressure] = useFragmentState<number|string>('p', 0);
     const [sizes, setSizes] = useFragmentState('s',
         s => {
             const v = jsonParseWithDefault(Object.keys(Size))(s);
@@ -104,6 +104,9 @@ export default function App() {
     const {value: gravityValue, preset: gravityPreset} = fromPreset(
         gravity, objectMap(kspBodies, (b) => b.surface_gravity)
     )
+    const {value: pressureValue, preset: pressurePreset} = fromPreset(
+        pressure, objectMap(kspBodies, (b) => (b.atmospherePressure ?? 0) / kspBodies['Kerbin'].atmospherePressure)
+    )
     const {value: tankValue, preset: tankPreset} = fromPreset(
         tank, objectMap(fuelTanks, (ft) => {return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost/ft.mass}})
     );
@@ -130,15 +133,18 @@ export default function App() {
             cmp: (a, b) => a.fuelTankMass - b.fuelTankMass,
         },
         {title: <span>Size</span>, value: i => i.size},
-        {title: <span>Thrust/engine<br/>({pressure}) [kN]</span>, classList: 'number', value: i => i.thrustPerEngine.toFixed(1),
+        {title: <span>Thrust/engine<br/>({pressureValue}) [kN]</span>, classList: 'number', value: i => i.thrustPerEngine.toFixed(1),
             cmp: (a, b) => a.thrustPerEngine - b.thrustPerEngine,
         },
-        {title: <span>Isp<br/>({pressure})<br/>[s]</span>, classList: 'number', value: i => i.isp},
-        {title: <span>TWR ({pressure})<br/>full []</span>, value: i => (i.accelerationFull / gravityValue).toFixed(2),
+        {title: <span>Isp<br/>({pressureValue})<br/>[s]</span>, classList: 'number',
+            value: i => i.isp.toFixed(1),
+            cmp: (a, b) => a.isp - b.isp,
+        },
+        {title: <span>TWR ({pressureValue})<br/>full []</span>, value: i => (i.accelerationFull / gravityValue).toFixed(2),
             classList: i => i.accelerationFull < acceleration*.99 ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
             cmp: (a, b) => a.accelerationFull - b.accelerationFull,
         },
-        {title: <span>TWR ({pressure})<br/>empty []</span>, value: i => (i.accelerationEmpty / gravityValue).toFixed(2),
+        {title: <span>TWR ({pressureValue})<br/>empty []</span>, value: i => (i.accelerationEmpty / gravityValue).toFixed(2),
             classList: 'number',
             cmp: (a, b) => a.accelerationEmpty - b.accelerationEmpty,
         },
@@ -180,10 +186,6 @@ export default function App() {
         }
         if (skip) continue;
 
-        const pressureAtm = pressure == 'atm' ? 1 : 0;
-        const pressureIndex = pressure === 'atm' ? 0 : 1;
-
-
         let numEngines;
         let fuelTankMass, totalMass, emptyMass, actualDv;
         if(engine.consumption.sf > 0) { // SRB
@@ -192,15 +194,15 @@ export default function App() {
              * => (F - a * m_engine) * n = a * m_payload
              * => n = a * m_payload / (F - a*m_engine)
              */
-            numEngines = Math.max(1, Math.ceil(mass * acceleration / (engine.thrust(pressureAtm) - acceleration * engine.mass)));
+            numEngines = Math.max(1, Math.ceil(mass * acceleration / (engine.thrust(pressureValue) - acceleration * engine.mass)));
             fuelTankMass = 0;
             totalMass = mass + engine.mass * numEngines;
             emptyMass = mass + engine.emptied().mass * numEngines;
-            actualDv = engine.isp(pressureAtm) * g0 * Math.log(totalMass / emptyMass);
+            actualDv = engine.isp(pressureValue) * g0 * Math.log(totalMass / emptyMass);
 
         } else {  // Normal rocket engine or jet engine
             function calcNumEngines() {
-                let n = Math.ceil(totalMass * acceleration / engine.thrust(pressureAtm));
+                let n = Math.ceil(totalMass * acceleration / engine.thrust(pressureValue));
                 if(n === Infinity || isNaN(n) || n === 0) n = 1;
                 return n;
             }
@@ -209,7 +211,7 @@ export default function App() {
 
             while(true) {
                 fuelTankMass = calcFuelTankMass(
-                    dv, engine.isp(pressureAtm),
+                    dv, engine.isp(pressureValue),
                     mass + numEngines * engine.mass,
                     tankValue.fullEmptyRatio,
                     mass + numEngines * engine.emptied().mass,
@@ -219,12 +221,12 @@ export default function App() {
                 if (!isNaN(fuelTankMass)) {
                     totalMass = mass + engine.mass * numEngines + fuelTankMass;
                     emptyMass = mass + engine.emptied().mass * numEngines + fuelTankMass / tankValue.fullEmptyRatio;
-                    actualDv = engine.isp(pressureAtm) * g0 * Math.log(totalMass / emptyMass);
+                    actualDv = engine.isp(pressureValue) * g0 * Math.log(totalMass / emptyMass);
                 } else {
                     // max attainable ∆v with infinite fueltanks
                     totalMass = mass + engine.mass * numEngines;
                     emptyMass = mass + engine.emptied().mass * numEngines;
-                    actualDv = engine.isp(pressureAtm) * g0 * Math.log(tankValue.fullEmptyRatio);
+                    actualDv = engine.isp(pressureValue) * g0 * Math.log(tankValue.fullEmptyRatio);
                 }
 
                 const newNumEngines = calcNumEngines();  // iterate
@@ -234,7 +236,7 @@ export default function App() {
                 numEngines = newNumEngines;
             }
         }
-        const accelerationFull = engine.thrust(pressureAtm) * numEngines / totalMass;
+        const accelerationFull = engine.thrust(pressureValue) * numEngines / totalMass;
 
         if( (accelerationFull < acceleration * .99) ||
             (actualDv < dv * .99) || isNaN(actualDv)) {
@@ -248,15 +250,15 @@ export default function App() {
         engineOptions.push({
             name,
             n: numEngines,
-            thrustPerEngine: engine.thrust(pressureAtm),
-            isp: engine.isp(pressureAtm),
+            thrustPerEngine: engine.thrust(pressureValue),
+            isp: engine.isp(pressureValue),
             cost: engine.cost * numEngines + fuelTankMass * tankValue.cost,
             engineMass: engine.mass * numEngines,
             fuelTankMass,
             totalMass: totalMass,
             dv: actualDv,
             accelerationFull: accelerationFull,
-            accelerationEmpty: engine.thrust(pressureAtm) * numEngines / emptyMass,
+            accelerationEmpty: engine.thrust(pressureValue) * numEngines / emptyMass,
             size: [...engine.size].map(s => s.shortDescription).join(', '),
             gimbal: engine.gimbal,
             alternator: Math.max(0, -engine.consumption.scaled(numEngines).el),
@@ -301,14 +303,12 @@ export default function App() {
             />)
         </td></tr>
         <tr><td>Pressure</td><td>
-            <label><input type="radio" name="pressure" value="atm"
-                          checked={pressure === 'atm'}
-                          onChange={(e) => setPressure(e.target.value)}
-            />atm</label>
-            <label><input type="radio" name="pressure" value="vac"
-                          checked={pressure === 'vac'}
-                          onChange={(e) => setPressure(e.target.value)}
-            />vac</label>
+            <FloatInput value={pressureValue} decimals={1}
+                        onChange={(v) => setPressure(v)}
+            />{"atm "}
+            <KspHierBody value={pressurePreset} customValue="custom"
+                         onChange={setPressure}
+            />
         </td></tr>
         <tr><td>Tech level</td><td>{techLevelJsx}</td></tr>
         <tr><td>Sizes</td><td>
