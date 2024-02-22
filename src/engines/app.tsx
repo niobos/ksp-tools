@@ -13,9 +13,9 @@ import SortableTable from "../components/sortableTable";
 import Preset from "../components/preset";
 import FuelTank from "../components/fuelTank";
 import {fuelTanks} from "../utils/kspParts-fuelTanks";
-import {engines as kspEngines, g0} from "../utils/kspParts-engine";
+import {engines as kspEngines} from "../utils/kspParts-engine";
 import {fromPreset, objectMap} from "../utils/utils";
-import {massBeforeDv} from "../utils/rocket";
+import {dvForDm, massBeforeDv} from "../utils/rocket";
 
 function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry) {
     /* Calculate the mass of fuel tanks needed to get the desired ∆v
@@ -198,7 +198,7 @@ export default function App() {
             fuelTankMass = 0;
             totalMass = mass + engine.mass * numEngines;
             emptyMass = mass + engine.emptied().mass * numEngines;
-            actualDv = engine.isp(pressureValue) * g0 * Math.log(totalMass / emptyMass);
+            actualDv = dvForDm(totalMass, emptyMass, engine.isp(pressureValue))
 
         } else {  // Normal rocket engine or jet engine
             function calcNumEngines() {
@@ -221,12 +221,12 @@ export default function App() {
                 if (!isNaN(fuelTankMass)) {
                     totalMass = mass + engine.mass * numEngines + fuelTankMass;
                     emptyMass = mass + engine.emptied().mass * numEngines + fuelTankMass / tankValue.fullEmptyRatio;
-                    actualDv = engine.isp(pressureValue) * g0 * Math.log(totalMass / emptyMass);
+                    actualDv = dvForDm(totalMass, emptyMass, engine.isp(pressureValue));
                 } else {
                     // max attainable ∆v with infinite fueltanks
                     totalMass = mass + engine.mass * numEngines;
                     emptyMass = mass + engine.emptied().mass * numEngines;
-                    actualDv = engine.isp(pressureValue) * g0 * Math.log(tankValue.fullEmptyRatio);
+                    actualDv = dvForDm(tankValue.fullEmptyRatio, 1, engine.isp(pressureValue));
                 }
 
                 const newNumEngines = calcNumEngines();  // iterate

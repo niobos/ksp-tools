@@ -1,10 +1,12 @@
 /* A set of function related to the rocket equation
  */
 
+export const g0 = 9.80665;  // https://wiki.kerbalspaceprogram.com/wiki/Specific_impulse
+
 export function dvForDm(startMass: number, endMass: number, isp: number) {
     /* Tsiolkovsky rocket equation
      */
-    const ve = isp * 9.81
+    const ve = isp * g0
     return ve * Math.log(startMass / endMass)
 }
 export function massAfterDv(startMass: number, dv: number, isp: number): number {
@@ -12,7 +14,7 @@ export function massAfterDv(startMass: number, dv: number, isp: number): number 
      * => exp( ∆v / (Isp*g0) ) = m0 / mf
      * => mf = m0 / exp( ∆v / (Isp*g0) )
      */
-    const ve = isp * 9.81
+    const ve = isp * g0
     return startMass / Math.exp( dv / ve )
 }
 export function massBeforeDv(endMass: number, dv: number, isp: number): number {
@@ -20,7 +22,7 @@ export function massBeforeDv(endMass: number, dv: number, isp: number): number {
      * => exp( ∆v / (Isp*g0) ) = m0 / mf
      * => m0 = mf * exp( ∆v / (Isp*g0) )
      */
-    const ve = isp * 9.81
+    const ve = isp * g0
     return endMass * Math.exp(dv / ve)
 }
 
@@ -35,7 +37,7 @@ export function dtForDv(dv: number, startMass: number, thrust: number, isp: numb
      */
     // https://www.reddit.com/r/KerbalAcademy/comments/1oremg/comment/ccuwdmm/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
     // https://space.stackexchange.com/a/27376
-    const ve = isp * 9.81
+    const ve = isp * g0
     return startMass * ve / thrust * (1 - Math.exp(-dv/ve))
 }
 export function dvForDt(dt: number, startMass: number, thrust: number, isp: number): number {
@@ -55,6 +57,6 @@ export function dvForDt(dt: number, startMass: number, thrust: number, isp: numb
      * => -∆v/ve = ln(1 - ∆t * F / (m0 * ve))
      * => ∆v = -ln(1 - ∆t * F / (m0 * ve)) * ve
      */
-    const ve = isp * 9.81
+    const ve = isp * g0
     return -Math.log(1 - dt * thrust / (startMass * ve)) * ve
 }
