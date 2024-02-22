@@ -12,17 +12,11 @@ export class Engine extends Part {
          *  It's a standard cubic spline, keyed from values and slopes.
          */
 
-        let curve = this.ispCurve
-        if(! Array.isArray(curve[0])) {
-            // Legacy [atm, vac] data
-            curve = [[0, (curve as any)[1]], [1, (curve as any)[0]]]
-        }
-
-        if(pressureAtm < curve[0][0]) return curve[0][1]  // Cap on <0
+        if(pressureAtm < this.ispCurve[0][0]) return this.ispCurve[0][1]  // Cap on <0
         // extrapolate >end
 
-        const x = curve.map(cp => cp[0])
-        const y = curve.map(cp => cp[1])
+        const x = this.ispCurve.map(cp => cp[0])
+        const y = this.ispCurve.map(cp => cp[1])
         const s = new Spline(x, y)
         return s.at(pressureAtm)
     }
@@ -184,7 +178,7 @@ export const engines = {
         mass: 5.0,
         size: new Set([Size.SMALL, Size.MEDIUM, Size.LARGE]),
         gimbal: 5,
-        ispCurve: [280, 290],
+        ispCurve: [[0, 290], [1, 280]],
         consumption: Resources.create({lf: 42.723, ox: 52.217, el: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Kerbodyne_KE-1_%22Mastodon%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
@@ -286,7 +280,7 @@ export const engines = {
         mass: 1.0,
         size: new Set([Size.MEDIUM]),
         gimbal: 3,
-        ispCurve: [150, 345],
+        ispCurve: [[0, 345], [1, 150]],
         consumption: Resources.create({lf: 3.325, ox: 4.064, el: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-T91_%22Cheetah%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
@@ -296,7 +290,7 @@ export const engines = {
         mass: 2.0,
         size: new Set([Size.MEDIUM]),
         gimbal: 5,
-        ispCurve: [290, 310],
+        ispCurve: [[0, 310], [1, 290]],
         consumption: Resources.create({lf: 11.842, ox: 14.473, el: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-TX87_%22Bobcat%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavyRocketry,
@@ -326,7 +320,7 @@ export const engines = {
         mass: 1.0,
         size: new Set([Size.LARGE]),
         gimbal: 2,
-        ispCurve: [265, 330],
+        ispCurve: [[0, 330], [1, 265]],
         consumption: Resources.create({lf: 8.343, ox: 10.197, el: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-I2_%22Skiff%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
@@ -346,7 +340,7 @@ export const engines = {
         mass: 2.5,
         size: new Set([Size.LARGE]),
         gimbal: 3,
-        ispCurve: [70, 412],
+        ispCurve: [[0, 412], [1, 70]],
         consumption: Resources.create({lf: 8.353, ox: 10.21, el: -8}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-J10_%22Wolfhound%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
@@ -376,7 +370,7 @@ export const engines = {
         mass: 1.25,
         size: new Set([Size.MEDIUM]),
         gimbal: 0,
-        ispCurve: [265, 305],
+        ispCurve: [[0, 305], [1, 265]],
         consumption: Resources.create({lf: 7.222, ox: 8.826, el: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RK-7_%22Kodiak%22_Liquid_Fueled_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
@@ -410,7 +404,7 @@ export const engines = {
         mass: 0.18,
         size: new Set([Size.RADIAL]),
         gimbal: 22.5,
-        ispCurve: [270, 320],
+        ispCurve: [[0, 320], [1, 270]],
         consumption: Resources.create({lf: 1.147, ox: 1.402}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RV-1_%22Cub%22_Vernier_Engine",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
@@ -498,7 +492,7 @@ export const engines = {
         mass: 51.5,
         size: new Set([Size.MEDIUM, Size.RADIAL]),
         gimbal: 0,
-        ispCurve: [200, 225],
+        ispCurve: [[0, 225], [1, 200]],
         consumption: Resources.create({sf: 78.556}),
         content: Resources.create({sf: 5800}),
         throttleControl: false,
