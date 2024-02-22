@@ -60,3 +60,9 @@ export function dvForDt(dt: number, startMass: number, thrust: number, isp: numb
     const ve = isp * g0
     return -Math.log(1 - dt * thrust / (startMass * ve)) * ve
 }
+
+export function thrustFromIspMdot(isp: number, mDot: number): number {
+    /* Calculate the engine thrust from the ISP and ṁ (dm/dt)
+     */
+    return isp * g0 * mDot
+}
