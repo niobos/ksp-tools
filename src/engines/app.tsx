@@ -9,7 +9,7 @@ import {FloatInput} from "formattedInput";
 import KspHierBody from "../components/kspHierBody";
 import Multiselect from "../components/multiselect";
 import {KspFund} from "../components/kspIcon";
-import SortableTable from "../components/sortableTable";
+import SortableTable from "sortableTable";
 import Preset from "../components/preset";
 import FuelTank from "../components/fuelTank";
 import {fuelTanks} from "../utils/kspParts-fuelTanks";

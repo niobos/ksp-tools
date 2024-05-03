@@ -5,7 +5,7 @@ import {FloatInput, SiInput} from "formattedInput";
 import {KerbalYdhmsInput} from "../components/formattedInput";
 import useFragmentState from 'useFragmentState';
 import Preset from "../components/preset";
-import SortableTable from "../components/sortableTable";
+import SortableTable from "sortableTable";
 import {bodies} from "../utils/kspBody";
 import {orbits} from "../utils/kspOrbit";
 import {Resources} from "../utils/kspParts";
