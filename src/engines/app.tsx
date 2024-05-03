@@ -331,7 +331,7 @@ export default function App() {
         <label><input type="checkbox" checked={showAll}
                       onChange={(e) => setShowAll(e.target.checked)}
         />Also show engines not meeting ∆v or TWR requirements</label>
-        <SortableTable columns={columns} data={engineOptions}/>
+        <SortableTable columns={columns} data={engineOptions} initialSortColumnNr={3} initialSortDir={1}/>
     </div>;
 }
 

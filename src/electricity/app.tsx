@@ -368,7 +368,7 @@ export default function App() {
             </tbody>
         </table>
         <h2>Options</h2>
-        <SortableTable columns={columns} data={solutions}/>
+        <SortableTable columns={columns} data={solutions} initialSortColumnNr={2} initialSortDir={1}/>
     </div>;
 }
 
