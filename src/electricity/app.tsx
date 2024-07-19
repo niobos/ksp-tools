@@ -48,7 +48,7 @@ function kerbolDistanceFromSolarPanelEfficiency(e) {
 const columns = [
     {title: 'Config', value: i => i.config},
     {
-        title: <span>Cost [<KspFund/>]</span>, value: i => i.cost.toFixed(0),
+        title: <>Cost [<KspFund/>]</>, value: i => i.cost.toFixed(0),
         classList: i => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
         cmp: (a, b) => a.cost - b.cost,
     },
@@ -57,38 +57,46 @@ const columns = [
         cmp: (a, b) => a.mass - b.mass,
     },
     {
-        title: <span>Max<br/>power<br/>[⚡/m]</span>, classList: 'number',
-        value: i => (i.maxPower * 60).toFixed(1),
-        cmp: (a, b) => a.maxPower - b.maxPower,
+        title: <>Power [⚡/m]</>, children: [
+            {
+                title: <>Max</>, classList: 'number',
+                value: i => (i.maxPower * 60).toFixed(1),
+                cmp: (a, b) => a.maxPower - b.maxPower,
+            },
+            {
+                title: <>Nominal</>, classList: 'number',
+                value: i => (i.nominalPower * 60).toFixed(1),
+                cmp: (a, b) => a.nominalPower - b.nominalPower,
+            },
+            {
+                title: <>Charge<br/>(burst+darkness)</>, classList: 'number',
+                value: i => `${((i.burstChargePower+i.darknessChargePower)*60).toFixed(1)} (`
+                    + `${(i.burstChargePower*60).toFixed(1)} + `
+                    + `${(i.darknessChargePower*60).toFixed(1)})`,
+                cmp: (a, b) => (a.burstChargePower + a.darknessChargePower) - (b.burstChargePower + b.darknessChargePower),
+            },
+            {
+                title: <>Spare</>, classList: 'number',
+                value: i => ((i.maxPower-i.nominalPower)*60).toFixed(1),
+                cmp: (a, b) => (a.maxPower-a.nominalPower) - (b.maxPower-b.nominalPower),
+            },
+        ],
     },
     {
-        title: <span>Nominal<br/>power<br/>[⚡/m]</span>, classList: 'number',
-        value: i => (i.nominalPower * 60).toFixed(1),
-        cmp: (a, b) => a.nominalPower - b.nominalPower,
-    },
-    {
-        title: <span>Charge<br/>(burst+darkness)<br/>[⚡/m]</span>, classList: 'number',
-        value: i => `${((i.burstChargePower+i.darknessChargePower)*60).toFixed(1)} (`
-            + `${(i.burstChargePower*60).toFixed(1)} + `
-            + `${(i.darknessChargePower*60).toFixed(1)})`,
-        cmp: (a, b) => (a.burstChargePower + a.darknessChargePower) - (b.burstChargePower + b.darknessChargePower),
-    },
-    {
-        title: <span>Spare<br/>power<br/>[⚡/m]</span>, classList: 'number',
-        value: i => ((i.maxPower-i.nominalPower)*60).toFixed(1),
-        cmp: (a, b) => (a.maxPower-a.nominalPower) - (b.maxPower-b.nominalPower),
-    },
-    {
-        title: <span>Storage<br/>available<br/>[⚡]</span>, classList: 'number',
-        value: i => i.maxEnergy.toFixed(0),
-        cmp: (a, b) => a.maxEnergy - b.maxEnergy,
-    },
-    {
-        title: <span>Storage<br/>(burst+darkness)<br/>needed [⚡]</span>, classList: 'number',
-        value: i => `${(i.burstBatteryEnergy + i.shadeBatteryEnergy).toFixed(0)} (`
-            + `${i.burstBatteryEnergy.toFixed(0)} + `
-            + `${i.shadeBatteryEnergy.toFixed(0)})`,
-        cmp: (a, b) => (a.burstBatteryEnergy + a.shadeBatteryEnergy) - (b.burstBatteryEnergy + b.shadeBatteryEnergy),
+        title: <>Storage [⚡]</>, children: [
+            {
+                title: <>Available</>, classList: 'number',
+                value: i => i.maxEnergy.toFixed(0),
+                cmp: (a, b) => a.maxEnergy - b.maxEnergy,
+            },
+            {
+                title: <>Needed<br/>(burst+darkness)</>, classList: 'number',
+                value: i => `${(i.burstBatteryEnergy + i.shadeBatteryEnergy).toFixed(0)} (`
+                    + `${i.burstBatteryEnergy.toFixed(0)} + `
+                    + `${i.shadeBatteryEnergy.toFixed(0)})`,
+                cmp: (a, b) => (a.burstBatteryEnergy + a.shadeBatteryEnergy) - (b.burstBatteryEnergy + b.shadeBatteryEnergy),
+            },
+        ],
     },
 ];
 
