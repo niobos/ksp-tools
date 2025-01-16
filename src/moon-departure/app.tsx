@@ -402,10 +402,20 @@ export default function App() {
                     }}
                     onZoom={(centerDeparture, centerTravel, dir) => {
                         const zoom = dir === "in" ? .7 : 1./.7
-                        setEarliestDeparture(centerDeparture - (centerDeparture - earliestDeparture) * zoom)
-                        setLatestDeparture(centerDeparture + (latestDeparture - centerDeparture) * zoom)
-                        setMinTravelTime(centerTravel - (centerTravel - minTravelTime) * zoom)
-                        setMaxTravelTime(centerTravel + (maxTravelTime - centerTravel) * zoom)
+                        console.log(`zooming from ${earliestDeparture} - ${latestDeparture} (${latestDeparture-earliestDeparture}),`+
+                            ` ${minTravelTime} - ${maxTravelTime} (${maxTravelTime - minTravelTime})`)
+                        const newEarliestDeparture = centerDeparture - (latestDeparture - earliestDeparture) * zoom/2;
+                        const newLatestDeparture = centerDeparture + (latestDeparture - earliestDeparture) * zoom/2;
+                        const newMinTravel = centerTravel - (maxTravelTime - minTravelTime) * zoom/2;
+                        const newMaxTravel = centerTravel + (maxTravelTime - minTravelTime) * zoom/2;
+                        console.log(`zooming ${dir} around ${centerDeparture}, ${centerTravel} to ${newEarliestDeparture} ` +
+                            `- ${newLatestDeparture} (${newLatestDeparture-newEarliestDeparture}) `+
+                            `, ${newMinTravel} -`+
+                            ` ${newMaxTravel} (${newMaxTravel-newMinTravel})`)
+                        setEarliestDeparture(newEarliestDeparture)
+                        setLatestDeparture(newLatestDeparture)
+                        setMinTravelTime(newMinTravel)
+                        setMaxTravelTime(newMaxTravel)
                     }}
                 />
             </div>

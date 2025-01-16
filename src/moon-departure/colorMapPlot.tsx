@@ -1,5 +1,6 @@
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useRef, useState, useMemo} from "react";
 import * as React from "react";
+import useThrottled from "../utils/useThrottled";
 
 export type PlotFuncType<Type> = (value: Type, state: any) => {color: [number, number, number], state?: any, redraw?: boolean}
 /* Determine the color of a result.
@@ -184,6 +185,15 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
         progress = results.length / (canvasRef.current.width * canvasRef.current.height)
     }
 
+    const wheelCallback = useThrottled(e => {
+        console.log(e.deltaY)
+        if(props.onZoom) {
+            const canvasXy = canvasXyFromEvent(e)
+            const logicalXy = coordCanvasToLogical(canvasXy)
+            props.onZoom(logicalXy.x, logicalXy.y, e.deltaY > 0 ? "in" : "out")
+        }
+    }, 500)
+
     return <>
         <label><input type="checkbox"
                       onChange={e => setAutoUpdate(e.target.checked)}
@@ -214,17 +224,16 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
                     const startXy = coordCanvasToLogical(dragging.start)
                     const endXy = coordCanvasToLogical(endCanvasXy)
                     props.onPan(endXy.x-startXy.x, endXy.y-startXy.y)
+
+                    // persist the moved image until next rerender
+                    let offscreenCanvas = offscreenCanvasRef.current;
+                    const offscreenCtx = offscreenCanvas.getContext("2d")
+                    const currentPlot = offscreenCanvas.transferToImageBitmap()
+                    offscreenCtx.drawImage(currentPlot, endCanvasXy.x - dragging.start.x, endCanvasXy.y - dragging.start.y)
                 }
-                offscreenCanvasRef.current.getContext("2d").clearRect(0, 0, offscreenCanvasRef.current.width, offscreenCanvasRef.current.height)
                 setDragging(null)
             }}
-            onWheel={e => {
-                if(props.onZoom) {
-                    const canvasXy = canvasXyFromEvent(e)
-                    const logicalXy = coordCanvasToLogical(canvasXy)
-                    props.onZoom(logicalXy.x, logicalXy.y, e.deltaY > 0 ? "in" : "out")
-                }
-            }}
+            onWheel={wheelCallback}
         >Color map plot</canvas>
     </>
 }
@@ -280,4 +289,16 @@ function* refiningGrid(
         if(!doneL) yield valueL
         if(doneL && doneU) break
     }
+}
+
+function throttle(fn, timeout: number, restart: boolean = false) {
+    let ignoreUntil = +new Date()
+    function f(...args) {
+        const now = +new Date()
+        if(restart) ignoreUntil = now + timeout
+        if(now < ignoreUntil) return
+        ignoreUntil = now + timeout
+        fn(...args)
+    }
+    return f
 }
