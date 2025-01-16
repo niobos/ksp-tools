@@ -74,21 +74,21 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
             const {value: xys} = iterNextBatch(xyIter, batchSize)
             if(xys.length == 0) break
 
-            const logicalXys = []
-            for(let xy of xys) {
+            const logicalXys = xys.map((xy): [number, number] => {
                 const logicalXy = coordCanvasToLogical(xy)
-                logicalXys.push([logicalXy.x, logicalXy.y])
-            }
+                return [logicalXy.x, logicalXy.y]
+            })
 
             let batchResults = await props.asyncCalcFunc(logicalXys)
+            if(versionRef.current > version) {
+                //console.log(`Abandoning draw ${version}`)
+                return
+            }
+
             const newResults = []
             for(let index in batchResults) {
                 const result = batchResults[index]
                 newResults.push({...xys[index], result})
-            }
-            if(versionRef.current > version) {
-                //console.log(`Abandoning draw ${version}`)
-                return
             }
             setResults(results => [...results, ...newResults])
 
@@ -210,7 +210,7 @@ function iterNextBatch<Type>(it: Iterator<Type>, size: number): {value: Array<Ty
 function* refiningGrid(
     xStart: number, xEnd: number, yStart: number, yEnd: number, skipFirst: boolean = false
 ): Generator<{x: number, y: number, xWidth: number, yHeight: number}> {
-    /* iterate over the interval [0;xRange) × [0;yRange)
+    /* iterate over the interval [xStart;xEnd) × [yStart;yEnd)
      * The order of iterations is such that the entire grid is refined in better and better resolution.
      * The yielded objects contain a coordinate (x, y) and a size (xWidth, yHeight):
      * if you draw rectangles with these specifications, the result will be a fully defined grid,

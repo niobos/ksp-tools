@@ -86,6 +86,9 @@ export default function App() {
     const moonOptions = [<option key="" value="">custom</option>]
     for(let moon of primaryBody.isOrbitedBy()) {
         moonOptions.push(<option key={moon.name} value={moon.name}>{moon.name}</option>)
+        if(moonPreset == "" && departingOrbit == kspOrbits[moon.name]) {
+            setMoonPreset(moon.name)
+        }
     }
 
     const latestDeparture = (() => {
@@ -314,9 +317,9 @@ export default function App() {
                 }}
             >{planetOptions}</select> (
             {formatValueSi(departingPlanetOrbit.distanceAtApoapsis)}m
-            {" × "}{formatValueSi(departingPlanetOrbit.distanceAtPeriapsis)}m)
+            {" × "}{formatValueSi(departingPlanetOrbit.distanceAtPeriapsis)}m around Kerbol)
         </td></tr>
-        <tr><td>Departing orbit</td><td>
+        <tr><td>Departing orbit<br/>around {departingPlanet}</td><td>
             <select value={moonPreset} onChange={e => {
                 setMoonPreset(e.target.value)
                 setDepartingOrbit(kspOrbits[e.target.value])
@@ -346,7 +349,7 @@ export default function App() {
                 onChange={e => setTargetPlanet(e.target.value)}
             >{planetOptions}</select> (
             {formatValueSi(targetPlanetOrbit.distanceAtApoapsis)}m
-            {" × "}{formatValueSi(targetPlanetOrbit.distanceAtPeriapsis)}m)
+            {" × "}{formatValueSi(targetPlanetOrbit.distanceAtPeriapsis)}m around Kerbol)
         </td></tr>
         <tr><td>Capture Orbit Radius</td><td>
             <Altitude
@@ -424,6 +427,11 @@ function colorMap(x: number, xMin: number, xMax: number): [number, number, numbe
     ]
 
     const xRel = Math.max(Math.min((x - xMin) / (xMax - xMin), 1), 0)
+    if(xRel < 0) {
+        console.log(`out of bounds for color map: ${x} not in [${xMin};${xMax}]`)
+        return points[0].rgb
+    }
+
     let prev
     for(let point of points) {
         if(xRel == point.x) return point.rgb;
@@ -437,6 +445,7 @@ function colorMap(x: number, xMin: number, xMax: number): [number, number, numbe
         }
         prev = point
     }
+
     console.log(`out of bounds for color map: ${x} not in [${xMin};${xMax}]`)
     return prev.rgb
 }
