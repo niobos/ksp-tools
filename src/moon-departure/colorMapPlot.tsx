@@ -132,22 +132,32 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
     )
     useEffect(() => {
         const canvas = canvasRef.current
-        const ctx = canvas.getContext("2d", {alpha: false})
+        const ctx = canvas.getContext("2d", {alpha: false, willReadFrequently: true})
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
-        // TODO: optimize re-render. Full re-render takes ~2 seconds. Maybe with getImageData()/putImageData()?
         //console.log(`Paint start from ${lastPaintedResult}`)
         //const paintStart = +(new Date())
         let state = paintState
         for(let index = lastPaintedResult+1; index < results.length; index++) {
+            const result = results[index]
             let color, redraw
-            ({color, state, redraw} = props.colorMapFunc(results[index].result, state))
+            ({color, state, redraw} = props.colorMapFunc(result.result, state))
             if(redraw) {
                 index = -1  // Will do index++ after continue to make index=0
                 continue
             }
-            ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`
-            ctx.fillRect(results[index].x, results[index].y, results[index].xWidth, results[index].yHeight)
+            for(let y = result.y; y < result.y + result.yHeight; y++) {
+                const rowOffset = y * imgData.width
+                for(let x = result.x; x < result.x + result.xWidth; x++) {
+                    const pixOffset = (rowOffset + x) * 4;
+                    imgData.data[pixOffset + 0] = color[0]
+                    imgData.data[pixOffset + 1] = color[1]
+                    imgData.data[pixOffset + 2] = color[2]
+                    imgData.data[pixOffset + 3] = 255  // alpha
+                }
+            }
         }
+        ctx.putImageData(imgData, 0, 0)
         setLastPaintedResult(results.length-1)
         setPaintState(state)
         //console.log("paint done after ", +(new Date()) - paintStart)
