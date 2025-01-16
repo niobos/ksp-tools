@@ -34,12 +34,14 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
     const [results, setResults] = useState<Array<Result>>([])
     const [lastPaintedResult, setLastPaintedResult] = useState(-1)
     const [paintState, setPaintState] = useState(null)
-    const [dragging, setDragging] = useState<{x: number, y: number}>(null)
+    const [dragging, setDragging] =
+        useState<{start: {x: number, y: number}, cur: {x: number, y: number}}>(null)
 
     const [version, setVersion] = useState(0)
     const versionRef = useRef<number>()
     versionRef.current = version
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const offscreenCanvasRef = useRef<OffscreenCanvas>(new OffscreenCanvas(props.width, props.height))
 
     const coordCanvasToLogical = ({x, y}) => {
         const width = canvasRef.current.width
@@ -131,7 +133,7 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
         ]
     )
     useEffect(() => {
-        const canvas = canvasRef.current
+        const canvas = offscreenCanvasRef.current
         const ctx = canvas.getContext("2d", {alpha: false, willReadFrequently: true})
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
@@ -156,13 +158,25 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
                     imgData.data[pixOffset + 3] = 255  // alpha
                 }
             }
+            //ctx.putImageData(imgData, 0, 0)
         }
         ctx.putImageData(imgData, 0, 0)
+
+        const onscreenCanvas = canvasRef.current
+        const onscreenCtx = onscreenCanvas.getContext("2d", {alpha: false})
+        if(dragging) {
+            onscreenCtx.clearRect(0, 0, onscreenCanvas.width, onscreenCanvas.height)
+            onscreenCtx.drawImage(canvas, dragging.cur.x - dragging.start.x, dragging.cur.y - dragging.start.y)
+        } else {
+            onscreenCtx.putImageData(imgData, 0, 0)
+        }
+
         setLastPaintedResult(results.length-1)
         setPaintState(state)
         //console.log("paint done after ", +(new Date()) - paintStart)
     }, [
         results,
+        dragging,
     ])
 
     let progress = 0
@@ -184,15 +198,24 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
                 const logicalXy = coordCanvasToLogical(canvasXy)
                 props.onClick(logicalXy.x, logicalXy.y)
             }}
-            onMouseDown={e => setDragging(canvasXyFromEvent(e))}
+            onMouseDown={e => {
+                const xy = canvasXyFromEvent(e)
+                setDragging({start: xy, cur: xy})
+            }}
+            onMouseMove={e => {
+                if(dragging == null) return
+                const xy = canvasXyFromEvent(e)
+                setDragging({start: dragging.start, cur: xy})
+            }}
             onMouseUp={e => {
                 if(dragging == null) return
                 const endCanvasXy = canvasXyFromEvent(e)
-                if((endCanvasXy.x != dragging.x || endCanvasXy.y != dragging.y) && props.onPan) {
-                    const startXy = coordCanvasToLogical(dragging)
+                if((endCanvasXy.x != dragging.start.x || endCanvasXy.y != dragging.start.y) && props.onPan) {
+                    const startXy = coordCanvasToLogical(dragging.start)
                     const endXy = coordCanvasToLogical(endCanvasXy)
                     props.onPan(endXy.x-startXy.x, endXy.y-startXy.y)
                 }
+                offscreenCanvasRef.current.getContext("2d").clearRect(0, 0, offscreenCanvasRef.current.width, offscreenCanvasRef.current.height)
                 setDragging(null)
             }}
             onWheel={e => {
