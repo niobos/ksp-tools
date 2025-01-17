@@ -18,20 +18,21 @@ export interface ColorMapPlotProps<Type> {
     colorMapFunc: PlotFuncType<Type>
     xRange: [number, number]
     yRange: [number, number]
+    onProgress?: (progress: number) => void
     onClick?: (x: number, y: number) => void
     onMove?: (xRange: [number, number], yRange: [number, number]) => void
 }
 
-type Result = {
+type Result<Type> = {
     x: number, xWidth: number,
     y: number, yHeight: number,
-    result: any
+    result: Type
 }
 
 let calcVersion = 0
 export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
     const [autoUpdate, setAutoUpdate] = useState(true)
-    const [results, setResults] = useState<Array<Result>>([])
+    const [results, setResults] = useState<Array<Result<Type>>>([])
     const [lastPaintedResult, setLastPaintedResult] = useState(-1)
     const [paintState, setPaintState] = useState(null)
     const [dragging, setDragging] =
@@ -179,9 +180,12 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
         dragging,
     ])
 
-    let progress = 0
-    if(canvasRef.current) {
-        progress = results.length / (canvasRef.current.width * canvasRef.current.height)
+    if(props.onProgress) {
+        if(!canvasRef.current) {
+            props.onProgress(0)
+        } else {
+            props.onProgress(results.length / (canvasRef.current.width * canvasRef.current.height))
+        }
     }
 
     const wheelCallback = useThrottled(e => {
@@ -197,11 +201,10 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
     }, 500)
 
     return <>
-        <label><input type="checkbox"
-                      onChange={e => setAutoUpdate(e.target.checked)}
-                      checked={autoUpdate}
-        />Automatically update</label>
-        <div>Calculating... {(progress*100).toFixed(1)}%</div>
+        <div><label><input type="checkbox"
+                           onChange={e => setAutoUpdate(e.target.checked)}
+                           checked={autoUpdate}
+        />Automatically update</label></div>
         <canvas
             ref={canvasRef} width={props.width} height={props.height}
             onClick={e => {

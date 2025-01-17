@@ -62,6 +62,7 @@ export default function App() {
     const [moonPreset, setMoonPreset] = useState<string>("")
     const [selectedTransfer, setSelectedTransfer] = useState<SingleOutput>(null)
     const [plotType, setPlotType] = useState<PlotType>(PlotType.dv)
+    const [colorMapPlotProgress, setColorMapPlotProgress] = useState<number>(0)
 
     const planetOptions = [];
     for(let planetName of kspPlanets) {
@@ -387,12 +388,14 @@ export default function App() {
         <div style={{display: "flex", flexWrap: 'wrap'}}>
             <div style={{}}>
                 <div>{plotTypesJsx}</div>
+                <div>Calculating... {(colorMapPlotProgress * 100).toFixed(1)}%</div>
                 <ColorMapPlot
                     width={800} height={600}
                     asyncCalcFunc={asyncCalc}
                     colorMapFunc={plotColorFunc}
                     xRange={departureTimeRange}
                     yRange={travelTimeRange}
+                    onProgress={setColorMapPlotProgress}
                     onClick={plotOnClick}
                     onMove={(xRange, yRange) => {
                         setEarliestDeparture(xRange[0])
