@@ -19,8 +19,7 @@ export interface ColorMapPlotProps<Type> {
     xRange: [number, number]
     yRange: [number, number]
     onClick?: (x: number, y: number) => void
-    onZoom?: (centerX: number, centerY: number, zoom: "in" | "out") => void
-    onPan?: (deltaX: number, deltaY: number) => void
+    onMove?: (xRange: [number, number], yRange: [number, number]) => void
 }
 
 type Result = {
@@ -186,11 +185,14 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
     }
 
     const wheelCallback = useThrottled(e => {
-        console.log(e.deltaY)
-        if(props.onZoom) {
+        if(props.onMove) {
             const canvasXy = canvasXyFromEvent(e)
             const logicalXy = coordCanvasToLogical(canvasXy)
-            props.onZoom(logicalXy.x, logicalXy.y, e.deltaY > 0 ? "in" : "out")
+            const factor = e.deltaY > 0 ? /* in */ .7  : /* out */ 1./.7
+            props.onMove(
+                zoom([props.xRange[0], props.xRange[1]], logicalXy.x, factor),
+                zoom([props.yRange[0], props.yRange[1]], logicalXy.y, factor),
+            )
         }
     }, 500)
 
@@ -210,7 +212,7 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
             }}
             onMouseDown={e => {
                 const xy = canvasXyFromEvent(e)
-                setDragging({start: xy, cur: xy})
+                if(props.onMove != null) setDragging({start: xy, cur: xy})
             }}
             onMouseMove={e => {
                 if(dragging == null) return
@@ -220,10 +222,15 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
             onMouseUp={e => {
                 if(dragging == null) return
                 const endCanvasXy = canvasXyFromEvent(e)
-                if((endCanvasXy.x != dragging.start.x || endCanvasXy.y != dragging.start.y) && props.onPan) {
+                if(endCanvasXy.x != dragging.start.x || endCanvasXy.y != dragging.start.y) {
                     const startXy = coordCanvasToLogical(dragging.start)
                     const endXy = coordCanvasToLogical(endCanvasXy)
-                    props.onPan(endXy.x-startXy.x, endXy.y-startXy.y)
+                    const dx = endXy.x - startXy.x;
+                    const dy = endXy.y - startXy.y;
+                    props.onMove(
+                        [props.xRange[0] - dx, props.xRange[1] - dx],
+                        [props.yRange[0] - dy, props.yRange[1] - dy],
+                    )
 
                     // persist the moved image until next rerender
                     let offscreenCanvas = offscreenCanvasRef.current;
@@ -291,14 +298,12 @@ function* refiningGrid(
     }
 }
 
-function throttle(fn, timeout: number, restart: boolean = false) {
-    let ignoreUntil = +new Date()
-    function f(...args) {
-        const now = +new Date()
-        if(restart) ignoreUntil = now + timeout
-        if(now < ignoreUntil) return
-        ignoreUntil = now + timeout
-        fn(...args)
-    }
-    return f
+function zoom(range: [number, number], value: number, factor: number): [number, number] {
+    /* Zoom in/out a range [min, max] such that `value` remains at the same relative position in the new interval
+     */
+    const span = range[1] - range[0]
+    const newRange = span * factor
+    const xRel = (value - range[0]) / span
+    const newXmin = value - xRel * newRange
+    return [newXmin, newXmin + newRange]
 }
