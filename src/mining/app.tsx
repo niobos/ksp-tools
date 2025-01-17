@@ -2,7 +2,7 @@ import ReactDOM from "react-dom";
 import * as React from "react";
 import {Resources} from "../utils/kspParts";
 import {FloatInput} from "formattedInput";
-import {addFragmentStateProperty} from "../utils/useFragmentState";
+import useFragmentState from "useFragmentState";
 
 class Mining extends React.PureComponent {
     static defaultValue = {
@@ -320,78 +320,74 @@ class Converting extends React.PureComponent {
     }
 }
 
-class App extends React.PureComponent {
-    constructor(props) {
-        super(props);
-        addFragmentStateProperty(this, 'engineerStars', 'eng', 5);
-        addFragmentStateProperty(this, 'mining', 'm', Mining.defaultValue);
-        addFragmentStateProperty(this, 'converting', 'c', Converting.defaultValue);
-        addFragmentStateProperty(this, 'fuelCell', 'fc', false);
+function App() {
+    const [engineerStars, setEngineerStars] = useFragmentState<number>('eng', 5)
+    const [mining, setMining] = useFragmentState('m', Mining.defaultValue)
+    const [converting, setConverting] = useFragmentState('c', Converting.defaultValue)
+    const [fuelCell, setFuelCell] = useFragmentState<boolean>('fc', false)
+
+    const drill = Mining.calc(engineerStars, mining)
+    const convert = Converting.calc(engineerStars, drill.totalOreProduction, converting)
+
+    const elec = drill.electricalPower - convert.resources.el
+    let fuel = convert.resources.lf
+    let ox = convert.resources.ox
+
+    if(fuelCell) {
+        fuel -= elec * 0.00125  // 0.0016875 -> 1.5 (0.001125); 0.02025 -> 18 (0.001125)
+        ox -= elec * 0.001375  // 0.0020625 -> 1.5 (0.001375); 0.02475 -> 18 (0.001375)
     }
 
-    render() {
-        const drill = Mining.calc(this.engineerStars, this.mining);
-        const convert = Converting.calc(this.engineerStars, drill.totalOreProduction, this.converting);
-
-        const elec = drill.electricalPower - convert.resources.el;
-        let fuel = convert.resources.lf;
-        let ox = convert.resources.ox;
-
-        if(this.fuelCell) {
-            fuel -= elec * 0.00125; // 0.0016875 -> 1.5 (0.001125); 0.02025 -> 18 (0.001125)
-            ox -= elec * 0.001375; // 0.0020625 -> 1.5 (0.001375); 0.02475 -> 18 (0.001375)
-        }
-
-        const engineerRadios = [];
-        engineerRadios.push(<label key="-1">
-            <input type="radio" name="engineer_stars" value="-1"
-                   defaultChecked={this.engineerStars === -1}
-                   onChange={(e) => this.engineerStars = parseInt(e.target.value)}
-            />No
-        </label>);
-        for(let s = 0; s <= 5; s++) {
-            engineerRadios.push(<label key={s}>
-                <input type="radio" name="engineer_stars" value={'' + s}
-                       defaultChecked={this.engineerStars === s}
-                       onChange={(e) => this.engineerStars = parseInt(e.target.value)}
-                />{s}{" "}
-            </label>);
-        }
-
-        return <div>
-            <h1>In-Situ Resource Harvesting</h1>
-            Engineer on board: {engineerRadios}
-            <h2>Mining</h2>
-            <Mining engineerStars={this.engineerStars}
-                    value={this.mining}
-                    onChange={v => this.mining = v}
-            />
-            <h2>Converting</h2>
-            <Converting engineerStars={this.engineerStars}
-                        drillOreRate={drill.totalOreProduction}
-                        value={this.converting}
-                        onChange={v => this.converting = v}
-                        onRateChange={(rates) => this.setState({convertRates: rates})}
-            />
-
-            <h2>Total</h2>
-            <table><tbody>
-            <tr><td>Electricity:</td><td>
-                {elec.toFixed(1)} ⚡/s
-                {" "}<label><input type="checkbox" checked={this.fuelCell}
-                                   onChange={(e) => this.fuelCell = e.target.checked}
-            />Provided by Fuel Cells</label>
-            </td></tr>
-            <tr><td>Fuel production:</td><td>
-                {fuel.toFixed(3)} Lf/s = {(fuel*3600*6).toFixed(0)} Lf/d<br/>
-                {ox.toFixed(3)} Ox/s = {(ox*3600*6).toFixed(0)} Ox/d<br/>
-                {convert.resources.mono.toFixed(3)} Mono/s = {(convert.resources.mono*3600*6).toFixed(0)} Mono/d<br/>
-            </td></tr>
-            </tbody></table>
-        </div>;
+    const engineerRadios = []
+    engineerRadios.push(<label key="-1">
+        <input type="radio" name="engineer_stars" value="-1"
+               defaultChecked={engineerStars === -1}
+               onChange={(e) => setEngineerStars(parseInt(e.target.value))}
+        />No
+    </label>)
+    for(let s = 0; s <= 5; s++) {
+        engineerRadios.push(<label key={s}>
+            <input type="radio" name="engineer_stars" value={'' + s}
+                   defaultChecked={engineerStars === s}
+                   onChange={(e) => setEngineerStars(parseInt(e.target.value))}
+            />{s}{" "}
+        </label>)
     }
+
+    return <div>
+        <h1>In-Situ Resource Harvesting</h1>
+        Engineer on board: {engineerRadios}
+        <h2>Mining</h2>
+        <Mining engineerStars={engineerStars}
+                value={mining}
+                onChange={v => setMining(v)}
+        />
+        <h2>Converting</h2>
+        <Converting engineerStars={engineerStars}
+                    drillOreRate={drill.totalOreProduction}
+                    value={converting}
+                    onChange={v => setConverting(v)}
+        />
+
+        <h2>Total</h2>
+        <table><tbody>
+        <tr><td>Electricity:</td><td>
+            {elec.toFixed(1)} ⚡/s
+            {" "}<label><input type="checkbox" checked={fuelCell}
+                               onChange={(e) => setFuelCell(e.target.checked)}
+        />Provided by Fuel Cells</label>
+        </td></tr>
+        <tr><td>Fuel production:</td><td>
+            {fuel.toFixed(3)} Lf/s = {(fuel*3600*6).toFixed(0)} Lf/d<br/>
+            {ox.toFixed(3)} Ox/s = {(ox*3600*6).toFixed(0)} Ox/d<br/>
+            {convert.resources.mono.toFixed(3)} Mono/s = {(convert.resources.mono*3600*6).toFixed(0)} Mono/d<br/>
+        </td></tr>
+        </tbody></table>
+    </div>
 }
 
-if(typeof window === 'object') window.renderApp = function() {
-    ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'));
-};
+if(typeof window === 'object') {   // @ts-ignore
+    window.renderApp = function() {
+        ReactDOM.render(React.createElement(App), document.querySelector('#reactapp'))
+    }
+}
