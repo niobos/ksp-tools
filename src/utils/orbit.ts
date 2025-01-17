@@ -1,3 +1,10 @@
+// noinspection JSNonASCIINames,NonAsciiCharacters
+
+/* disable Non-ASCII inspection, since we use greek symbols to keep the same
+ * notation from the references.
+ */
+
+
 /* References:
  *  [OMES]: Howard D. Curtis - Orbital Mechanics for Engineering Students
  *          https://en.wikipedia.org/wiki/Orbital_Mechanics_for_Engineering_Students
