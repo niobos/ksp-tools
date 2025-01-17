@@ -1,17 +1,20 @@
 import ReactDOM from "react-dom";
 import * as React from "react";
 import useFragmentState from "useFragmentState";
-import {Mining} from "./mining";
-import {Converting} from "./converting";
+import {Mining, ValueType as MiningValueType, fromString as miningFromString,
+    toString as miningToString, calc as miningCalc} from "./mining";
+import {Converting, ValueType as ConvertingValueType,
+    fromString as convertingFromString, toString as convertingToString,
+    calc as convertingCalc} from "./converting";
 
 function App() {
     const [engineerStars, setEngineerStars] = useFragmentState<number>('eng', 5)
-    const [mining, setMining] = useFragmentState('m', Mining.defaultValue)
-    const [converting, setConverting] = useFragmentState('c', Converting.defaultValue)
+    const [mining, setMining] = useFragmentState<MiningValueType>('m', miningFromString, miningToString)
+    const [converting, setConverting] = useFragmentState<ConvertingValueType>('c', convertingFromString, convertingToString)
     const [fuelCell, setFuelCell] = useFragmentState<boolean>('fc', false)
 
-    const drill = Mining.calc(engineerStars, mining)
-    const convert = Converting.calc(engineerStars, drill.totalOreProduction, converting)
+    const drill = miningCalc(engineerStars, mining)
+    const convert = convertingCalc(engineerStars, drill.totalOreProduction, converting)
 
     const elec = drill.electricalPower - convert.resources.el
     let fuel = convert.resources.lf
@@ -44,7 +47,7 @@ function App() {
         <h2>Mining</h2>
         <Mining engineerStars={engineerStars}
                 value={mining}
-                onChange={v => setMining(v)}
+                onChange={setMining}
         />
         <h2>Converting</h2>
         <Converting engineerStars={engineerStars}
