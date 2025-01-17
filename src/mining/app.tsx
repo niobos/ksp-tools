@@ -1,8 +1,8 @@
 import ReactDOM from "react-dom";
-import React from "react";
-import {Resources} from "./utils/kspParts";
+import * as React from "react";
+import {Resources} from "../utils/kspParts";
 import {FloatInput} from "formattedInput";
-import {addFragmentStateProperty} from "./utils/useFragmentState";
+import {addFragmentStateProperty} from "../utils/useFragmentState";
 
 class Mining extends React.PureComponent {
     static defaultValue = {

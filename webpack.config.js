@@ -2,9 +2,6 @@ const path = require('path');
 const HtmlMinimizerPlugin = require("html-minimizer-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
-const jsxPages = {
-    'mining': 'KSP - Mining calculator',
-};
 const tsxPages = {
     'engines': 'KSP - Engine selection',
     'commnet-link-budget': 'KSP - CommNet link budget calculator',
@@ -14,19 +11,11 @@ const tsxPages = {
     'electricity': 'KSP - Electricity calculator',
     'planner': 'KSP - Mission planner',
     'multiengine': 'KSP - Multi-engine planner',
+    'mining': 'KSP - Mining calculator',
 };
 
 const entries = {};
 const pluginsHtmlWebpack = []
-for(let page in jsxPages) {
-    entries[page] = `./src/${page}.jsx`;
-    pluginsHtmlWebpack.push(new HtmlWebpackPlugin({
-        template: 'src/react-template.html',
-        filename: `${page}.html`,
-        chunks: [page],
-        title: jsxPages[page],
-    }));
-}
 for(let page in tsxPages) {
     entries[page] = `./src/${page}/app.tsx`;
     pluginsHtmlWebpack.push(new HtmlWebpackPlugin({
