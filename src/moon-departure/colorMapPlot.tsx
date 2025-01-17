@@ -1,6 +1,5 @@
 import {useEffect, useRef, useState, useMemo} from "react";
 import * as React from "react";
-import useThrottled from "../utils/useThrottled";
 
 export type PlotFuncType<Type> = (value: Type, state: any) => {color: [number, number, number], state?: any, redraw?: boolean}
 /* Determine the color of a result.
@@ -31,18 +30,14 @@ type Result<Type> = {
 
 let calcVersion = 0
 export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
-    const [autoUpdate, setAutoUpdate] = useState(true)
     const [results, setResults] = useState<Array<Result<Type>>>([])
     const [lastPaintedResult, setLastPaintedResult] = useState(-1)
     const [paintState, setPaintState] = useState(null)
-    const [dragging, setDragging] =
-        useState<{start: {x: number, y: number}, cur: {x: number, y: number}}>(null)
 
     const [version, setVersion] = useState(0)
     const versionRef = useRef<number>()
     versionRef.current = version
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const offscreenCanvasRef = useRef<OffscreenCanvas>(new OffscreenCanvas(props.width, props.height))
 
     const coordCanvasToLogical = ({x, y}) => {
         const width = canvasRef.current.width
@@ -111,11 +106,9 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
     }
 
     useEffect(() => {
-        if(autoUpdate) {
-            const newVersion = version + 1
-            setVersion(newVersion)
-            doCalc(newVersion).then(() => {})
-        }
+        const newVersion = version + 1
+        setVersion(newVersion)
+        doCalc(newVersion).then(() => {})
     }, [
         props.width, props.height,
         props.xRange, props.yRange,
@@ -134,7 +127,7 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
         ]
     )
     useEffect(() => {
-        const canvas = offscreenCanvasRef.current
+        const canvas = canvasRef.current
         const ctx = canvas.getContext("2d", {alpha: false, willReadFrequently: true})
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
@@ -163,21 +156,11 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
         }
         ctx.putImageData(imgData, 0, 0)
 
-        const onscreenCanvas = canvasRef.current
-        const onscreenCtx = onscreenCanvas.getContext("2d", {alpha: false})
-        if(dragging) {
-            onscreenCtx.clearRect(0, 0, onscreenCanvas.width, onscreenCanvas.height)
-            onscreenCtx.drawImage(canvas, dragging.cur.x - dragging.start.x, dragging.cur.y - dragging.start.y)
-        } else {
-            onscreenCtx.putImageData(imgData, 0, 0)
-        }
-
         setLastPaintedResult(results.length-1)
         setPaintState(state)
         //console.log("paint done after ", +(new Date()) - paintStart)
     }, [
         results,
-        dragging,
     ])
 
     if(props.onProgress) {
@@ -188,64 +171,9 @@ export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
         }
     }
 
-    const wheelCallback = useThrottled(e => {
-        if(props.onMove) {
-            const canvasXy = canvasXyFromEvent(e)
-            const logicalXy = coordCanvasToLogical(canvasXy)
-            const factor = e.deltaY > 0 ? /* in */ .7  : /* out */ 1./.7
-            props.onMove(
-                zoom([props.xRange[0], props.xRange[1]], logicalXy.x, factor),
-                zoom([props.yRange[0], props.yRange[1]], logicalXy.y, factor),
-            )
-        }
-    }, 500)
-
-    return <>
-        <div><label><input type="checkbox"
-                           onChange={e => setAutoUpdate(e.target.checked)}
-                           checked={autoUpdate}
-        />Automatically update</label></div>
-        <canvas
+    return <canvas
             ref={canvasRef} width={props.width} height={props.height}
-            onClick={e => {
-                if(props.onClick == null) return
-                const canvasXy = canvasXyFromEvent(e)
-                const logicalXy = coordCanvasToLogical(canvasXy)
-                props.onClick(logicalXy.x, logicalXy.y)
-            }}
-            onMouseDown={e => {
-                const xy = canvasXyFromEvent(e)
-                if(props.onMove != null) setDragging({start: xy, cur: xy})
-            }}
-            onMouseMove={e => {
-                if(dragging == null) return
-                const xy = canvasXyFromEvent(e)
-                setDragging({start: dragging.start, cur: xy})
-            }}
-            onMouseUp={e => {
-                if(dragging == null) return
-                const endCanvasXy = canvasXyFromEvent(e)
-                if(endCanvasXy.x != dragging.start.x || endCanvasXy.y != dragging.start.y) {
-                    const startXy = coordCanvasToLogical(dragging.start)
-                    const endXy = coordCanvasToLogical(endCanvasXy)
-                    const dx = endXy.x - startXy.x;
-                    const dy = endXy.y - startXy.y;
-                    props.onMove(
-                        [props.xRange[0] - dx, props.xRange[1] - dx],
-                        [props.yRange[0] - dy, props.yRange[1] - dy],
-                    )
-
-                    // persist the moved image until next rerender
-                    let offscreenCanvas = offscreenCanvasRef.current;
-                    const offscreenCtx = offscreenCanvas.getContext("2d")
-                    const currentPlot = offscreenCanvas.transferToImageBitmap()
-                    offscreenCtx.drawImage(currentPlot, endCanvasXy.x - dragging.start.x, endCanvasXy.y - dragging.start.y)
-                }
-                setDragging(null)
-            }}
-            onWheel={wheelCallback}
         >Color map plot</canvas>
-    </>
 }
 
 function iterNextBatch<Type>(it: Iterator<Type>, size: number): {value: Array<Type>, done: boolean} {
@@ -299,14 +227,4 @@ function* refiningGrid(
         if(!doneL) yield valueL
         if(doneL && doneU) break
     }
-}
-
-function zoom(range: [number, number], value: number, factor: number): [number, number] {
-    /* Zoom in/out a range [min, max] such that `value` remains at the same relative position in the new interval
-     */
-    const span = range[1] - range[0]
-    const newRange = span * factor
-    const xRel = (value - range[0]) / span
-    const newXmin = value - xRel * newRange
-    return [newXmin, newXmin + newRange]
 }

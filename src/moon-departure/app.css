@@ -5,3 +5,7 @@ input.SiInput, input.FloatInput, input.DegreesInput {
 input.KerbalDateInput {
     width: 8em;
 }
+
+input[readonly] {
+    background-color: #eee;
+}

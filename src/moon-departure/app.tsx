@@ -8,7 +8,7 @@ import {
     formatValueYdhms,
     formatValueYdhmsAbs,
     KerbalAbsYdhmsInput,
-    KerbalYdhmsInput
+    KerbalYdhmsInput, parseValueYdhmsAbs
 } from "../components/formattedInput";
 import {default as OrbitComponent, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit";
 import Orbit from "../utils/orbit";
@@ -18,6 +18,7 @@ import ColorMapPlot, {PlotFuncType} from "./colorMapPlot";
 import './app.css';
 import Altitude from "../components/altitude";
 import {formatValueSi} from "formattedInput";
+import PanZoomArea from "./panZoomArea";
 
 let REQUEST_ID = 0;
 
@@ -389,21 +390,26 @@ export default function App() {
             <div style={{}}>
                 <div>{plotTypesJsx}</div>
                 <div>Calculating... {(colorMapPlotProgress * 100).toFixed(1)}%</div>
-                <ColorMapPlot
-                    width={800} height={600}
-                    asyncCalcFunc={asyncCalc}
-                    colorMapFunc={plotColorFunc}
-                    xRange={departureTimeRange}
-                    yRange={travelTimeRange}
-                    onProgress={setColorMapPlotProgress}
-                    onClick={plotOnClick}
+                <PanZoomArea
+                    xRange={[earliestDeparture, latestDeparture]}
+                    yRange={[maxTravelTime, minTravelTime]}  // swap Y axis: bottom (higher Y) is lower travel time
                     onMove={(xRange, yRange) => {
                         setEarliestDeparture(xRange[0])
                         setLatestDeparture(xRange[1])
-                        setMinTravelTime(yRange[0])
-                        setMaxTravelTime(yRange[1])
+                        setMinTravelTime(yRange[1])  // swap Y axis
+                        setMaxTravelTime(yRange[0])
                     }}
-                />
+                    onClick={xy => plotOnClick(xy.x, xy.y)}
+                >
+                    <ColorMapPlot
+                        width={800} height={600}
+                        asyncCalcFunc={asyncCalc}
+                        colorMapFunc={plotColorFunc}
+                        xRange={departureTimeRange}
+                        yRange={travelTimeRange}
+                        onProgress={setColorMapPlotProgress}
+                    />
+                </PanZoomArea>
             </div>
             {maybeSelectedTransfer}
         </div>
