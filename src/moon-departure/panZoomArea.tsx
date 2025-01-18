@@ -1,27 +1,36 @@
 import * as React from 'react';
-import {useRef, useState} from "react";
+import {useRef, useState} from 'react';
 import useThrottled from "../utils/useThrottled";
 
-type Xy = {
+export type Xy = {
     x: number,
     y: number,
 }
 
-export interface PlotProps {
-    onMove: (xRange: [number, number], yRange: [number, number]) => void
+export interface PanZoomAreaProps {
+    onMoved: (xRange: [number, number], yRange: [number, number]) => void
+    onMoving?: (xRange: [number, number] | null, yRange: [number, number] | null) => void
     xRange?: [number, number]  // horizontal range [left, right], defaults to [0, 1]
     yRange?: [number, number]  // vertical range [top, bottom], defaults to [0, 1]
     freezeX?: boolean
     freezeY?: boolean
     onClick?: (logicalCoords: Xy, ev: React.MouseEvent) => void
+    onHover?: (logicalCoords: Xy | null) => void
 }
 
 export default function PanZoomArea(
-    {xRange, yRange, onMove, freezeX, freezeY, onClick, children}: React.PropsWithChildren<PlotProps>
+    {
+        xRange = [0, 1],
+        yRange = [0, 1],
+        onMoved,
+        onMoving,
+        freezeX,
+        freezeY,
+        onClick,
+        onHover,
+        children,
+    }: React.PropsWithChildren<PanZoomAreaProps>
 ) {
-    if(xRange == null) xRange = [0, 1]
-    if(yRange == null) yRange = [0, 1]
-
     const [dragging, setDragging] = useState<{start: Xy, cur: Xy} | null>(null)
 
     const elementRef = useRef<HTMLDivElement>(null);
@@ -37,47 +46,52 @@ export default function PanZoomArea(
         const height = elementRef.current.getBoundingClientRect().height
         return {
             x: xRange[0] + x / width * (xRange[1] - xRange[0]),
-            y: yRange[0] + (height-y) / height * (yRange[1] - yRange[0]),
+            y: yRange[0] + y / height * (yRange[1] - yRange[0]),
         }
     }
-
-    const onMouseDown = (e: React.MouseEvent) => {
-        const xy = divXyFromEvent(e)
-        setDragging({start: xy, cur: xy})
-    }
-    const onMouseMove = (e: MouseEvent) => {
-        if(dragging == null) return
-        const xy = divXyFromEvent(e)
-        if(freezeX) xy.x = dragging.start.x
-        if(freezeY) xy.y = dragging.start.y
-        setDragging({start: dragging.start, cur: xy})
-    }
-    const onMouseUp = (e: MouseEvent) => {
-        if(dragging == null) return
-        const xy = divXyFromEvent(e)
+    const rangeFromPan = (xy: Xy): {xRange: [number, number], yRange: [number, number]} => {
         if(freezeX) xy.x = dragging.start.x
         if(freezeY) xy.y = dragging.start.y
         const dx = (xy.x - dragging.start.x) / elementRef.current.offsetWidth * (xRange[1] - xRange[0])
         const dy = (xy.y - dragging.start.y) / elementRef.current.offsetHeight * (yRange[1] - yRange[0])
-        onMove([xRange[0] - dx, xRange[1] - dx],
-            [yRange[0] - dy, yRange[1] - dy])
+        return {
+            xRange: [xRange[0] - dx, xRange[1] - dx],
+            yRange: [yRange[0] - dy, yRange[1] - dy]
+        }
+    }
+
+    const windowOnMouseMove = (e: MouseEvent) => {
+        if(dragging == null) return
+        const xy = divXyFromEvent(e)
+        setDragging({start: dragging.start, cur: xy})
+        if(onMoving) {
+            const {xRange, yRange} = rangeFromPan(xy)
+            onMoving(xRange, yRange)
+        }
+    }
+    const windowOnMouseUp = (e: MouseEvent) => {
+        if(dragging == null) return
+        const xy = divXyFromEvent(e)
+        const {xRange, yRange} = rangeFromPan(xy)
+        onMoved(xRange, yRange)
+        onMoving(null, null)
         setDragging(null)
     }
     React.useEffect(() => {
-        window.addEventListener('mousemove', onMouseMove)
-        window.addEventListener('mouseup', onMouseUp)
+        window.addEventListener('mousemove', windowOnMouseMove)
+        window.addEventListener('mouseup', windowOnMouseUp)
         return () => {
-            window.removeEventListener('mousemove', onMouseMove)
-            window.removeEventListener('mouseup', onMouseUp)
+            window.removeEventListener('mousemove', windowOnMouseMove)
+            window.removeEventListener('mouseup', windowOnMouseUp)
         }
-    }, [onMouseMove, onMouseUp])
+    }, [windowOnMouseMove, windowOnMouseUp])
 
     const onWheel = useThrottled(e => {
-        if(onMove) {
+        if(onMoved) {
             const canvasXy = divXyFromEvent(e)
             const logicalXy = coordPhysToLogical(canvasXy)
             const factor = e.deltaY > 0 ? /* in */ .7  : /* out */ 1./.7
-            onMove(
+            onMoved(
                 zoom([xRange[0], xRange[1]], logicalXy.x, factor),
                 zoom([yRange[0], yRange[1]], logicalXy.y, factor),
             )
@@ -89,12 +103,26 @@ export default function PanZoomArea(
 
     return <div ref={elementRef}
                 style={{overflow: 'hidden'}}
-                onMouseDown={onMouseDown}
-                onClick={e => {
-                    if(onClick == null) return
+                onMouseDown={(e: React.MouseEvent) => {
                     const xy = divXyFromEvent(e)
-                    const logicalXy = coordPhysToLogical(xy)
-                    onClick(logicalXy, e)
+                    setDragging({start: xy, cur: xy})
+                }}
+                onClick={e => {
+                    if(onClick) {
+                        const xy = divXyFromEvent(e)
+                        const logicalXy = coordPhysToLogical(xy)
+                        onClick(logicalXy, e)
+                    }
+                }}
+                onMouseMove={e => {
+                    if(onHover) {
+                        const xy = divXyFromEvent(e)
+                        const logicalXy = coordPhysToLogical(xy)
+                        onHover(logicalXy)
+                    }
+                }}
+                onMouseLeave={e => {
+                    if(onHover) onHover(null)
                 }}
                 onWheel={onWheel}
     >

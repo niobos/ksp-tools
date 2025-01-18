@@ -8,7 +8,7 @@ import {
     formatValueYdhms,
     formatValueYdhmsAbs,
     KerbalAbsYdhmsInput,
-    KerbalYdhmsInput, parseValueYdhmsAbs
+    KerbalYdhmsInput, parseValueYdhms, parseValueYdhmsAbs
 } from "../components/formattedInput";
 import {default as OrbitComponent, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit";
 import Orbit from "../utils/orbit";
@@ -18,7 +18,7 @@ import ColorMapPlot, {PlotFuncType} from "./colorMapPlot";
 import './app.css';
 import Altitude from "../components/altitude";
 import {formatValueSi} from "formattedInput";
-import PanZoomArea from "./panZoomArea";
+import PanZoomAreaAxes from "./panZoomAreaAxes";
 
 let REQUEST_ID = 0;
 
@@ -390,16 +390,40 @@ export default function App() {
             <div style={{}}>
                 <div>{plotTypesJsx}</div>
                 <div>Calculating... {(colorMapPlotProgress * 100).toFixed(1)}%</div>
-                <PanZoomArea
+                <PanZoomAreaAxes
                     xRange={[earliestDeparture, latestDeparture]}
                     yRange={[maxTravelTime, minTravelTime]}  // swap Y axis: bottom (higher Y) is lower travel time
-                    onMove={(xRange, yRange) => {
+                    onMoved={(xRange, yRange) => {
                         setEarliestDeparture(xRange[0])
                         setLatestDeparture(xRange[1])
                         setMinTravelTime(yRange[1])  // swap Y axis
                         setMaxTravelTime(yRange[0])
                     }}
                     onClick={xy => plotOnClick(xy.x, xy.y)}
+                    formatXValue={formatValueYdhmsAbs}
+                    formatX0={v => <KerbalAbsYdhmsInput
+                        value={v}
+                        onChange={v => setEarliestDeparture(v)}
+                    />}
+                    formatX1={v => <KerbalAbsYdhmsInput
+                        value={v}
+                        onChange={v => setLatestDeparture(v)}
+                    />}
+                    formatYValue={formatValueYdhms}
+                    formatY0={v => <KerbalYdhmsInput
+                        value={v}
+                        onChange={v => {
+                            if(v == 0) setMinTravelTime(null)
+                            else setMinTravelTime(v)
+                        }}
+                    />}
+                    formatY1={v => <KerbalYdhmsInput
+                        value={v}
+                        onChange={v => {
+                            if(v == 0) setMaxTravelTime(null)
+                            else setMaxTravelTime(v)
+                        }}
+                    />}
                 >
                     <ColorMapPlot
                         width={800} height={600}
@@ -409,7 +433,7 @@ export default function App() {
                         yRange={travelTimeRange}
                         onProgress={setColorMapPlotProgress}
                     />
-                </PanZoomArea>
+                </PanZoomAreaAxes>
             </div>
             {maybeSelectedTransfer}
         </div>
