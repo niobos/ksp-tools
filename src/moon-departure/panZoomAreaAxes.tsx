@@ -37,9 +37,7 @@ function Axis(
 
     const styleParent = {}
     const styleChild = {}
-    const style0 = {}
     const styleCursor = {}
-    const style1 = {}
     if(orientation == 'horizontal-top') {
         styleParent['width'] = size - 2
         styleParent['flexDirection'] = 'row'
@@ -67,15 +65,14 @@ function Axis(
     return <div style={{
         ...styleParent,
         display: 'flex', justifyContent: 'space-between', position: 'relative',
-        width: '100%'
     }}>
-        <div style={{...styleChild, ...style0}}>
+        <div style={{...styleChild}}>
             {format0(range[0])}
         </div>
         {cursor == null ? "" : <div style={{...styleChild, ...styleCursor, position: 'relative', zIndex: -1}}>
             {formatC(cursor)}
         </div>}
-        <div style={{...styleChild, ...style1}}>
+        <div style={{...styleChild}}>
             {format1(range[1])}
         </div>
     </div>

@@ -184,7 +184,7 @@ export default function App() {
             state.minDv = value
             redraw = true
         }
-        const color = colorMap(value, state.minDv, 5 * state.minDv)
+        const color = colorMap(Math.log10(value), Math.log10(state.minDv), 2 * Math.log10(state.minDv))
         return {
             color,
             state,
@@ -401,22 +401,22 @@ export default function App() {
                     }}
                     onClick={xy => plotOnClick(xy.x, xy.y)}
                     formatXValue={formatValueYdhmsAbs}
-                    formatX0={v => <KerbalAbsYdhmsInput
+                    formatX0={v => <>Departure<br/><KerbalAbsYdhmsInput
                         value={v}
                         onChange={v => setEarliestDeparture(v)}
-                    />}
+                    /></>}
                     formatX1={v => <KerbalAbsYdhmsInput
                         value={v}
                         onChange={v => setLatestDeparture(v)}
                     />}
                     formatYValue={formatValueYdhms}
-                    formatY0={v => <KerbalYdhmsInput
+                    formatY0={v => <>Travel time<br/><KerbalYdhmsInput
                         value={v}
                         onChange={v => {
                             if(v == 0) setMinTravelTime(null)
                             else setMinTravelTime(v)
                         }}
-                    />}
+                    /></>}
                     formatY1={v => <KerbalYdhmsInput
                         value={v}
                         onChange={v => {
@@ -426,7 +426,7 @@ export default function App() {
                     />}
                 >
                     <ColorMapPlot
-                        width={800} height={600}
+                        width={640} height={480}
                         asyncCalcFunc={asyncCalc}
                         colorMapFunc={plotColorFunc}
                         xRange={departureTimeRange}
