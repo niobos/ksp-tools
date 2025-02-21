@@ -1,6 +1,6 @@
 import Part, {Resources, Size, TechTreeNode} from "./kspParts"
 import Spline from 'cubic-spline'
-import {thrustFromIspMdot} from "./rocket";
+import {thrustFromIspMdot} from "./rocket"
 
 export class Engine extends Part {
     gimbal: number = 0;  // degrees

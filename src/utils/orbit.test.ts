@@ -1,12 +1,12 @@
 import Orbit, {Meter, MeterPerSecond} from "./orbit";
 import Vector from "./vector";
-import {bodies, bodies as kspBodies} from "./kspBody";
+import {bodies as kspBodies} from "./kspBody";
 
 const earthGravity = 5.972161874653522e24 * 6.67430e-11;
 const earthRadius = 6378e3;
 
 describe('OMES examples', () => {
-    describe('example 2.9', () => {
+    test('example 2.9', () => {
         const r0 = new Vector<Meter>(8182.4e3, -6865.9e3, 0);
         const v0 = new Vector<MeterPerSecond>(0.47572e3, 8.8116e3, 0);
         const o = Orbit.FromStateVector(
@@ -32,7 +32,7 @@ describe('OMES examples', () => {
         expect(v.z).toBeCloseTo(0);
     });
 
-    describe('example 3.1', () => {
+    test('example 3.1', () => {
         const {sma, e} = Orbit.smaEFromApsides(9600e3, 21000e3);
         expect(e).toBeCloseTo(0.37255);
         const o = Orbit.FromOrbitalElements(earthGravity, {sma, e});
@@ -42,14 +42,14 @@ describe('OMES examples', () => {
         expect(t).toBeCloseTo(4077, 0);
     });
 
-    describe('example 3.2', () => {
+    test('example 3.2', () => {
         const {sma, e} = Orbit.smaEFromApsides(9600e3, 21000e3);
         const o = Orbit.FromOrbitalElements(earthGravity, {sma, e}, {ta: 0, t0: 0});
         const ta = o.taAtT(3*3600);
         expect(ta).toBeCloseTo((193.2-360)/180*Math.PI);
     });
 
-    describe('example 3.4', () => {
+    test('example 3.4', () => {
         const vp = 10e3;
         const rp = Orbit.periapsisDistanceFromParabolicPeriapsisSpeed(earthGravity, vp);
         expect(rp / 1e3).toBeCloseTo(7972, 0);
@@ -59,7 +59,7 @@ describe('OMES examples', () => {
         expect(r.norm / 1e3).toBeCloseTo(86977, 0);  // different rounding
     });
 
-    describe('example 3.5', () => {
+    test('example 3.5', () => {
         const o = Orbit.FromStateVector(earthGravity,
             new Vector(300e3 + earthRadius, 0, 0),
             new Vector(0, 15e3, 0),
@@ -88,7 +88,7 @@ describe('OMES examples', () => {
         expect(v.norm / 1e3).toBeCloseTo(10.51);
     });
 
-    describe('example 3.6 variant', () => {
+    test('example 3.6 variant', () => {
         const v0 = (new Vector(3.075127035515813e3, 9.515369410025642e3, 0)).rotated(new Vector(0, 0, 1), 30/180*Math.PI);
         const r0 = (new Vector(10_000e3, 0, 0)).rotated(new Vector(0, 0, 1), 30/180*Math.PI);
         const o = Orbit.FromStateVector(
@@ -106,7 +106,7 @@ describe('OMES examples', () => {
         expect(ta1).toBeCloseTo(100.04/180*Math.PI);
     });
 
-    describe('example 3.7', () => {
+    test('example 3.7', () => {
         const o = Orbit.FromStateVector(earthGravity,
             new Vector(7000e3, -12124e3, 0),
             new Vector(2.6679e3, 4.6210e3, 0),
@@ -120,7 +120,7 @@ describe('OMES examples', () => {
         expect(v.z).toBeCloseTo(0);
     });
 
-    describe('example 5.2', () => {
+    test('example 5.2', () => {
         const r1 = new Vector(5000e3, 10000e3, 2100e3);
         const r2 = new Vector(-14600e3, 2500e3, 7000e3);
         const dt = 3600;
@@ -137,7 +137,7 @@ describe('OMES examples', () => {
         expect(0 - o.tAtTa(0)).toBeCloseTo(-256.1, 1);
     });
 
-    describe('example 5.3', () => {
+    test('example 5.3', () => {
         const r1 = new Vector(273378e3, 0, 0);  // Arbitrarily orient coordinate system
         const r2 = (new Vector(146378e3, 0, 0)).rotated(
             new Vector(0, 0, 1),
@@ -475,7 +475,7 @@ describe('Hyperbolic orbits', () => {
 });
 
 describe('Minmus departure', () => {
-    describe('Hyperbolic escape from any given position', () => {
+    test('Hyperbolic escape from any given position', () => {
         const gravity = kspBodies['Kerbin'].gravity;
         const r1 = new Vector(1e6, 1e5, 0);
         const vinf = new Vector(1000, 0, 0);
@@ -491,22 +491,23 @@ describe('Minmus departure', () => {
 });
 
 describe('Lambert', () => {
-    describe('single-revolution', () => {
+    test('single-revolution', () => {
         const lko = Orbit.FromOrbitalElements(
             kspBodies['Kerbin'].gravity,
             {sma: 700e3},
         )
-        const {orbit, arc} = Orbit.FromLambert(
+        const lambertSol = Orbit.FromLambert(
             kspBodies['Kerbin'].gravity,
             new Vector(700e3, 0, 0),
             new Vector(0, 700e3, 0),
             lko.period / 4,
         )
+        const {orbit, arc} = lambertSol
         expect(orbit.semiMajorAxis).toBeCloseTo(700e3, 0)
-        expect(arc).toBeCloseTo(Math.PI * 1/2)
+        expect(arc).toBeCloseTo(Math.PI/2)
     })
 
-    describe('multi-revolution', () => {
+    test('multi-revolution', () => {
         const lko = Orbit.FromOrbitalElements(
             kspBodies['Kerbin'].gravity,
             {sma: 700e3},
@@ -518,6 +519,7 @@ describe('Lambert', () => {
             lko.period * 5 / 4,
             'prograde',
             0,
+            1,
         )
         expect(orbit.semiMajorAxis).toBeCloseTo(700e3, 0)
         expect(arc).toBeCloseTo(Math.PI * 5/2)
@@ -525,7 +527,7 @@ describe('Lambert', () => {
 })
 
 describe('next intercept', () => {
-    describe('test something', () => {
+    it('works', () => {
         const o1 = Orbit.FromStateVector(
             kspBodies['Kerbin'].gravity,
             new Vector(700e3, 0, 100),
@@ -546,7 +548,7 @@ describe('next intercept', () => {
 });
 
 describe('previous bugs', () => {
-    describe('position around Minmus', () => {
+    test('position around Minmus', () => {
         const o1 = Orbit.FromStateVector(
             kspBodies['Minmus'].gravity,
             new Vector(100e3, 0, 0),
@@ -558,7 +560,7 @@ describe('previous bugs', () => {
         expect(p1.norm).toBeGreaterThan(0)
     })
 
-    describe('FromPositionAndHyperbolicExcessVelocityVector same sign error', () => {
+    test('FromPositionAndHyperbolicExcessVelocityVector same sign error', () => {
         const o1 = Orbit.FromPositionAndHyperbolicExcessVelocityVector(
             kspBodies['Kerbin'].gravity,
             new Vector(87614.25612076276, -674332.071107749, 7.392705806574268e-8),
@@ -567,4 +569,4 @@ describe('previous bugs', () => {
         )
         expect(o1.energy).toBeGreaterThan(0)
     })
-});
+})

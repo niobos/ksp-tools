@@ -17,6 +17,8 @@ import {engines as kspEngines} from "../utils/kspParts-engine";
 import {fromPreset, objectMap} from "../utils/utils";
 import {dvForDm, massBeforeDv} from "../utils/rocket";
 
+const fuelTypes = ['lf', 'ox', 'air', 'sf', 'xe', 'mono']
+
 function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry) {
     /* Calculate the mass of fuel tanks needed to get the desired ∆v
      * Returns either the mass of tanks (with the given wet:dry ratio) required.
@@ -80,7 +82,6 @@ export default function App() {
         },
         i => '' + i,
     );
-    const fuelTypes = ['lf', 'ox', 'air', 'sf', 'xe', 'mono'];
     const [fuelType, setFuelType] = useFragmentState('f',
         s => {
             const v = jsonParseWithDefault([...fuelTypes])(s);
@@ -252,7 +253,7 @@ export default function App() {
         }
         let name: any = engineName;
         if(engine.wikiUrl !== undefined) {
-            name = <a href={engine.wikiUrl}>{name}</a>;
+            name = <a href={engine.wikiUrl}>{name}</a>
         }
         engineOptions.push({
             name,

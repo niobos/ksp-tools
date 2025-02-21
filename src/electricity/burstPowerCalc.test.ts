@@ -1,6 +1,4 @@
-import {
-    calcBurstPowerFromDevices,
-} from "./burstPowerCalc";
+import {calcBurstPowerFromDevices} from "./burstPowerCalc"
 
 it('burst is combined correctly 1', () => {
     const bp = calcBurstPowerFromDevices([

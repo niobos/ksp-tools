@@ -7,7 +7,7 @@ export class SolarPanel extends Part {
 }
 
 export class FuelCell extends Part {
-    /* Throttlable power generator
+    /* Throttleable power generator
      */
 }
 

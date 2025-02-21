@@ -68,6 +68,8 @@ function calcOne(
         interplanetaryDepartureTime = departureTime + diveTravelTime
         interplanetaryTravelTime = travelTime - diveTravelTime
         if(interplanetaryTravelTime <= 0) return null
+
+        // TODO: BUG: We're always doing a 180º on the dive orbit. There may be more optimal solutions
     }
 
     const departingPlanetPositionAtDeparture = departingPlanetOrbit.positionAtT(interplanetaryDepartureTime)
@@ -84,6 +86,7 @@ function calcOne(
     )
 
     const departurePlanetEscapeVelocity = interplanetaryDepartureVelocity.sub(departingPlanetOrbit.velocityAtT(interplanetaryDepartureTime))
+    // ^^ TODO: BUG: we should use the departingPlanet's velocity at the time we're leaving the SOI, not the time we do our escape burn
 
     const probeVelocityAtStart = parkingOrbitAroundDepartingPlanet.velocityAtT(departureTime)
     let diveBurnPrn = null

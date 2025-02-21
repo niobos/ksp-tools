@@ -1,7 +1,8 @@
-// noinspection JSNonASCIINames,NonAsciiCharacters
+// noinspection JSNonASCIINames,NonAsciiCharacters,JSUnusedGlobalSymbols
 
 /* disable Non-ASCII inspection, since we use greek symbols to keep the same
  * notation from the references.
+ * Disable Unused Symbols inspection, since we're providing options for a user
  */
 
 
@@ -112,6 +113,7 @@ export class Nodes {
 }
 
 export abstract class LambertSolution {
+    _iterations: number
     abstract get orbit(): Orbit
     abstract get arc(): Radians
     abstract get v1(): Vector<MeterPerSecond>
@@ -160,9 +162,12 @@ class LambertBate71 extends LambertSolution {
         const A = Math.sin(dθ) * Math.sqrt(r1_norm * r2_norm / (1-Math.cos(dθ)));  // [OMES 5.35]
         this._A = A
 
+        const z_estimate = 0  // TODO: allow feeding this in?
         const y = (z) => r1_norm + r2_norm + A * (z * Orbit._S(z) - 1) / Math.sqrt(Orbit._C(z));  // [OMES 5.38]
+        let iterations = 0
         const z = Orbit._findZero(
             (z) => {
+                iterations += 1
                 const y_z = y(z);
                 if(y_z < 0) throw RangeError("Solving Lambert: y(z) is negative, why?")
                 const C_z = Orbit._C(z);
@@ -178,10 +183,11 @@ class LambertBate71 extends LambertSolution {
                 );  // [OMES 5.41]
                 return {f, fp};
             },
-            0,
+            z_estimate,
         );
         if(isNaN(z)) throw RangeError("Solving Lambert: did not converge")
 
+        this._iterations = iterations
         this._z = z
         this._y_z = y(z)
     }
@@ -421,7 +427,7 @@ export default class Orbit {
         direction: "prograde" | "retrograde" = "prograde",
         t0: Seconds = 0,
         revolutions: number = 0,
-        path: "high" | "low" = "low",
+        path: "high" | "low" = null,
     ): LambertSolution {
         /* Solve the Lambert problem: find the orbit that will bring an object
          * from `position1` to `position2` in `dt` time, assuming a primary body
@@ -434,11 +440,8 @@ export default class Orbit {
         if(dt <= 0) throw RangeError("∆t can't be <= 0, got " + dt)
         if(gravity <= 0) throw RangeError("Need gravity to solve Lambert problem, got " + gravity)
 
-        //this.FromLambertIzzo14(gravity, position1, position2, dt, direction, revolutions, path, t0)
-
-        if(revolutions != 0) {
-            throw RangeError("Multi-revolution not supported")
-        }
+        if(revolutions != 0) throw RangeError("Multi-revolution not supported")
+        if(path != null) throw RangeError("Path selection not supported")
         return new LambertBate71(
             gravity,
             position1,
@@ -447,182 +450,6 @@ export default class Orbit {
             direction,
             t0,
         )
-    }
-
-    static FromLambertIzzo14(
-        gravity: Meter3PerSecond2,
-        position1: Vector<Meter>,
-        position2: Vector<Meter>,
-        dt: Seconds,
-        direction: "prograde" | "retrograde" = "prograde",
-        revolutions: number = 0,
-        path: "high" | "low" = "low",
-        t0: Seconds = 0,
-    ): LambertSolution {
-        /* Based on:
-         *  - [Izzo]
-         *  - https://github.com/darioizzo/lambert/blob/master/lambert.py
-         *  - https://github.com/poliastro/poliastro/blob/main/src/poliastro/core/iod.py
-         */
-        const chord = position2.sub(position1)
-        const r1_norm = position1.norm
-        const r2_norm = position2.norm
-        const c_norm = chord.norm
-        const r1_unit = position1.mul(1/r1_norm)
-        const r2_unit = position2.mul(1/r2_norm)
-        const h = position1.cross_product(position2)
-        const h_unit = h.mul(1/h.norm)
-
-        const semiperimeter = (r1_norm + r2_norm + c_norm) / 2
-        let lambda = Math.sqrt(1 - Math.min(c_norm / semiperimeter, 1.))
-
-        let t1_unit, t2_unit
-        if( h.z < 0 ) {
-            lambda = -lambda
-            t1_unit = r1_unit.cross_product(h_unit)
-            t2_unit = r2_unit.cross_product(h_unit)
-        } else {
-            t1_unit = h_unit.cross_product(r1_unit)
-            t2_unit = h_unit.cross_product(r2_unit)
-        }
-
-        if(direction === "retrograde") {
-            lambda = -lambda
-            t1_unit = t1_unit.mul(-1)
-            t2_unit = t2_unit.mul(-1)
-        }
-
-        const norm_time_of_flight = Math.sqrt(2 * gravity / (semiperimeter*semiperimeter*semiperimeter) ) * dt
-
-        function y_from_x_lambda(x: number, lambda: number) : number {
-            return Math.sqrt(1 - lambda*lambda * (1 - x*x))
-        }
-        function initial_guess(
-            norm_time_of_flight: number,
-            lambda: number,
-            revolutions: number,
-            path: "low" | "high",
-        ): number {
-            if(revolutions == 0) {
-                const lambda2 = lambda*lambda
-                const T0 = Math.acos(lambda) + lambda * Math.sqrt(1 - lambda2) + revolutions * Math.PI
-                const T1 = 2 * (1 - lambda2*lambda) / 3
-                if(norm_time_of_flight >= T0) {
-                    return (T0 / norm_time_of_flight) ** (2 / 3) - 1
-                } else if(norm_time_of_flight < T1) {
-                    return 5 / 2 * T1 / norm_time_of_flight * (T1 - norm_time_of_flight) / (1 - lambda2 * lambda2 * lambda) + 1
-                } else {
-                    return Math.exp(Math.log(2) * Math.log(norm_time_of_flight / T0) / Math.log(T1 / T0)) - 1
-                }
-            } else {
-                throw "multirev Not implemented"  // TODO
-            }
-        }
-        function compute_psi(x, y, lambda) {
-            if(-1 <= x && x < 1) {  // Elliptical orbit
-                return Math.acos(x * y + lambda * (1 - x * x))
-            } else if(x > 1) {  // Hyperbolic orbit
-                return Math.asinh((y - x * lambda) * Math.sqrt(x*x - 1))
-            } else {  // Parabolic orbit
-                return 0.0
-            }
-        }
-        function hyp2f1b(x) {
-            if(x >= 1.0) return Infinity
-            let res = 1.0
-            let term = 1.0
-            let ii = 0
-            while(true) {
-                term = term * (3 + ii) * (1 + ii) / (5 / 2 + ii) * x / (ii + 1)
-                const res_old = res
-                res += term
-                if(res_old == res) return res
-                ii += 1
-            }
-        }
-        function tof(x, y, T0, lambda, revolutions): number {
-            if(y == null) y = y_from_x_lambda(x, lambda)
-            let T_
-            if(revolutions == 0 && Math.sqrt(0.6) < x && x < Math.sqrt(1.4)) {
-                const eta = y - lambda * x
-                const S1 = (1 - lambda - x * eta) * 0.5
-                const Q = 4 / 3 * hyp2f1b(S1)
-                T_ = (eta ** 3 * Q + 4 * lambda * eta) * 0.5
-            } else {
-                const psi = compute_psi(x, y, lambda)
-                T_ = ((psi + revolutions * Math.PI) / Math.sqrt(Math.abs(1 - x ** 2)) - x + lambda * y)
-                    / (1 - x ** 2)
-            }
-            return T_ - T0
-        }
-        function householder(x_guess, norm_time_of_flight, lambda, revolutions, tolerance, num_iter) {
-            let x = x_guess
-            while(num_iter--) {
-                const y = y_from_x_lambda(x, lambda)
-                const f_x = tof(x, y, norm_time_of_flight, lambda, revolutions)
-                const T = f_x + norm_time_of_flight
-                const lambda2 = lambda*lambda
-                const lambda3 = lambda2*lambda
-                const x2 = x*x
-                const y3 = y*y*y
-                const fp_x = (3 * T * x - 2 + 2 * lambda2*lambda * x / y) / (1 - x2)
-                const fpp_x = (3 * T + 5 * x * fp_x + 2 * (1 - lambda2) * lambda3 / y3) / (1 - x2)
-                const fppp_x = (7 * x * fpp_x + 8 * fp_x - 6 * (1 - lambda2) * lambda2*lambda3 * x / y3*y*y) / (1 - x2)
-
-                const x_next = x_guess - f_x * (
-                    (fp_x**2 - f_x * fpp_x / 2)
-                    / (fp_x * (fp_x**2 - f_x * fpp_x) + fppp_x * f_x**2 / 6)
-                )
-
-                if(Math.abs(x_next - x) < tolerance) return x_next
-                x = x_next
-            }
-            throw "failed to converge"
-        }
-        function find_xy(
-            lambda: number,
-            norm_time_of_flight: number,
-            revolutions: number,
-            path: "low" | "high",
-            num_iter: number = 100,
-            tolerance: number = 1e-3,
-        ): {x: number, y: number} {
-            const max_revolutions = Math.floor(norm_time_of_flight / Math.PI)
-            const T00 = Math.acos(lambda) + lambda * Math.sqrt(1 - lambda*lambda)
-
-            if( norm_time_of_flight < T00 + max_revolutions * Math.PI && max_revolutions > 0) {
-                throw "Multi-rev TODO"  // TODO
-            }
-            if(revolutions > max_revolutions) {
-                throw RangeError(`No solutions found for ${revolutions} revolutions (max: ${max_revolutions}`)
-            }
-
-            const x_guess = initial_guess(norm_time_of_flight, lambda, revolutions, path)
-            const x = householder(x_guess, norm_time_of_flight, lambda, revolutions, tolerance, num_iter)
-            const y = y_from_x_lambda(x, lambda)
-
-            return {x, y}
-        }
-        const {x, y} = find_xy(lambda, norm_time_of_flight, revolutions, path)
-
-        const gamma = Math.sqrt(gravity * semiperimeter / 2)
-        const rho = (r1_norm - r2_norm) / c_norm
-        const sigma = Math.sqrt(1 - rho**2)
-
-        const v1_rad = gamma * ((lambda * y - x) - rho * (lambda * y + x)) / r1_norm
-        const v1_tan = gamma * sigma * (y + lambda * x) / r1_norm
-        const v1 = r1_unit.mul(v1_rad) + t1_unit.mul(v1_tan)
-
-        const v2_rad = -gamma * ((lambda * y - x) + rho * (lambda * y + x)) / r2_norm
-        const v2_tan = gamma * sigma * (y + lambda * x) / r2_norm
-        const v2 = r2_unit.mul(v2_rad) + t2_unit.mul(v2_tan)
-
-        return {
-            orbit: null,
-            arc: null,
-            v1,
-            v2,
-        }
     }
 
     serialize(): string {
@@ -783,15 +610,6 @@ export default class Orbit {
     }
     static semiMajorAxisFromHyperbolicExcessVelocity(gravity: Meter3PerSecond2, v: MeterPerSecond): Meter {
         return -gravity / (v*v);  // from [OMES 2.102]
-    }
-    static semiMajorAxisEFromApoapsisHyperbolicExcessVelocity(
-        gravity: Meter3PerSecond2,
-        apoapsisDistance: Meter,
-        hyperbolicExcessVelocity: MeterPerSecond
-    ): {sma: Meter, e: number} {
-        const sma = Orbit.semiMajorAxisFromHyperbolicExcessVelocity(gravity, hyperbolicExcessVelocity);
-        const e = apoapsisDistance / sma - 1;
-        return {sma, e};
     }
     static semiMajorAxisEFromPeriapsisHyperbolicExcessVelocity(
         gravity: Meter3PerSecond2,
@@ -1153,7 +971,7 @@ export default class Orbit {
         return dv
     }
 
-    static dvPForApsis(gravity, rCurrent, rOtherFrom, rOtherTo) {
+    static dvPForApsis(gravity: Meter3PerSecond2, rCurrent: Meter, rOtherFrom: Meter, rOtherTo: Meter): MeterPerSecond {
         /* Calculate ∆v required to change the altitude of the opposite apsis.
          *  rCurrent: current apsis altitude
          *  rOtherFrom: current opposite apsis altitude
@@ -1450,7 +1268,7 @@ export default class Orbit {
         let x = x0;
         let r = tolerance;  // bootstrap
         let maxIter = 1000;
-        let xl, fxl, xh, fxh;  // keep track of bounds to fall back to bisecting mode
+        let xl: number, fxl: number, xh: number, fxh: number;  // keep track of bounds to fall back to bisecting mode
         while(Math.abs(r) >= tolerance && --maxIter) {
             const {f: fx, fp: fpx} = ffp(x);
             if(xl === undefined) {  // first run
