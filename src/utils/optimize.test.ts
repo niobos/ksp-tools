@@ -1,4 +1,9 @@
-import {expandAbsolute, expandRelative, findMinimumNelderMead} from "./optimize";
+import {
+    expandAbsolute,
+    expandRelative,
+    findMinimumNelderMead, findMinimumNelderMeadAsync,
+    findZeroBisectSync, findZeroBisectAsync,
+} from "./optimize";
 
 describe('utility functions', () => {
     describe('expandAbsolute', () => {
@@ -49,15 +54,15 @@ describe('utility functions', () => {
 })
 
 describe('Nelder-Mead', () => {
-    test('1D sync', async () => {
-        const ret = await findMinimumNelderMead(
+    test('1D sync', () => {
+        const ret = findMinimumNelderMead(
             (x) => x[0]*x[0],
             [2],
         )
         expect(ret.x[0]).toBeCloseTo(0)
     })
     test('1D async', async () => {
-        const ret = await findMinimumNelderMead(
+        const ret = await findMinimumNelderMeadAsync(
             async (x) => {
                 return x[0] * x[0]
             },
@@ -66,12 +71,37 @@ describe('Nelder-Mead', () => {
         expect(ret.x[0]).toBeCloseTo(0)
     })
 
-    test('2D sync', async () => {
-        const ret = await findMinimumNelderMead<2>(
+    test('2D sync', () => {
+        const ret = findMinimumNelderMead<2>(
             (x: [number, number]) => Math.pow(x[0]-5, 2) + Math.pow(x[1]-7, 2),
             [2, 3],
         )
         expect(ret.x[0]).toBeCloseTo(5)
         expect(ret.x[1]).toBeCloseTo(7)
+    })
+})
+
+describe('findZeroBisectAsync', () => {
+    test('linear sync', () => {
+        const ret = findZeroBisectSync(
+            (x) => x,
+            -5, 0.2,
+        )
+        expect(ret).toBeCloseTo(0)
+    })
+    test('linear async', async () => {
+        const ret = await findZeroBisectAsync(
+            async (x) => {
+                return x
+            },
+            -5, 0.2,
+        )
+        expect(ret).toBeCloseTo(0)
+    })
+
+    it('should check different sign', async () => {
+        await expect(findZeroBisectAsync(x => x, 1, 2))
+            .rejects
+            .toThrow(RangeError)
     })
 })

@@ -1,5 +1,9 @@
 // noinspection JSUnusedGlobalSymbols
 
+/* Algorithms are written as a Generator function, and then exposed in a
+ * sync and async variant
+ */
+
 // https://stackoverflow.com/a/52490977
 export type Tuple<T, N extends number> = N extends N ? number extends N ? T[] : _TupleOf<T, N, []> : never;
 type _TupleOf<T, N extends number, R extends unknown[]> = R['length'] extends N ? R : _TupleOf<T, N, [T, ...R]>;
@@ -78,14 +82,10 @@ export type findMinimumNelderMeadOptions<ND extends number> = {
     minXDelta?: number | Tuple<number, ND>,
     minFxDelta?: number,
 }
-export async function findMinimumNelderMead<ND extends number>(
-    f: ((x: Tuple<number, ND>) => number) | ((x: Tuple<number, ND>) => Promise<number>),
+function* _findMinimumNelderMead<ND extends number>(
     x0: Tuple<number, ND> | Array<Tuple<number, ND>>,
     options: findMinimumNelderMeadOptions<ND> = {},
-): Promise<{
-    x: Tuple<number, ND>,
-    fx: number,
-}> {
+): Generator<Tuple<number, ND>, {x: Tuple<number, ND>, fx: number}, number> {
     /* Search for a minimum in the given function `f(x)`.
      * `f` is a function taking N numbers as input, and returning a single number. I.e R^N -> R
      * `f` can be a normal function, or an async function
@@ -108,25 +108,31 @@ export async function findMinimumNelderMead<ND extends number>(
     const minFxDelta = options.minFxDelta || 1e-6  // Stop if f(x) improves less than minFxDelta per step
     let minXDelta = options.minXDelta || 1e-6  // Stop if x moves less than minXDelta per step
 
-    let simplex: Array<{x: Tuple<number, ND>, fx: number}>
+    let simplex: Array<{x: Tuple<number, ND>, fx: number}> = []
     let N: number
     if(Array.isArray(x0[0])) {  // full simplex given
+        x0 = x0 as Array<Tuple<number, ND>>
         N = x0[0].length
-        simplex = await Promise.all(
-            x0.map(async (p) => ({
-                x: p,
-                fx: await ensurePromise(f(p))
-            }))
-        )
+        for(let x of x0) {
+            simplex.push({
+                x: x,
+                fx: yield x,
+            })
+        }
     } else {
+        x0 = x0 as Tuple<number, ND>
         N = x0.length
+        simplex.push({
+            x: x0,
+            fx: yield x0,
+        })
         const xextra = expandRelative(x0 as Tuple<number, ND>, relExpand, absExpand)
-        simplex = await Promise.all(
-            [x0, ...xextra].map(async (p: Tuple<number, ND>) => ({
-                x: p,
-                fx: await ensurePromise(f(p))
-            }))
-        )
+        for(let x of xextra) {
+            simplex.push({
+                x: x,
+                fx: yield x,
+            })
+        }
     }
     console.assert(simplex.length == N+1, `Expected N+1 (${N+1}) points for the simplex`)
 
@@ -162,7 +168,7 @@ export async function findMinimumNelderMead<ND extends number>(
         const worst = simplex[N].x
         // x_r = x_0 + a(x_0 - x_{n+1}) = (1+a) * x_0 - a * x_{n+1}
         const reflected = weightedSum(centroid, 1 + alpha, worst, -alpha)
-        const freflected = await ensurePromise(f(reflected))
+        const freflected = yield reflected
         if (simplex[0].fx <= freflected && freflected < simplex[N - 1].fx) {
             simplex[N] = {
                 x: reflected,
@@ -175,7 +181,7 @@ export async function findMinimumNelderMead<ND extends number>(
             // expansion
             // x_e = x_0 + g(x_r - x_o) = (1-g)x_0 + g*x_r
             const expanded = weightedSum(centroid, 1-gamma, reflected, gamma)
-            const fexpanded = await ensurePromise(f(expanded))
+            const fexpanded = yield expanded
             if(fexpanded < freflected) {
                 simplex[N] = {
                     x: expanded,
@@ -200,7 +206,7 @@ export async function findMinimumNelderMead<ND extends number>(
             // x_c = x_0 + r(x_{n+1} - x_o) = (1-r)x_0 + r * x_{n+1}
             contracted = weightedSum(centroid, 1-rho, worst, rho)
         }
-        const fcontracted = await ensurePromise(f(contracted))
+        const fcontracted = yield contracted
         if(fcontracted < freflected) {
             simplex[N] = {
                 x: contracted,
@@ -215,7 +221,7 @@ export async function findMinimumNelderMead<ND extends number>(
             const xi = weightedSum(simplex[0].x, 1-sigma, simplex[i].x, sigma)
             simplex[i] = {
                 x: xi,
-                fx: await ensurePromise(f(xi))
+                fx: yield xi
             }
         }
     }
@@ -224,4 +230,95 @@ export async function findMinimumNelderMead<ND extends number>(
         x: simplex[0].x,
         fx: simplex[0].fx,
     }
+}
+export function findMinimumNelderMead<ND extends number>(
+    f: (x: Tuple<number, ND>) => number,
+    x0: Tuple<number, ND> | Array<Tuple<number, ND>>,
+    options: findMinimumNelderMeadOptions<ND> = {},
+): {
+    x: Tuple<number, ND>,
+    fx: number,
+} {
+    const gen = _findMinimumNelderMead(x0, options)
+    let step = gen.next()
+    while(!step.done) {
+        step = gen.next(f(step.value as Tuple<number, ND>))
+    }
+    return step.value
+}
+export async function findMinimumNelderMeadAsync<ND extends number>(
+    f: ((x: Tuple<number, ND>) => number) | ((x: Tuple<number, ND>) => Promise<number>),
+    x0: Tuple<number, ND> | Array<Tuple<number, ND>>,
+    options: findMinimumNelderMeadOptions<ND> = {},
+): Promise<{
+    x: Tuple<number, ND>,
+    fx: number,
+}> {
+    const gen = _findMinimumNelderMead(x0, options)
+    let step = gen.next()
+    while(!step.done) {
+        step = gen.next(await f(step.value as Tuple<number, ND>))
+    }
+    return step.value
+}
+
+function* _findZeroBisect(
+    a: number, b: number,
+    xTolerance: number = 1e-6, fxTolerance: number = 1e-6,
+): Generator<number, number, number> {
+    /* Find zero of function `f(x)` by bisecting between [a;b].
+     * Expects f(a) * f(b) < 0 (i.e. should have a different sign).
+     *
+     * Stops when |a-b| < xTolerance or |f(x)| < fxTolerance
+     */
+    let fa = yield a
+    let fb = yield b
+    if(!(fa * fb < 0)) {
+        throw RangeError(`Expected f(${a})=${fa} and f(${b})=${fb} to have different sign.`)
+    }
+    // Pre-condition the loop so that f(a) < 0 and f(b) > 0
+    // Note that a could be larger than b
+    if(fa > 0) {
+        let t = a; a = b; b = t
+    }
+    let d = b - a
+    while(Math.abs(a-b) > xTolerance) {
+        d = d / 2
+        if(d === 0) {
+            // We've reached floating point limits, give up
+            return a
+        }
+        const x = a + d
+        const fx = yield x
+        if(Math.abs(fx) < fxTolerance) return x
+        if(fx < 0) {
+            // shift a
+            a = x
+        } // else: shift b, but this is done automatically since we calculate x = a + d
+    }
+    return a
+}
+export function findZeroBisectSync(
+    f: (x: number) => number,
+    a: number, b: number,
+    xTolerance: number = 1e-6, fxTolerance: number = 1e-6,
+): number {
+    const gen = _findZeroBisect(a, b, xTolerance, fxTolerance)
+    let step = gen.next()
+    while(!step.done) {
+        step = gen.next(f(step.value))
+    }
+    return step.value
+}
+export async function findZeroBisectAsync(
+    f: ((x: number) => Promise<number>) | ((x: number) => number),
+    a: number, b: number,
+    xTolerance: number = 1e-6, fxTolerance: number = 1e-6,
+): Promise<number> {
+    const gen = _findZeroBisect(a, b, xTolerance, fxTolerance)
+    let step = gen.next()
+    while(!step.done) {
+        step = gen.next(await f(step.value))
+    }
+    return step.value
 }
