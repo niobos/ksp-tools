@@ -1,26 +1,21 @@
-import * as React from 'react';
-import {useCallback, useMemo, useState} from 'react';
-import ReactDOM from 'react-dom';
-import useFragmentState from "useFragmentState";
-import {bodies as kspBodies, planets as kspPlanets} from "../utils/kspBody";
-import {orbits as kspOrbits} from "../utils/kspOrbit";
-import {
-    formatValueYdhms,
-    formatValueYdhmsAbs,
-    KerbalAbsYdhmsInput,
-    KerbalYdhmsInput, parseValueYdhms, parseValueYdhmsAbs
-} from "../components/formattedInput";
-import {default as OrbitComponent, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit";
-import Orbit from "../utils/orbit";
-import {SingleOutput, WorkerInput} from "./worker";
-import Vector from "../utils/vector";
-import ColorMapPlot, {PlotFuncType} from "./colorMapPlot";
-import './app.css';
-import Altitude from "../components/altitude";
-import {formatValueSi} from "formattedInput";
-import PanZoomAreaAxes from "./panZoomAreaAxes";
+import * as React from 'react'
+import {useCallback, useMemo, useState} from 'react'
+import ReactDOM from 'react-dom'
+import useFragmentState from "useFragmentState"
+import {bodies as kspBodies, planets as kspPlanets} from "../utils/kspBody"
+import {orbits as kspOrbits} from "../utils/kspOrbit"
+import {formatValueYdhms, formatValueYdhmsAbs, KerbalAbsYdhmsInput, KerbalYdhmsInput} from "../components/formattedInput"
+import {default as OrbitComponent, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit"
+import Orbit from "../utils/orbit"
+import {SingleOutput, WorkerInput} from "./worker"
+import Vector from "../utils/vector"
+import ColorMapPlot, {PlotFuncType} from "./colorMapPlot"
+import Altitude from "../components/altitude"
+import {formatValueSi} from "formattedInput"
+import PanZoomAreaAxes from "./panZoomAreaAxes"
+import './app.css'
 
-let REQUEST_ID = 0;
+let REQUEST_ID = 0
 
 enum PlotType {
     dv,

@@ -1351,53 +1351,53 @@ export default class Orbit {
     }
 
     static _findMinimum<T = {}>(
-        f: (x: number[]) => {cost: number} & T,
-        x0: number[],
+        f: (x: Array<number>) => {cost: number} & T,
+        x0: Array<number>,
         initialStep: number = 1,
         dxStep: number = 1,
         tolerance: number = 1e-8,
-    ): {xmin: number[], fmin: {cost: number} & T} {
-        let x = [...x0];  // copy
-        let error = Infinity;
-        let remainingIterations = 1000;
-        let previousFx;
+    ): {xmin: Array<number>, fmin: {cost: number} & T} {
+        let x = [...x0]  // copy
+        let error = Infinity
+        let remainingIterations = 1000
+        let previousFx: {cost: number} & T
         while(error > tolerance && --remainingIterations) {
-            const fx = f(x);
+            const fx = f(x)
             if(previousFx != null) {
-                error = Math.abs(fx.cost - previousFx.cost);
+                error = Math.abs(fx.cost - previousFx.cost)
             }
-            previousFx = fx;
+            previousFx = fx
             const gradientX = x.map((xi, i) => {
-                const xdx = [...x];
-                xdx[i] += dxStep;
-                const fxdx = f(xdx);
-                return (fxdx.cost - fx.cost) / dxStep;
-            });
+                const xdx = [...x]
+                xdx[i] += dxStep
+                const fxdx = f(xdx)
+                return (fxdx.cost - fx.cost) / dxStep
+            })
 
             // Rough line-search in the direction of -gradientX
-            let a = initialStep;
-            let xPrevA = [...x];
-            let fxPrevA = fx;
-            let remainingJumps = 100;
+            let a = initialStep
+            let xPrevA = [...x]
+            let fxPrevA = fx
+            let remainingJumps = 100
             while(--remainingJumps) {
-                const xNext = [...x];
+                const xNext = [...x]
                 for (let i = 0; i < x0.length; i++) {
-                    xNext[i] -= a * gradientX[i];
+                    xNext[i] -= a * gradientX[i]
                 }
-                const fxNext = f(xNext);
+                const fxNext = f(xNext)
                 if(a >= initialStep && fxNext.cost < fxPrevA.cost) {  // we descended, keep searching forward
-                    a = 2*a;
+                    a = 2*a
                 } else if(a <= initialStep && fxNext.cost >= fxPrevA.cost) {  // we ascended, take smaller steps
-                    a = a/2;
+                    a = a/2
                 } else {
-                    break;
+                    break
                 }
-                xPrevA = xNext;
-                fxPrevA = fxNext;
+                xPrevA = xNext
+                fxPrevA = fxNext
             }
-            x = xPrevA;
+            x = xPrevA
         }
-        return {xmin: x, fmin: f(x)};
+        return {xmin: x, fmin: f(x)}
     }
 
     _universalAnomalyAtDt(
