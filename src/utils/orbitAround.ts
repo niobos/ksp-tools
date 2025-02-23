@@ -2,6 +2,7 @@ import Body from './kspBody';
 import Orbit, {OrbitalPhase} from "./orbit";
 import {bodies as kspBodies} from './kspBody';
 import {orbits as kspOrbits} from './kspOrbit';
+import {findZeroBisect} from "./optimize";
 
 export enum orbitEvent {
     exitSoI,
@@ -113,7 +114,7 @@ export default class OrbitAround {
             if(nextIntercept != null) {
                 if(nextIntercept.separation < subBody.soi) {
                     try {
-                        const tsoi = Orbit._findZeroBisect(
+                        const tsoi = findZeroBisect(
                             (t) => {
                                 const r = this.orbit.positionAtT(t);
                                 const rsb = subBodyOrbit.positionAtT(t);

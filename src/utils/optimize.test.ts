@@ -2,7 +2,7 @@ import {
     expandAbsolute,
     expandRelative,
     findMinimumNelderMead, findMinimumNelderMeadAsync,
-    findZeroBisectSync, findZeroBisectAsync,
+    findZeroBisect, findZeroBisectAsync,
 } from "./optimize";
 
 describe('utility functions', () => {
@@ -83,7 +83,7 @@ describe('Nelder-Mead', () => {
 
 describe('findZeroBisectAsync', () => {
     test('linear sync', () => {
-        const ret = findZeroBisectSync(
+        const ret = findZeroBisect(
             (x) => x,
             -5, 0.2,
         )

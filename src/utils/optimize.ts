@@ -1,6 +1,6 @@
 // noinspection JSUnusedGlobalSymbols
 
-/* Algorithms are written as a Generator function, and then exposed in a
+/* Algorithms are written as a Generator function, so they can be exposed in a
  * sync and async variant
  */
 
@@ -56,12 +56,9 @@ export function expandRelative<ND extends number>(
     return out as Tuple<Tuple<number, ND>, ND>
 }
 
-async function ensurePromise<T>(f: Promise<T> | T): Promise<T> {
-    return Promise.resolve(f)
-}
-
-function weightedSum<ND extends number>(x1: Tuple<number, ND>, w1: number,
-                         x2: Tuple<number, ND>, w2: number
+function weightedSum<ND extends number>(
+    w1: number, x1: Tuple<number, ND>,
+    w2: number, x2: Tuple<number, ND>,
 ): Tuple<number, ND> {
     const N = x1.length
     const out = x1.slice() as Tuple<number, ND>
@@ -155,19 +152,18 @@ function* _findMinimumNelderMead<ND extends number>(
         if(xDiffWithinLimits && simplex[N].fx - simplex[0].fx < minFxDelta) break
 
         // Compute centroid of all but the worst point of the simplex
-        const centroid = simplex[0].x.slice() as Tuple<number, ND>
-        for (let i = 0; i < N; ++i) {
-            centroid[i] = 0;
-            for (let j = 0; j < N; ++j) {
-                centroid[i] += simplex[j].x[i];
+        const centroid = new Array(N).fill(0) as Tuple<number, ND>
+        for (let dim = 0; dim < N; dim++) {
+            for (let point = 0; point < (N+1)-1; point++) {
+                centroid[dim] += simplex[point].x[dim];
             }
-            centroid[i] /= N;
+            centroid[dim] /= N;
         }
 
         // Reflection step
         const worst = simplex[N].x
         // x_r = x_0 + a(x_0 - x_{n+1}) = (1+a) * x_0 - a * x_{n+1}
-        const reflected = weightedSum(centroid, 1 + alpha, worst, -alpha)
+        const reflected = weightedSum(1 + alpha, centroid, -alpha, worst)
         const freflected = yield reflected
         if (simplex[0].fx <= freflected && freflected < simplex[N - 1].fx) {
             simplex[N] = {
@@ -180,7 +176,7 @@ function* _findMinimumNelderMead<ND extends number>(
         if(freflected < simplex[0].fx) {
             // expansion
             // x_e = x_0 + g(x_r - x_o) = (1-g)x_0 + g*x_r
-            const expanded = weightedSum(centroid, 1-gamma, reflected, gamma)
+            const expanded = weightedSum(1 - gamma, centroid, gamma, reflected)
             const fexpanded = yield expanded
             if(fexpanded < freflected) {
                 simplex[N] = {
@@ -201,10 +197,10 @@ function* _findMinimumNelderMead<ND extends number>(
         let contracted
         if(freflected < simplex[N].fx) {
             // x_c = x_0 + r(x_r - x_o) = (1-r)x_0 + r * x_r
-            contracted = weightedSum(centroid, 1-rho, reflected, rho)
+            contracted = weightedSum(1 - rho, centroid, rho, reflected)
         } else {
             // x_c = x_0 + r(x_{n+1} - x_o) = (1-r)x_0 + r * x_{n+1}
-            contracted = weightedSum(centroid, 1-rho, worst, rho)
+            contracted = weightedSum(1 - rho, centroid, rho, worst)
         }
         const fcontracted = yield contracted
         if(fcontracted < freflected) {
@@ -216,10 +212,10 @@ function* _findMinimumNelderMead<ND extends number>(
         }
 
         // Shrink
-        for(let i = 1; i < N; i++) {
+        for(let point = 1; point < (N+1); point++) {
             // x_i = x_1 + s(x_i - x_1) = (1-s)x_1 - s*x_i
-            const xi = weightedSum(simplex[0].x, 1-sigma, simplex[i].x, sigma)
-            simplex[i] = {
+            const xi = weightedSum(1 - sigma, simplex[0].x, sigma, simplex[point].x)
+            simplex[point] = {
                 x: xi,
                 fx: yield xi
             }
@@ -298,7 +294,7 @@ function* _findZeroBisect(
     }
     return a
 }
-export function findZeroBisectSync(
+export function findZeroBisect(
     f: (x: number) => number,
     a: number, b: number,
     xTolerance: number = 1e-6, fxTolerance: number = 1e-6,

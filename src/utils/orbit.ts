@@ -15,6 +15,7 @@
  */
 
 import Vector from "./vector";
+import {findZeroBisect} from "./optimize";
 
 /* Some type aliases to help with units
  * There is no unit-checking at all, this just help when writing code
@@ -666,7 +667,7 @@ export default class Orbit {
         }
 
         try {
-            const velocityDirection = Orbit._findZeroBisect(
+            const velocityDirection = findZeroBisect(
                 d => {
                     const {turn: turnOfD} = turnFromVelocityAngle(d);
                     return turnOfD - turn;
@@ -1247,7 +1248,7 @@ export default class Orbit {
             if(e.error === 'did not converge') {
                 // try to continue with bisecting
                 // Assumes we found a low & high point, will raise otherwise
-                return Orbit._findZeroBisect(x => ffp(x).f, e.xl, e.xh, tolerance);
+                return findZeroBisect(x => ffp(x).f, e.xl, e.xh, tolerance);
             } else {
                 throw e;
             }
@@ -1310,44 +1311,6 @@ export default class Orbit {
             throw {error: 'did not converge', xl, xh};
         }
         return x;
-    }
-    static _findZeroBisect(
-        f: (x: number) => number,
-        a: number, b: number,
-        tolerance: number = 1e-6,
-    ): number {
-        /* Find zero of function `f(x)` by bisecting between [a;b].
-         * Expects f(a) * f(b) < 0 (i.e. should have a different sign).
-         */
-        const f_ = (x) => {
-            const fx = f(x);
-            if(isNaN(fx)) throw TypeError("function returned NaN for f(" + x + ")");
-            return fx
-        }
-        let fa = f_(a);
-        let fb = f_(b);
-        if(!(fa * fb < 0)) {
-            throw RangeError(`Expected f(${a})=${fa} and f(${b})=${fb} to have different sign.`);
-        }
-        while(Math.abs(a-b) > tolerance) {
-            const x = (a + b) / 2;
-            if(x == a || x == b) {
-                // We've reached floating point limits, give up
-                return x
-            }
-            const fx = f_(x);
-            if(fx === 0) return x;
-            if(fx * fa > 0) {  // same sign
-                a = x;
-                fa = fx;
-            } else if(fx * fb > 0) {  // same sign
-                b = x;
-                fb = fx;
-            } else {
-                throw 'Logic error';
-            }
-        }
-        return (a+b)/2;
     }
 
     static _findMinimum<T = {}>(
