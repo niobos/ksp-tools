@@ -1,5 +1,5 @@
 import {Location} from "../utils/location";
-import {findFurthestAwayLocation} from "./app";
+import {findFurthestAwayLocation} from "./findFurthestAwayLocation";
 
 describe('Great Circle navigation', () => {
     it('should calculate distance north/south', () => {
@@ -165,6 +165,19 @@ describe('Find furthest away location', () => {
     });
 
     it('should work with 4 locations', () => {
+        const locations = [
+            Location.create({latitude: 0.1, longitude: 0}),
+            Location.create({latitude: 0.1, longitude: 2/3*Math.PI}),
+            Location.create({latitude: 0.1, longitude: -2/3*Math.PI}),
+            Location.create({latitude: -Math.PI/2, longitude: 0}),
+        ];
+        const res = findFurthestAwayLocation(locations);
+        expect(res.location.latitude).toBeCloseTo(Math.PI/2);
+        // Any longitude (singularity)
+        expect(res.distanceToNearest).toBeCloseTo(Math.PI/2-0.1);
+    });
+
+    it('should find the pole as an option', () => {
         const locations = [
             Location.create({latitude: 0.1, longitude: 0}),
             Location.create({latitude: 0.1, longitude: 2/3*Math.PI}),

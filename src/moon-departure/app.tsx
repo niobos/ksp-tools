@@ -13,7 +13,7 @@ import ColorMapPlot, {PlotFuncType} from "./colorMapPlot"
 import Altitude from "../components/altitude"
 import {formatValueSi} from "formattedInput"
 import PanZoomAreaAxes from "./panZoomAreaAxes"
-import {findMinimumNelderMeadAsync} from "../utils/optimize";
+import {expandAbsolute, findMinimumNelderMeadAsync} from "../utils/optimize";
 import './app.css'
 
 let REQUEST_ID = 0
@@ -225,7 +225,7 @@ export default function App() {
                 [selectedTransfer.departureTime, selectedTransfer.travelTime],
                 {
                     cmpFx: (a, b) => a.totalDv - b.totalDv,
-                    absExpand: [60*60, 60*60],
+                    expand: x0 => expandAbsolute<2>(x0, 60*60),
                     minXDelta: [60, 60],
                     terminateFxDelta: (fxmin, fxmax) => (fxmax.totalDv - fxmin.totalDv) < 1,
                 },
@@ -469,38 +469,6 @@ function colorMap(x: number, xMin: number, xMax: number): [number, number, numbe
 
     console.log(`out of bounds for color map: ${x} not in [${xMin};${xMax}]`)
     return prev.rgb
-}
-
-async function asyncFindMinimumNd(
-    funcGrad: (x: number[]) => Promise<{fx: number, grad: number[]}>,
-    x0: number[],
-    stepSize: number = 1,
-    tolerance: number = 1e-6,
-    maxSteps: number = 1000,
-): Promise<{x: number[], fx: number, result: object}> {
-    let x = [...x0]
-    let N = x.length
-    let fxGrad = await funcGrad(x)
-    let steps = 0
-    //console.log(`GD: f(${x}) => `, fxGrad)
-    while(true) {
-        if(++steps > maxSteps) break
-
-        const newX = []
-        for(let d=0; d<N; d++) {
-            newX[d] = x[d] - stepSize * Math.sign(fxGrad.grad[d])
-        }
-        const newFxGrad = await funcGrad(newX)
-        //console.log(`GD: f(${newX}) => `, newFxGrad)
-        if(newFxGrad.fx >= fxGrad.fx - tolerance) break  // increase or not decreasing enough
-        fxGrad = newFxGrad
-        x = newX
-    }
-    return {
-        x,
-        fx: fxGrad.fx,
-        result: fxGrad,
-    }
 }
 
 if(typeof window === 'object') { // @ts-ignore

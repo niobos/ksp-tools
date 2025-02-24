@@ -104,7 +104,7 @@ export function sphericalGrid(numPoints: number = 1000): Location[] {
         const theta = phi * i;  // golden angle increment
         const x = Math.cos(theta) * radius;
         const z = Math.sin(theta) * radius;
-        const loc = Location.create({latitude: Math.sin(z), longitude: Math.atan2(y, x)});
+        const loc = Location.create({latitude: Math.asin(z), longitude: Math.atan2(y, x)});
         out.push(loc);
     }
     return out;

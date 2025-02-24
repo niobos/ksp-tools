@@ -1,7 +1,9 @@
 // noinspection JSUnusedGlobalSymbols
 
 /* Algorithms are written as a Generator function, so they can be exposed in a
- * sync and async variant
+ * sync and async variant.
+ * A function call in the algorithm is replaced by a `yield params`;
+ * The function return value is passed back in via `next(f(x))`
  */
 
 // https://stackoverflow.com/a/52490977
@@ -10,7 +12,7 @@ type _TupleOf<T, N extends number, R extends unknown[]> = R['length'] extends N 
 
 export function expandAbsolute<ND extends number>(
     x0: Tuple<number, ND>,
-    d: number | Tuple<number, ND>
+    d: number | Tuple<number, ND>,
 ): Tuple<Tuple<number, ND>, ND> {
     /* Returns a number of points around the given point `x0`
      * by taking steps of size `d` for every dimension
@@ -69,8 +71,7 @@ function weightedSum<ND extends number>(
 }
 
 export type findMinimumNelderMeadOptions<ND extends number, FxType = number> = {
-    relExpand?: number | Tuple<number, ND>,
-    absExpand?: number | Tuple<number, ND>,
+    expand?: (x: Tuple<number, ND>) => Tuple<Tuple<number, ND>, ND>,
     alpha?: number,
     gamma?: number,
     rho?: number,
@@ -83,7 +84,11 @@ export type findMinimumNelderMeadOptions<ND extends number, FxType = number> = {
 function* _findMinimumNelderMead<ND extends number, FxType = number>(
     x0: Tuple<number, ND> | Array<Tuple<number, ND>>,
     options: findMinimumNelderMeadOptions<ND, FxType> = {},
-): Generator<Tuple<number, ND>, {x: Tuple<number, ND>, fx: FxType}, FxType> {
+): Generator<
+    Tuple<number, ND>,  // values yield'ed
+    {x: Tuple<number, ND>, fx: FxType},  // value returned at end
+    FxType  // expected type provided in next() call
+> {
     /* Search for a minimum in the given function `f(x)`.
      * `f` is a function taking N numbers as input, and returning a single number. I.e. R^N -> R
      * `f` can be a normal function, or an async function
@@ -96,8 +101,8 @@ function* _findMinimumNelderMead<ND extends number, FxType = number>(
      * https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method
      */
 
-    const relExpand = options.relExpand || 1.01
-    const absExpand = options.absExpand || 0.001
+    const expand = options.expand ||
+        (x => expandRelative(x, 1.01, 0.001))
     const alpha = options.alpha || 1  // Reflection step size
     const gamma = options.gamma || 2  // Expansion step size
     const rho = options.rho || .5  // Contraction
@@ -127,7 +132,7 @@ function* _findMinimumNelderMead<ND extends number, FxType = number>(
             x: x0,
             fx: yield x0,
         })
-        const xextra = expandRelative(x0 as Tuple<number, ND>, relExpand, absExpand)
+        const xextra = expand(x0)
         for(let x of xextra) {
             simplex.push({
                 x: x,
@@ -265,7 +270,11 @@ export async function findMinimumNelderMeadAsync<ND extends number, FxType = num
 function* _findZeroBisect(
     a: number, b: number,
     xTolerance: number = 1e-6, fxTolerance: number = 1e-6,
-): Generator<number, number, number> {
+): Generator<
+    number,  // type yield'ed
+    number,  // return type at end
+    number  // expected type passed into next()
+> {
     /* Find zero of function `f(x)` by bisecting between [a;b].
      * Expects f(a) * f(b) < 0 (i.e. should have a different sign).
      *
