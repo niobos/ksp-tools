@@ -1,5 +1,5 @@
-import {useEffect, useRef, useState, useMemo} from "react";
-import * as React from "react";
+import * as React from "react"
+import {useEffect, useRef, useState} from "react"
 
 export type PlotFuncType<Type> = (value: Type, state: any) => {color: [number, number, number], state?: any, redraw?: boolean}
 /* Determine the color of a result.
@@ -28,7 +28,6 @@ type Result<Type> = {
     result: Type
 }
 
-let calcVersion = 0
 export default function ColorMapPlot<Type>(props: ColorMapPlotProps<Type>) {
     const [results, setResults] = useState<Array<Result<Type>>>([])
     const [lastPaintedResult, setLastPaintedResult] = useState(-1)

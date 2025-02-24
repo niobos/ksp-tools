@@ -69,8 +69,8 @@ function weightedSum<ND extends number>(
 }
 
 export type findMinimumNelderMeadOptions<ND extends number> = {
-    relExpand?: number,
-    absExpand?: number,
+    relExpand?: number | Tuple<number, ND>,
+    absExpand?: number | Tuple<number, ND>,
     alpha?: number,
     gamma?: number,
     rho?: number,

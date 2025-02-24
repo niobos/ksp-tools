@@ -16,6 +16,7 @@ export interface PanZoomAreaProps {
     freezeY?: boolean
     onClick?: (logicalCoords: Xy, ev: React.MouseEvent) => void
     onHover?: (logicalCoords: Xy | null) => void
+    cursor?: Xy | null
 }
 
 export default function PanZoomArea(
@@ -28,6 +29,7 @@ export default function PanZoomArea(
         freezeY,
         onClick,
         onHover,
+        cursor = null,
         children,
     }: React.PropsWithChildren<PanZoomAreaProps>
 ) {
@@ -101,8 +103,25 @@ export default function PanZoomArea(
     const dx = dragging ? (dragging.cur.x - dragging.start.x) : 0
     const dy = dragging ? (dragging.cur.y - dragging.start.y) : 0
 
+    let maybeCursor = <></>
+    if(cursor) {
+        const relCursor = {
+            x: (cursor.x - xRange[0]) / (xRange[1] - xRange[0]),
+            y: (cursor.y - yRange[0]) / (yRange[1] - yRange[0]),
+        }
+        maybeCursor = <div style={{
+            position: 'absolute',
+            left: `${relCursor.x*100}%`,
+            top: `${relCursor.y*100}%`,
+            transform: 'translate(-50%, -50%)',  // position the center instead of the top-left corner
+            zIndex: 1,  // above children
+            filter: 'invert(1)', mixBlendMode: 'difference',  // Invert background color, so always visible
+            fontSize: '200%',
+        }}>+</div>
+    }
+
     return <div ref={elementRef}
-                style={{overflow: 'hidden'}}
+                style={{overflow: 'hidden', position: 'relative'}}
                 onMouseDown={(e: React.MouseEvent) => {
                     const xy = divXyFromEvent(e)
                     setDragging({start: xy, cur: xy})
@@ -126,6 +145,7 @@ export default function PanZoomArea(
                 }}
                 onWheel={onWheel}
     >
+        {maybeCursor}
         <div style={{position: 'relative', left: `${dx}px`, top: `${dy}px`}}>
             {children}
         </div>

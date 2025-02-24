@@ -13,6 +13,7 @@ import ColorMapPlot, {PlotFuncType} from "./colorMapPlot"
 import Altitude from "../components/altitude"
 import {formatValueSi} from "formattedInput"
 import PanZoomAreaAxes from "./panZoomAreaAxes"
+import {findMinimumNelderMeadAsync} from "../utils/optimize";
 import './app.css'
 
 let REQUEST_ID = 0
@@ -59,6 +60,7 @@ export default function App() {
     const [selectedTransfer, setSelectedTransfer] = useState<SingleOutput>(null)
     const [plotType, setPlotType] = useState<PlotType>(PlotType.dv)
     const [colorMapPlotProgress, setColorMapPlotProgress] = useState<number>(0)
+    const [findingMinimum, setFindingMinimum] = useState<boolean>(false)
 
     const planetOptions = [];
     for(let planetName of kspPlanets) {
@@ -212,32 +214,24 @@ export default function App() {
 
     let maybeSelectedTransfer = <></>
     if(selectedTransfer != null) {
-        const gradientDescend = async () => {
-            const x = await asyncFindMinimumNd(
+        const findMinimum = async () => {
+            setFindingMinimum(true)
+            const minimum = await findMinimumNelderMeadAsync<2>(
                 async (x) => {
-                    const e = 1
-                    const xAndGrad: Array<[number, number]> = [
-                        /* 0 */ [x[0], x[1]],
-                        /* 1 */ [x[0]-e, x[1]],
-                        /* 2 */ [x[0]+e, x[1]],
-                        /* 3 */ [x[0], x[1]-e],
-                        /* 4 */ [x[0], x[1]+e],
-                    ]
-                    const res = await asyncCalc(xAndGrad)
+                    const res = await asyncCalc([x])
                     setSelectedTransfer(res[0])
-                    return {
-                        fx: res[0].totalDv,
-                        grad: [
-                            (res[2].totalDv - res[1].totalDv) / (2*e),
-                            (res[4].totalDv - res[3].totalDv) / (2*e),
-                        ],
-                        all: res[0],
-                    }
+                    return res[0].totalDv
                 },
                 [selectedTransfer.departureTime, selectedTransfer.travelTime],
-                60*60,
+                {
+                    absExpand: [60*60, 60*60],
+                    minXDelta: [60, 60],
+                    minFxDelta: 1,
+                },
             )
-            setSelectedTransfer((x.result as any).all)
+            const res = await asyncCalc([minimum.x])
+            setSelectedTransfer(res[0])
+            setFindingMinimum(false)
         }
 
         selectedTransfer.diveBurnPrn = Vector.FromObject(selectedTransfer.diveBurnPrn)
@@ -289,7 +283,12 @@ export default function App() {
             </td></tr>
             <tr><td>total ∆v</td><td>{selectedTransfer.totalDv.toFixed(1)}m/s</td></tr>
             </tbody></table>
-            <button onClick={() => gradientDescend().then(() => {})}>Find local minimum</button>
+            <button
+                onClick={() => findMinimum().then(() => {})}
+                disabled={findingMinimum}
+            >
+                {findingMinimum ? "Finding minimum..." : "Find local minimum"}
+            </button>
         </div>
     }
 
@@ -395,6 +394,7 @@ export default function App() {
                         setMaxTravelTime(yRange[0])
                     }}
                     onClick={xy => plotOnClick(xy.x, xy.y)}
+                    cursor={selectedTransfer ? {x: selectedTransfer.departureTime, y: selectedTransfer.travelTime} : null}
                     formatXValue={formatValueYdhmsAbs}
                     formatX0={v => <>Departure<br/><KerbalAbsYdhmsInput
                         value={v}

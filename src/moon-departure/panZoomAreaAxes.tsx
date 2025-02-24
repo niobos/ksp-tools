@@ -89,6 +89,7 @@ export default function PanZoomAreaAxes(
         formatY0 = formatYValue,
         formatY1 = formatYValue,
         xRange, yRange, onHover, onMoving,
+        cursor = null,
         ...rest
     }: React.PropsWithChildren<PanZoomAreaAxesProps>
 ) {
@@ -106,7 +107,7 @@ export default function PanZoomAreaAxes(
             <td>{(xAxisPosition == "top" || xAxisPosition == "both")
                 ? <Axis range={xRange_} orientation='horizontal-bottom' size={plotRef.current?.offsetWidth}
                         format0={formatX0} formatC={formatXValue} format1={formatX1}
-                        cursor={hover != null ? hover.x : null}
+                        cursor={hover != null ? hover.x : cursor?.x}
                 />
                 : ""}</td>
             <td></td>
@@ -115,7 +116,7 @@ export default function PanZoomAreaAxes(
             <td>{(yAxisPosition == "left" || yAxisPosition == "both")
                 ? <Axis range={yRange_} orientation='vertical-right' size={plotRef.current?.offsetHeight}
                         format0={formatY0} formatC={formatYValue} format1={formatY1}
-                        cursor={hover != null ? hover.y : null}
+                        cursor={hover != null ? hover.y : cursor?.y}
                 />
                 : ""}</td>
             <td ref={plotRef}>
@@ -128,13 +129,14 @@ export default function PanZoomAreaAxes(
                                  setMoving([xRange, yRange])
                                  if(onMoving) onMoving(xRange, yRange)
                              }}
+                             cursor={cursor}
                              {...rest}
                 />
             </td>
             <td>{(yAxisPosition == "right" || yAxisPosition == "both")
                 ? <Axis range={yRange_} orientation='vertical-left' size={plotRef.current?.offsetHeight}
                         format0={formatY0} formatC={formatYValue} format1={formatY1}
-                        cursor={hover != null ? hover.y : null}
+                        cursor={hover != null ? hover.y : cursor?.y}
                 />
                 : ""}</td>
         </tr>
@@ -143,7 +145,7 @@ export default function PanZoomAreaAxes(
             <td>{(xAxisPosition == "bottom" || xAxisPosition == "both")
                 ? <Axis range={xRange_} orientation='horizontal-top' size={plotRef.current?.offsetWidth}
                         format0={formatX0} formatC={formatXValue} format1={formatX1}
-                        cursor={hover != null ? hover.x : null}
+                        cursor={hover != null ? hover.x : cursor?.x}
                 />
                 : ""}</td>
             <td></td>
