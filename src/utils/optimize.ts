@@ -85,7 +85,7 @@ function* _findMinimumNelderMead<ND extends number, FxType = number>(
     options: findMinimumNelderMeadOptions<ND, FxType> = {},
 ): Generator<Tuple<number, ND>, {x: Tuple<number, ND>, fx: FxType}, FxType> {
     /* Search for a minimum in the given function `f(x)`.
-     * `f` is a function taking N numbers as input, and returning a single number. I.e R^N -> R
+     * `f` is a function taking N numbers as input, and returning a single number. I.e. R^N -> R
      * `f` can be a normal function, or an async function
      *
      * Ideally, x0 should be a list of N+1 points.
@@ -198,7 +198,7 @@ function* _findMinimumNelderMead<ND extends number, FxType = number>(
 
         // Contraction
         // f(x_N) <= f(x_r)
-        let contracted
+        let contracted: Tuple<number, ND>
         if(cmpFx(freflected, simplex[N].fx) < 0) {
             // x_c = x_0 + r(x_r - x_o) = (1-r)x_0 + r * x_r
             contracted = weightedSum(1 - rho, centroid, rho, reflected)

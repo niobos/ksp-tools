@@ -15,7 +15,7 @@
  */
 
 import Vector from "./vector";
-import {findZeroBisect} from "./optimize";
+import {findMinimumNelderMead, findZeroBisect} from "./optimize";
 
 /* Some type aliases to help with units
  * There is no unit-checking at all, this just help when writing code
@@ -1100,12 +1100,12 @@ export default class Orbit {
             }
             if(prevSepP != null && prevSepP < 0 && separationP > 0) {
                 // we jumped over a local minimum
-                const min = Orbit._findMinimum(
-                    x => {return {cost: d(x[0]) / (this.semiMajorAxis + otherOrbit.semiMajorAxis)}},  // normalize to be scaled around 1.0
+                const min = findMinimumNelderMead(
+                    x => d(x[0]) / (this.semiMajorAxis + otherOrbit.semiMajorAxis),  // normalize to be scaled around 1.0
                     [prevT],  // start searching from previousT
                     // This avoids overshooting to before prevT
                 );
-                return {t: min.xmin[0], separation: d(min.xmin[0])};
+                return {t: min.x[0], separation: d(min.x[0])};
             }
 
             if(separationP < 0) {  // closing
@@ -1311,56 +1311,6 @@ export default class Orbit {
             throw {error: 'did not converge', xl, xh};
         }
         return x;
-    }
-
-    static _findMinimum<T = {}>(
-        f: (x: Array<number>) => {cost: number} & T,
-        x0: Array<number>,
-        initialStep: number = 1,
-        dxStep: number = 1,
-        tolerance: number = 1e-8,
-    ): {xmin: Array<number>, fmin: {cost: number} & T} {
-        let x = [...x0]  // copy
-        let error = Infinity
-        let remainingIterations = 1000
-        let previousFx: {cost: number} & T
-        while(error > tolerance && --remainingIterations) {
-            const fx = f(x)
-            if(previousFx != null) {
-                error = Math.abs(fx.cost - previousFx.cost)
-            }
-            previousFx = fx
-            const gradientX = x.map((xi, i) => {
-                const xdx = [...x]
-                xdx[i] += dxStep
-                const fxdx = f(xdx)
-                return (fxdx.cost - fx.cost) / dxStep
-            })
-
-            // Rough line-search in the direction of -gradientX
-            let a = initialStep
-            let xPrevA = [...x]
-            let fxPrevA = fx
-            let remainingJumps = 100
-            while(--remainingJumps) {
-                const xNext = [...x]
-                for (let i = 0; i < x0.length; i++) {
-                    xNext[i] -= a * gradientX[i]
-                }
-                const fxNext = f(xNext)
-                if(a >= initialStep && fxNext.cost < fxPrevA.cost) {  // we descended, keep searching forward
-                    a = 2*a
-                } else if(a <= initialStep && fxNext.cost >= fxPrevA.cost) {  // we ascended, take smaller steps
-                    a = a/2
-                } else {
-                    break
-                }
-                xPrevA = xNext
-                fxPrevA = fxNext
-            }
-            x = xPrevA
-        }
-        return {xmin: x, fmin: f(x)}
     }
 
     _universalAnomalyAtDt(
