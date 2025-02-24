@@ -1,5 +1,6 @@
 import Orbit, {Meter, MeterPerSecond, Radians} from "../utils/orbit";
 import Vector from "../utils/vector";
+import {findMinimumNelderMead} from "../utils/optimize";
 
 type Angle = number
 type Seconds = number
@@ -118,17 +119,21 @@ function searchOptimalBurnForDistanceCoplanar(
             d2,
         }
     }
-    const bestBurn = Orbit._findMinimum(
+    const bestBurn = findMinimumNelderMead(
         distanceAfterPrBurn,
-        [dvGuessPrn.x, dvGuessPrn.y], 1e-9,
+        [dvGuessPrn.x, dvGuessPrn.y],
+        {
+            cmpFx: (a, b) => a.cost - b.cost,
+            terminateFxDelta: (fxmin, fxmax) => fxmax.cost - fxmin.cost < 1e-8,
+        },
     )
     //console.log('done', bestBurn)
 
     return {
-        burn: bestBurn.fmin.burn,
-        transferOrbit: bestBurn.fmin.transferOrbit,
-        v1Transfer: bestBurn.fmin.v1,
-        ta2Transfer: bestBurn.fmin.ta2,
+        burn: bestBurn.fx.burn,
+        transferOrbit: bestBurn.fx.transferOrbit,
+        v1Transfer: bestBurn.fx.v1,
+        ta2Transfer: bestBurn.fx.ta2,
     }
 }
 
@@ -318,17 +323,21 @@ function nodeToNode(src: Orbit, dst: Orbit, startNode: "ascending" | "descending
                 burn2: dv2,
             }
         }
-        const bestInclinationSplit = Orbit._findMinimum(
-            dvInclinationSplit, [nodes.relativeInclination / 2],
-            1e-6, 1e-3
+        const bestInclinationSplit = findMinimumNelderMead(
+            dvInclinationSplit,
+            [nodes.relativeInclination / 2],
+            {
+                cmpFx: (a, b) => a.cost - b.cost,
+                terminateFxDelta: (fxmin, fxmax) => fxmax.cost - fxmin.cost < 1e-8
+            }
         )
         //console.log("best inclsplit: ", bestInclinationSplit)
         name = `${startNode.substring(0, 1)}n`
-            + `+${(bestInclinationSplit.xmin[0] / Math.PI * 180).toFixed(1)}ºIncl, `
-            + `match (${((nodes.relativeInclination - bestInclinationSplit.xmin[0]) / Math.PI * 180).toFixed(1)}ºIncl)`
-        burn1 = bestInclinationSplit.fmin.burn1
+            + `+${(bestInclinationSplit.x[0] / Math.PI * 180).toFixed(1)}ºIncl, `
+            + `match (${((nodes.relativeInclination - bestInclinationSplit.x[0]) / Math.PI * 180).toFixed(1)}ºIncl)`
+        burn1 = bestInclinationSplit.fx.burn1
         transferOrbit = doBurn(src, ta1s, burn1)
-        burn2 = bestInclinationSplit.fmin.burn2
+        burn2 = bestInclinationSplit.fx.burn2
         finalOrbit = doBurn(transferOrbit, distanceBurn.ta2Transfer, burn2)
     }
 
