@@ -1,7 +1,7 @@
 import * as React from "react";
 import {default as BodyData, bodies as kspBodies, GRAVITATIONAL_CONSTANT} from "../utils/kspBody"
 import KspHierBody from "../components/kspHierBody"
-import SiInput from "formattedInput"
+import {SiInput} from "formattedInput"
 import {useState} from "react";
 
 interface BodyProps {
