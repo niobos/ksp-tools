@@ -70,6 +70,18 @@ describe('Nelder-Mead', () => {
         )
         expect(ret.x[0]).toBeCloseTo(0)
     })
+    test('1D non-number', () => {
+        const ret = findMinimumNelderMead<1, {cost: number, other: number}>(
+            (x) => ({cost: x[0]*x[0], other: x[0]+1}),
+            [2],
+            {
+                cmpFx: (a, b) => a.cost - b.cost,
+                terminateFxDelta: (fxmin, fxmax) => fxmax.cost - fxmin.cost < 1e-6,
+            },
+        )
+        expect(ret.x[0]).toBeCloseTo(0)
+        expect(ret.fx.other).toEqual(ret.x[0] + 1)
+    })
 
     test('2D sync', () => {
         const ret = findMinimumNelderMead<2>(

@@ -117,6 +117,7 @@ export default function PanZoomArea(
             zIndex: 1,  // above children
             filter: 'invert(1)', mixBlendMode: 'difference',  // Invert background color, so always visible
             fontSize: '200%',
+            userSelect: 'none',
         }}>+</div>
     }
 

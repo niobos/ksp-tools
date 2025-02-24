@@ -68,7 +68,7 @@ function weightedSum<ND extends number>(
     return out
 }
 
-export type findMinimumNelderMeadOptions<ND extends number> = {
+export type findMinimumNelderMeadOptions<ND extends number, FxType = number> = {
     relExpand?: number | Tuple<number, ND>,
     absExpand?: number | Tuple<number, ND>,
     alpha?: number,
@@ -77,12 +77,13 @@ export type findMinimumNelderMeadOptions<ND extends number> = {
     sigma?: number,
     maxIters?: number,
     minXDelta?: number | Tuple<number, ND>,
-    minFxDelta?: number,
+    cmpFx?: (a: FxType, b: FxType) => number,
+    terminateFxDelta?: (fxmin: FxType, fxmax: FxType) => boolean,
 }
-function* _findMinimumNelderMead<ND extends number>(
+function* _findMinimumNelderMead<ND extends number, FxType = number>(
     x0: Tuple<number, ND> | Array<Tuple<number, ND>>,
-    options: findMinimumNelderMeadOptions<ND> = {},
-): Generator<Tuple<number, ND>, {x: Tuple<number, ND>, fx: number}, number> {
+    options: findMinimumNelderMeadOptions<ND, FxType> = {},
+): Generator<Tuple<number, ND>, {x: Tuple<number, ND>, fx: FxType}, FxType> {
     /* Search for a minimum in the given function `f(x)`.
      * `f` is a function taking N numbers as input, and returning a single number. I.e R^N -> R
      * `f` can be a normal function, or an async function
@@ -102,10 +103,13 @@ function* _findMinimumNelderMead<ND extends number>(
     const rho = options.rho || .5  // Contraction
     const sigma = options.sigma || 0.5 // shrink
     let maxIters = options.maxIters || 100
-    const minFxDelta = options.minFxDelta || 1e-6  // Stop if f(x) improves less than minFxDelta per step
     let minXDelta = options.minXDelta || 1e-6  // Stop if x moves less than minXDelta per step
+    const cmpFx = options.cmpFx || // How to compare two function outputs
+        ((a, b) => (a as number) - (b as number))
+    const terminateFxDelta = options.terminateFxDelta || // Termination condition for f(x) range
+        ((fxmin, fxmax) => ((fxmax as number) - (fxmin as number)) < 1e-6)
 
-    let simplex: Array<{x: Tuple<number, ND>, fx: number}> = []
+    let simplex: Array<{x: Tuple<number, ND>, fx: FxType}> = []
     let N: number
     if(Array.isArray(x0[0])) {  // full simplex given
         x0 = x0 as Array<Tuple<number, ND>>
@@ -138,7 +142,7 @@ function* _findMinimumNelderMead<ND extends number>(
     }
 
     while(maxIters--) {
-        simplex.sort((a, b) => a.fx - b.fx)  // in-place
+        simplex.sort((a, b) => cmpFx(a.fx, b.fx))  // in-place
 
         // Termination conditions
         let xDiffWithinLimits = true
@@ -149,7 +153,7 @@ function* _findMinimumNelderMead<ND extends number>(
                 break
             }
         }
-        if(xDiffWithinLimits && simplex[N].fx - simplex[0].fx < minFxDelta) break
+        if(xDiffWithinLimits && terminateFxDelta(simplex[0].fx, simplex[N].fx)) break
 
         // Compute centroid of all but the worst point of the simplex
         const centroid = new Array(N).fill(0) as Tuple<number, ND>
@@ -165,7 +169,7 @@ function* _findMinimumNelderMead<ND extends number>(
         // x_r = x_0 + a(x_0 - x_{n+1}) = (1+a) * x_0 - a * x_{n+1}
         const reflected = weightedSum(1 + alpha, centroid, -alpha, worst)
         const freflected = yield reflected
-        if (simplex[0].fx <= freflected && freflected < simplex[N - 1].fx) {
+        if (cmpFx(simplex[0].fx,freflected) <= 0 && cmpFx(freflected, simplex[N - 1].fx) < 0) {
             simplex[N] = {
                 x: reflected,
                 fx: freflected,
@@ -173,12 +177,12 @@ function* _findMinimumNelderMead<ND extends number>(
             continue
         }
 
-        if(freflected < simplex[0].fx) {
+        if(cmpFx(freflected, simplex[0].fx) < 0) {
             // expansion
             // x_e = x_0 + g(x_r - x_o) = (1-g)x_0 + g*x_r
             const expanded = weightedSum(1 - gamma, centroid, gamma, reflected)
             const fexpanded = yield expanded
-            if(fexpanded < freflected) {
+            if(cmpFx(fexpanded, freflected) < 0) {
                 simplex[N] = {
                     x: expanded,
                     fx: fexpanded,
@@ -195,7 +199,7 @@ function* _findMinimumNelderMead<ND extends number>(
         // Contraction
         // f(x_N) <= f(x_r)
         let contracted
-        if(freflected < simplex[N].fx) {
+        if(cmpFx(freflected, simplex[N].fx) < 0) {
             // x_c = x_0 + r(x_r - x_o) = (1-r)x_0 + r * x_r
             contracted = weightedSum(1 - rho, centroid, rho, reflected)
         } else {
@@ -203,7 +207,7 @@ function* _findMinimumNelderMead<ND extends number>(
             contracted = weightedSum(1 - rho, centroid, rho, worst)
         }
         const fcontracted = yield contracted
-        if(fcontracted < freflected) {
+        if(cmpFx(fcontracted, freflected) < 0) {
             simplex[N] = {
                 x: contracted,
                 fx: fcontracted,
@@ -227,13 +231,13 @@ function* _findMinimumNelderMead<ND extends number>(
         fx: simplex[0].fx,
     }
 }
-export function findMinimumNelderMead<ND extends number>(
-    f: (x: Tuple<number, ND>) => number,
+export function findMinimumNelderMead<ND extends number, FxType = number>(
+    f: (x: Tuple<number, ND>) => FxType,
     x0: Tuple<number, ND> | Array<Tuple<number, ND>>,
-    options: findMinimumNelderMeadOptions<ND> = {},
+    options: findMinimumNelderMeadOptions<ND, FxType> = {},
 ): {
     x: Tuple<number, ND>,
-    fx: number,
+    fx: FxType,
 } {
     const gen = _findMinimumNelderMead(x0, options)
     let step = gen.next()
@@ -242,13 +246,13 @@ export function findMinimumNelderMead<ND extends number>(
     }
     return step.value
 }
-export async function findMinimumNelderMeadAsync<ND extends number>(
-    f: ((x: Tuple<number, ND>) => number) | ((x: Tuple<number, ND>) => Promise<number>),
+export async function findMinimumNelderMeadAsync<ND extends number, FxType = number>(
+    f: ((x: Tuple<number, ND>) => FxType) | ((x: Tuple<number, ND>) => Promise<FxType>),
     x0: Tuple<number, ND> | Array<Tuple<number, ND>>,
-    options: findMinimumNelderMeadOptions<ND> = {},
+    options: findMinimumNelderMeadOptions<ND, FxType> = {},
 ): Promise<{
     x: Tuple<number, ND>,
-    fx: number,
+    fx: FxType,
 }> {
     const gen = _findMinimumNelderMead(x0, options)
     let step = gen.next()

@@ -216,21 +216,21 @@ export default function App() {
     if(selectedTransfer != null) {
         const findMinimum = async () => {
             setFindingMinimum(true)
-            const minimum = await findMinimumNelderMeadAsync<2>(
+            const minimum = await findMinimumNelderMeadAsync<2, SingleOutput>(
                 async (x) => {
                     const res = await asyncCalc([x])
                     setSelectedTransfer(res[0])
-                    return res[0].totalDv
+                    return res[0]
                 },
                 [selectedTransfer.departureTime, selectedTransfer.travelTime],
                 {
+                    cmpFx: (a, b) => a.totalDv - b.totalDv,
                     absExpand: [60*60, 60*60],
                     minXDelta: [60, 60],
-                    minFxDelta: 1,
+                    terminateFxDelta: (fxmin, fxmax) => (fxmax.totalDv - fxmin.totalDv) < 1,
                 },
             )
-            const res = await asyncCalc([minimum.x])
-            setSelectedTransfer(res[0])
+            setSelectedTransfer(minimum.fx)
             setFindingMinimum(false)
         }
 
