@@ -3,9 +3,7 @@ import {ReactElement, useState} from 'react'
 import ReactDOM from 'react-dom'
 import useFragmentState, {updatedHashValue} from 'useFragmentState'
 import {Size} from "../utils/kspParts"
-import Body, {bodies as kspBodies} from "../utils/kspBody"
 import {FloatInput} from "formattedInput"
-import KspHierBody from "../components/kspHierBody"
 import Multiselect from "../components/multiselect"
 import {KspFund} from "../components/kspIcon"
 import SortableTable from "sortableTable"
@@ -15,6 +13,7 @@ import {fuelTanks} from "../utils/kspParts-fuelTanks"
 import {engines as kspEngines} from "../utils/kspParts-engine"
 import {fromPreset, objectMap} from "../utils/utils"
 import {dvForDm, massBeforeDv} from "../utils/rocket"
+import kspSystems, {Body, HierarchicalBodySelect, SystemSelect} from "../utils/kspSystems";
 import './app.css'
 
 const fuelTypes = ['lf', 'ox', 'air', 'sf', 'xe', 'mono']
@@ -80,14 +79,15 @@ type EngineConfig = {
 }
 
 export default function App() {
+    const [system, setSystem] = useFragmentState<string>('sys', "Stock")
     const [dv, setDv] = useFragmentState('dv', 1000);
     const [mass, setMass] = useFragmentState('m', 1.5);
     const [acceleration, setAcceleration] = useFragmentState('a', 14.715);
     const [gravity, setGravity] = useState('Kerbin' as string | number);  // not stored in fragment
     const [pressure, setPressure] = useFragmentState<number|string>('p', 0);
-    const [sizes, setSizes] = useFragmentState('s',
+    const [sizes, setSizes] = useFragmentState<Set<string>>('s',
         s => {
-            const v = jsonParseWithDefault(Object.keys(Size))(s);
+            const v: string[] = jsonParseWithDefault(Object.keys(Size))(s);
             return new Set(v);
         },
         o => JSON.stringify([...o]),
@@ -99,9 +99,9 @@ export default function App() {
         },
         i => '' + i,
     );
-    const [fuelType, setFuelType] = useFragmentState('f',
+    const [fuelType, setFuelType] = useFragmentState<Set<string>>('f',
         s => {
-            const v = jsonParseWithDefault([...fuelTypes])(s);
+            const v: string[] = jsonParseWithDefault([...fuelTypes])(s);
             return new Set(v);
         },
         o => JSON.stringify([...o]),
@@ -120,10 +120,11 @@ export default function App() {
     const [showAll, setShowAll] = useState(false);
 
     const {value: gravityValue, preset: gravityPreset} = fromPreset(
-        gravity, objectMap(kspBodies, (b: Body) => b.surface_gravity)
+        gravity, objectMap(kspSystems[system].bodies, (b: Body) => b.surface_gravity)
     )
     const {value: pressureValue, preset: pressurePreset} = fromPreset(
-        pressure, objectMap(kspBodies, (b: Body) => (b.atmospherePressure ?? 0) / kspBodies['Kerbin'].atmospherePressure)
+        pressure, objectMap(kspSystems[system].bodies,
+            (b: Body) => (b.atmospherePressure ?? 0) / kspSystems[system].bodies[kspSystems[system].defaultBody].atmospherePressure)
     )
     const {value: tankValue, preset: tankPreset} = fromPreset(
         tank, objectMap(fuelTanks, (ft) => {return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost/ft.mass}})
@@ -310,6 +311,9 @@ export default function App() {
     return <div>
         <h1>Engine selection</h1>
         <table><tbody>
+        <tr><td>Planet system</td><td>
+            <SystemSelect value={system} onChange={setSystem}/>
+        </td></tr>
         <tr><td>Payload mass</td><td>
             <FloatInput value={mass} decimals={1}
                         onChange={setMass}
@@ -330,16 +334,18 @@ export default function App() {
             {" @ "}<FloatInput value={gravityValue} decimals={2}
                         onChange={setGravity}
             />{"kN/t "}
-            <KspHierBody value={gravityPreset} customValue="custom"
-                         onChange={setGravity}
+            <HierarchicalBodySelect systemName={system}
+                                    value={gravityPreset} customValue="custom"
+                                    onChange={setGravity}
             />)
         </td></tr>
         <tr><td>Pressure</td><td>
             <FloatInput value={pressureValue} decimals={1}
                         onChange={(v) => setPressure(v)}
             />{"atm "}
-            <KspHierBody value={pressurePreset} customValue="custom"
-                         onChange={setPressure}
+            <HierarchicalBodySelect systemName={system}
+                                    value={pressurePreset} customValue="custom"
+                                    onChange={setPressure}
             />
         </td></tr>
         <tr><td>Tech level</td><td>{techLevelJsx}</td></tr>
