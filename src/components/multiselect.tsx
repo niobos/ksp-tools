@@ -1,7 +1,8 @@
 import * as React from "react"
+import {ReactNode} from "react"
 
 export interface MultiselectProps {
-    items: Record<string, string>
+    items: Record<string, string> | Array<string>
     value: Set<string>
     onChange: (v: Set<string>) => void
 }
@@ -23,22 +24,23 @@ export default function Multiselect({
         }, {})
     }
 
-    const checkboxes = []
+    const checkboxes: Array<ReactNode> = []
     for(let v in items) {
         const label = items[v]
         const checked = value.has(v)
 
-        const newValue = new Set(value)  // copy
-        if(checked) {  // remove
-            newValue.delete(v)
-        } else {  // unchecked: add
-            newValue.add(v)
-        }
-
         checkboxes.push(<label key={v} style={{display: 'inline-block'}}>
             <input type="checkbox" value={v}
                    checked={checked}
-                   onChange={() => onChange(newValue)}
+                   onChange={() => {
+                       const newValue = new Set(value)  // copy
+                       if(checked) {  // remove
+                           newValue.delete(v)
+                       } else {  // unchecked: add
+                           newValue.add(v)
+                       }
+                       onChange(newValue)
+                   }}
             />{label}
         </label>)
         checkboxes.push(" ")

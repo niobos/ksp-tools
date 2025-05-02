@@ -1,6 +1,6 @@
-import {Data} from "dataclass";
+import {Data} from "dataclass"
 
-export const GRAVITATIONAL_CONSTANT = 6.67430e-11;
+export const GRAVITATIONAL_CONSTANT = 6.67430e-11
 
 export default class Body extends Data {
     mass?: number  // kg
@@ -18,28 +18,28 @@ export default class Body extends Data {
     private orbitedBy: Body[] = ['init' as unknown as Body]
 
     get gravity(): number | null {
-        if(this.mass == null) return null;
-        return GRAVITATIONAL_CONSTANT * this.mass;
+        if(this.mass == null) return null
+        return GRAVITATIONAL_CONSTANT * this.mass
     }
     static massFromGravity(gravity: number | null): number | null {
-        if(gravity == null) return null;
-        return gravity / GRAVITATIONAL_CONSTANT;
+        if(gravity == null) return null
+        return gravity / GRAVITATIONAL_CONSTANT
     }
 
     get surface_gravity(): number | null {
-        if(this.gravity == null || this.radius == null) return null;
-        return this.gravity / this.radius / this.radius;
+        if(this.gravity == null || this.radius == null) return null
+        return this.gravity / this.radius / this.radius
     }
 
     isOrbitedBy(): Body[] {
         if(this.orbitedBy[0] === 'init' as unknown as Body) {
-            this.orbitedBy.pop();
+            this.orbitedBy.pop()
             for (let bodyName in bodies) {
                 const body = bodies[bodyName];
-                if (body.orbitsAround === this) this.orbitedBy.push(body);
+                if (body.orbitsAround === this) this.orbitedBy.push(body)
             }
         }
-        return this.orbitedBy;
+        return this.orbitedBy
     }
 }
 
@@ -47,8 +47,8 @@ export const bodies = {};
 for(let body of [
     Body.create({name: 'Kerbol', mass: 1.7565459e28, radius: 261_600_000, solarDay: undefined, atmosphere: 600_000, atmospherePressure: 16_000, soi: Infinity, scienceSpaceBorder: 1e9, scienceAtmosphereBorder: 18e3}),
 ]) {
-    bodies[body.name] = body;
-};
+    bodies[body.name] = body
+}
 for(let body of [
     Body.create({name: 'Moho', orbitsAround: bodies['Kerbol'], mass: 2.5263314e21, radius: 250_000, solarDay: 2_665_723.4, atmosphere: 0, terrain: 6817, soi: 9_646_663, scienceSpaceBorder: 80e3}),
     Body.create({name: 'Eve', orbitsAround: bodies['Kerbol'], mass: 1.2243980e23, radius: 700_000, solarDay: 81_661.857, atmosphere: 90_000, atmospherePressure: 506_625, terrain: 7526, soi: 85_109_365, scienceSpaceBorder: 400e3, scienceAtmosphereBorder: 22e3}),
@@ -58,8 +58,8 @@ for(let body of [
     Body.create({name: 'Jool', orbitsAround: bodies['Kerbol'], mass: 4.2332127e24, radius: 6_000_000, solarDay: 36_000, atmosphere: 200_000, atmospherePressure: 1_519_880, soi: 2_455_985_200, scienceSpaceBorder: 4e6, scienceAtmosphereBorder: 120e3}),
     Body.create({name: 'Eeloo', orbitsAround: bodies['Kerbol'], mass: 1.1149224e21, radius: 210_000, solarDay: 19_462.412, atmosphere: 0, terrain: 3900, soi: 119_082_940, scienceSpaceBorder: 60e3}),
 ]) {
-    bodies[body.name] = body;
-};
+    bodies[body.name] = body
+}
 for(let body of [
     Body.create({name: 'Gilly', orbitsAround: bodies['Eve'], mass: 1.2420363e17, radius: 13_000, solarDay: 28_255, atmosphere: 0, terrain: 6401, soi: 126_123.27, scienceSpaceBorder: 6e3}),
     Body.create({name: 'Mun', orbitsAround: bodies['Kerbin'], mass: 9.7599066e20, radius: 200_000, solarDay: 138_984.38, atmosphere: 0, terrain: 7061, soi: 2_429_559.1, scienceSpaceBorder: 60e3, wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mun"}),
@@ -71,15 +71,13 @@ for(let body of [
     Body.create({name: 'Bop', orbitsAround: bodies['Jool'], mass: 3.7261090e19, radius: 65_000, solarDay: 544_507.43, atmosphere: 0, terrain: 21757, soi: 1_221_060.9, scienceSpaceBorder: 25e3}),
     Body.create({name: 'Pol', orbitsAround: bodies['Jool'], mass: 1.0813507e19, radius: 44_000, solarDay: 901_902.62, atmosphere: 0, terrain: 4891, soi: 1_042_138.9, scienceSpaceBorder: 22e3}),
 ]) {
-    bodies[body.name] = body;
-};
-
-
+    bodies[body.name] = body
+}
 
 export const planets = [];
 for(let planet of bodies['Kerbol'].isOrbitedBy()) {
-    planets.push(planet.name);
-};
+    planets.push(planet.name)
+}
 
 export const bodiesHier = {
     'Kerbol system': 'Kerbol',
@@ -90,17 +88,17 @@ export const bodiesHier = {
     'Dres system': 'Dres',
     'Jool system': ['Jool', 'Laythe', 'Vall', 'Tylo', 'Bop', 'Pol'],
     'Eeloo system': 'Eeloo',
-};
+}
 export function bodiesHierFind(bodyName: string): string[] | null {
     /* Returns the hierarchical tree to the body, starting from Kerbol
      */
-    if(bodyName === "Kerbol") return [bodyName];
-    if(planets.includes(bodyName)) return ["Kerbol", bodyName];
+    if(bodyName === "Kerbol") return [bodyName]
+    if(planets.includes(bodyName)) return ["Kerbol", bodyName]
     for(const system in bodiesHier) {
         if(bodiesHier[system].includes(bodyName)) {
             const planet = system.substring(0, system.length - 7);  // strip " system"
-            return ["Kerbol", planet, bodyName];
+            return ["Kerbol", planet, bodyName]
         }
     }
-    return null;
+    return null
 }

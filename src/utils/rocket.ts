@@ -35,7 +35,7 @@ export function dtForDv(dv: number, startMass: number, thrust: number, isp: numb
      *
      * Starting mass can also be given in tons, if thrust is in kN
      */
-    // https://www.reddit.com/r/KerbalAcademy/comments/1oremg/comment/ccuwdmm/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
+    // https://www.reddit.com/r/KerbalAcademy/comments/1oremg/comment/ccuwdmm/
     // https://space.stackexchange.com/a/27376
     const ve = isp * g0
     return startMass * ve / thrust * (1 - Math.exp(-dv/ve))
@@ -49,7 +49,7 @@ export function dvForDt(dt: number, startMass: number, thrust: number, isp: numb
      *
      * Starting mass can also be given in tons, if thrust is in kN
      */
-    /* https://www.reddit.com/r/KerbalAcademy/comments/1oremg/comment/ccuwdmm/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
+    /* https://www.reddit.com/r/KerbalAcademy/comments/1oremg/comment/ccuwdmm/
      * https://space.stackexchange.com/a/27376
      * ∆t = m0 * ve / F * (1 - exp(-∆v/ve))
      * => ∆t * F / (m0 * ve) = 1 - exp(-∆v/ve)
@@ -62,7 +62,7 @@ export function dvForDt(dt: number, startMass: number, thrust: number, isp: numb
 }
 
 export function thrustFromIspMdot(isp: number, mDot: number): number {
-    /* Calculate the engine thrust from the ISP and ṁ (dm/dt)
+    /* Calculate the engine thrust from the ISP and mass flow rate ṁ (dm/dt)
      */
     return isp * g0 * mDot
 }

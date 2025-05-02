@@ -1,11 +1,11 @@
 import {Location} from "./location";
 
 function degToRad(deg: number): number {
-    return deg / 180 * Math.PI;
+    return deg / 180 * Math.PI
 }
 
 function dmsToRad(deg: number, min: number, sec: number): number {
-    return degToRad(deg + min/60 + sec/3600);
+    return degToRad(deg + min/60 + sec/3600)
 }
 
 export const groundstations = {

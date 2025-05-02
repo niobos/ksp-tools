@@ -1,21 +1,21 @@
-import './app.css';
-import * as React from 'react';
-import {useState} from 'react';
-import ReactDOM from 'react-dom';
-import useFragmentState, {updatedHashValue} from 'useFragmentState';
-import {Size} from "../utils/kspParts";
-import {bodies as kspBodies} from "../utils/kspBody";
-import {FloatInput} from "formattedInput";
-import KspHierBody from "../components/kspHierBody";
-import Multiselect from "../components/multiselect";
-import {KspFund} from "../components/kspIcon";
-import SortableTable from "sortableTable";
-import Preset from "../components/preset";
-import FuelTank from "../components/fuelTank";
-import {fuelTanks} from "../utils/kspParts-fuelTanks";
-import {engines as kspEngines} from "../utils/kspParts-engine";
-import {fromPreset, objectMap} from "../utils/utils";
-import {dvForDm, massBeforeDv} from "../utils/rocket";
+import * as React from 'react'
+import {ReactElement, useState} from 'react'
+import ReactDOM from 'react-dom'
+import useFragmentState, {updatedHashValue} from 'useFragmentState'
+import {Size} from "../utils/kspParts"
+import Body, {bodies as kspBodies} from "../utils/kspBody"
+import {FloatInput} from "formattedInput"
+import KspHierBody from "../components/kspHierBody"
+import Multiselect from "../components/multiselect"
+import {KspFund} from "../components/kspIcon"
+import SortableTable from "sortableTable"
+import Preset from "../components/preset"
+import FuelTank from "../components/fuelTank"
+import {fuelTanks} from "../utils/kspParts-fuelTanks"
+import {engines as kspEngines} from "../utils/kspParts-engine"
+import {fromPreset, objectMap} from "../utils/utils"
+import {dvForDm, massBeforeDv} from "../utils/rocket"
+import './app.css'
 
 const fuelTypes = ['lf', 'ox', 'air', 'sf', 'xe', 'mono']
 
@@ -62,6 +62,23 @@ function jsonParseWithDefault(defaultValue: any): (value: string) => any {
     }
 }
 
+type EngineConfig = {
+    name: string | ReactElement,
+    n: number,
+    thrustPerEngine: number,
+    isp: number,
+    cost: number,
+    engineMass: number
+    fuelTankMass: number,
+    totalMass: number,
+    dv: number,
+    accelerationFull: number,
+    accelerationEmpty: number,
+    size: string,
+    gimbal: number,
+    alternator: number,
+}
+
 export default function App() {
     const [dv, setDv] = useFragmentState('dv', 1000);
     const [mass, setMass] = useFragmentState('m', 1.5);
@@ -103,71 +120,78 @@ export default function App() {
     const [showAll, setShowAll] = useState(false);
 
     const {value: gravityValue, preset: gravityPreset} = fromPreset(
-        gravity, objectMap(kspBodies, (b) => b.surface_gravity)
+        gravity, objectMap(kspBodies, (b: Body) => b.surface_gravity)
     )
     const {value: pressureValue, preset: pressurePreset} = fromPreset(
-        pressure, objectMap(kspBodies, (b) => (b.atmospherePressure ?? 0) / kspBodies['Kerbin'].atmospherePressure)
+        pressure, objectMap(kspBodies, (b: Body) => (b.atmospherePressure ?? 0) / kspBodies['Kerbin'].atmospherePressure)
     )
     const {value: tankValue, preset: tankPreset} = fromPreset(
         tank, objectMap(fuelTanks, (ft) => {return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost/ft.mass}})
     );
 
     const columns = [
-        {title: <span>Name</span>, value: i => i.name},
-        {title: <span>Number</span>, classList: 'number', value: i => i.n},
-        {title: <span>Cost<br/>[<KspFund/>]</span>, value: i => i.cost.toFixed(0),
-            classList: i => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
-            cmp: (a, b) => a.cost - b.cost,
+        {title: <span>Name</span>, value: (i: EngineConfig) => i.name},
+        {title: <span>Number</span>, classList: 'number', value: (i: EngineConfig) => i.n},
+        {title: <span>Cost<br/>[<KspFund/>]</span>,
+            value: (i: EngineConfig) => i.cost.toFixed(0),
+            classList: (i: EngineConfig) => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
+            cmp: (a: EngineConfig, b: EngineConfig) => a.cost - b.cost,
         },
         {title: <span>Mass [t]</span>, children: [
                 {title: <span>Total</span>, classList: 'number',
-                    value: i => <a href={"#" + updatedHashValue('m', i.totalMass)}
-                                   target="_new"
-                                   title="Use as payload for next stage"
-                    >{i.totalMass.toFixed(2)}</a>,
-                    cmp: (a, b) => a.totalMass - b.totalMass,
+                    value: (i: EngineConfig) => <a
+                            href={"#" + updatedHashValue('m', `${i.totalMass}`)}
+                            target="_new"
+                            title="Use as payload for next stage"
+                        >{i.totalMass.toFixed(2)}</a>,
+                    cmp: (a: EngineConfig, b: EngineConfig) => a.totalMass - b.totalMass,
                 },
-                {title: <span>Engine(s)</span>, classList: 'number', value: i => i.engineMass.toFixed(2),
-                    cmp: (a, b) => a.engineMass - b.engineMass,
+                {title: <span>Engine(s)</span>, classList: 'number',
+                    value: (i: EngineConfig) => i.engineMass.toFixed(2),
+                    cmp: (a: EngineConfig, b: EngineConfig) => a.engineMass - b.engineMass,
                 },
-                {title: <span>Fuel+tank</span>, value: i => i.fuelTankMass.toFixed(2),
-                    classList: i => (i.fuelTankMass === 0 || isNaN(i.fuelTankMass)) ? ['number', 'zero'] : ['number'],
-                    cmp: (a, b) => a.fuelTankMass - b.fuelTankMass,
+                {title: <span>Fuel+tank</span>,
+                    value: (i: EngineConfig) => i.fuelTankMass.toFixed(2),
+                    classList: (i: EngineConfig) => (i.fuelTankMass === 0 || isNaN(i.fuelTankMass)) ? ['number', 'zero'] : ['number'],
+                    cmp: (a: EngineConfig, b: EngineConfig) => a.fuelTankMass - b.fuelTankMass,
                 },
             ]},
-        {title: <span>Size</span>, value: i => i.size},
+        {title: <span>Size</span>, value: (i: EngineConfig) => i.size},
         {title: <span>Thrust/engine<br/>({pressureValue.toFixed(1)}atm) [kN]</span>, classList: 'number',
-            value: i => i.thrustPerEngine.toFixed(1),
-            cmp: (a, b) => a.thrustPerEngine - b.thrustPerEngine,
+            value: (i: EngineConfig) => i.thrustPerEngine.toFixed(1),
+            cmp: (a: EngineConfig, b: EngineConfig) => a.thrustPerEngine - b.thrustPerEngine,
         },
         {title: <span>Isp<br/>({pressureValue.toFixed(1)}atm)<br/>[s]</span>, classList: 'number',
-            value: i => i.isp.toFixed(1),
-            cmp: (a, b) => a.isp - b.isp,
+            value: (i: EngineConfig) => i.isp.toFixed(1),
+            cmp: (a: EngineConfig, b: EngineConfig) => a.isp - b.isp,
         },
         {title: <span>TWR<br/>({pressureValue.toFixed(1)}atm)</span>, children: [
                 {title: <span>full []</span>,
-                    value: i => (i.accelerationFull / gravityValue).toFixed(2),
-                    classList: i => i.accelerationFull < acceleration*.99 ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
-                    cmp: (a, b) => a.accelerationFull - b.accelerationFull,
+                    value: (i: EngineConfig) => (i.accelerationFull / gravityValue).toFixed(2),
+                    classList: (i: EngineConfig) => i.accelerationFull < acceleration*.99 ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
+                    cmp: (a: EngineConfig, b: EngineConfig) => a.accelerationFull - b.accelerationFull,
                 },
                 {title: <span>empty []</span>,
-                    value: i => (i.accelerationEmpty / gravityValue).toFixed(2),
+                    value: (i: EngineConfig) => (i.accelerationEmpty / gravityValue).toFixed(2),
                     classList: 'number',
-                    cmp: (a, b) => a.accelerationEmpty - b.accelerationEmpty,
+                    cmp: (a: EngineConfig, b: EngineConfig) => a.accelerationEmpty - b.accelerationEmpty,
                 },
             ]},
-        {title: <span>Gimbal [º]</span>, value: i => i.gimbal,
-            classList: i => i.gimbal === 0 ? ['number', 'zero'] : ['number'],
+        {title: <span>Gimbal [º]</span>,
+            value: (i: EngineConfig) => i.gimbal,
+            classList: (i: EngineConfig) => i.gimbal === 0 ? ['number', 'zero'] : ['number'],
         },
-        {title: <span>Alternator<br/>[⚡/s]</span>, value: i => i.alternator,
-            classList: i => i.alternator <= 0 ? ['number', 'zero'] : ['number'],
+        {title: <span>Alternator<br/>[⚡/s]</span>,
+            value: (i: EngineConfig) => i.alternator,
+            classList: (i: EngineConfig) => i.alternator <= 0 ? ['number', 'zero'] : ['number'],
         },
-        {title: <span>∆v [m/s]</span>, value: i => i.dv.toFixed(1),
-            classList: i => (i.dv < dv*.99 || isNaN(i.dv)) ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
-            cmp: (a, b) => a.dv - b.dv,
+        {title: <span>∆v [m/s]</span>,
+            value: (i: EngineConfig) => i.dv.toFixed(1),
+            classList: (i: EngineConfig) => (i.dv < dv*.99 || isNaN(i.dv)) ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
+            cmp: (a: EngineConfig, b: EngineConfig) => a.dv - b.dv,
         },
     ];
-    const engineOptions = [];
+    const engineOptions: Array<EngineConfig> = [];
     for(let engineName in kspEngines) {
         const engine = kspEngines[engineName];
 
@@ -192,10 +216,10 @@ export default function App() {
                 break;
             }
         }
-        if (skip) continue;
+        if (skip) continue
 
-        let numEngines;
-        let fuelTankMass, totalMass, emptyMass, actualDv;
+        let numEngines: number
+        let fuelTankMass: number, totalMass: number, emptyMass: number, actualDv: number
         if(engine.consumption.sf > 0) { // SRB
             /* a = n * F / m = n * F / (m_payload + n*m_engine)
              * => a * m_payload + a * n * m_engine = n * F
@@ -251,7 +275,7 @@ export default function App() {
             // out of spec
             if(!showAll) continue;
         }
-        let name: any = engineName;
+        let name: string | ReactElement = engineName;
         if(engine.wikiUrl !== undefined) {
             name = <a href={engine.wikiUrl}>{name}</a>
         }
