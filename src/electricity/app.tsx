@@ -6,43 +6,45 @@ import {KerbalYdhmsInput} from "../components/formattedInput";
 import useFragmentState from 'useFragmentState';
 import Preset from "../components/preset";
 import SortableTable from "sortableTable";
-import {bodies} from "../utils/kspBody";
-import {orbits} from "../utils/kspOrbit";
 import {Resources} from "../utils/kspParts";
 import FuelTank from "../components/fuelTank";
 import {fuelTanks} from "../utils/kspParts-fuelTanks";
 import {batteries, electricalGenerators, FuelCell, SolarPanel} from "../utils/kspParts-solarPanel";
 import {fromPreset, objectMap} from "../utils/utils";
+import {SystemSelect} from "../components/kspSystemSelect"
+import kspSystems from "../utils/kspSystems"
 import {
+    calcPowerFromDevices as calcContinuousPowerFromDevices,
     ContinuousPowerCalc,
+    customOnly as ContinuousPowerCalcCustomOnly,
     fromString as ContinuousPowerCalcFromString,
     toString as ContinuousPowerCalcToString,
-    calcPowerFromDevices as calcContinuousPowerFromDevices,
-    customOnly as ContinuousPowerCalcCustomOnly,
 } from "./continuousPowerCalc";
 import {
     BurstPowerCalc,
-    fromString as BurstPowerCalcFromString,
-    toString as BurstPowerCalcToString,
     calcBurstPowerFromDevices,
     fromEnergyInterval as BurstFromEnergyInterval,
+    fromString as BurstPowerCalcFromString,
+    toString as BurstPowerCalcToString,
 } from "./burstPowerCalc";
 import {
-    ShadeCalc,
-    fromString as ShadeCalcFromString,
-    toString as ShadeCalcToString,
     calcShade,
     custom as ShadeCustom,
+    fromString as ShadeCalcFromString,
+    ShadeCalc,
+    toString as ShadeCalcToString,
 } from "./shadeCalc";
 
-import {KspFund} from "../components/kspIcon";
-import './app.css';
+import {KspFund} from "../components/kspIcon"
+import './app.css'
 
-function solarPanelEfficiencyFromKerbolDistance(d) {
-    return 1 / Math.pow(d/orbits.Kerbin.semiMajorAxis, 2);
+function solarPanelEfficiencyFromSunDistance(systemName: string, d: number): number {
+    const homeWorldSma = kspSystems[systemName].bodies[kspSystems[systemName].defaultBody].orbit.semiMajorAxis
+    return 1 / Math.pow(d/homeWorldSma, 2);
 }
-function kerbolDistanceFromSolarPanelEfficiency(e) {
-    return Math.sqrt(1/e) * orbits.Kerbin.semiMajorAxis;
+function sunDistanceFromSolarPanelEfficiency(systemName: string, e: number): number {
+    const homeWorldSma = kspSystems[systemName].bodies[kspSystems[systemName].defaultBody].orbit.semiMajorAxis
+    return Math.sqrt(1/e) * homeWorldSma
 }
 
 const columns = [
@@ -236,6 +238,7 @@ function rtgSolutions(burstPowerValue, continuousPowerValue): Solution[] {
 }
 
 export default function App() {
+    const [system, setSystem] = useFragmentState<string>('sys', "Stock")
     const [continuousPower, setContinuousPower] = useFragmentState('c', ContinuousPowerCalcFromString, ContinuousPowerCalcToString);
     const [continuousPowerCalcOpen, setContinuousPowerCalcOpen] = useState(false);
     const [burstPower, setBurstPower] = useFragmentState('b', BurstPowerCalcFromString, BurstPowerCalcToString);
@@ -254,7 +257,7 @@ export default function App() {
         fuelTank, objectMap(fuelTanks, (ft) => {
             return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost / ft.mass}
         })
-    );
+    )
 
     const solutions = [];
     solutions.push(...solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue, solarEfficiency));
@@ -323,15 +326,16 @@ export default function App() {
         <h2>Solar situation</h2>
         Panel efficiency: <FloatInput decimals={0} value={solarEfficiency * 100}
                                       onChange={v => setSolarEfficiency(v / 100)}
-        />%, equivalent to a distance to Kerbol of <SiInput
-            value={kerbolDistanceFromSolarPanelEfficiency(solarEfficiency)}
-            onChange={d => setSolarEfficiency(solarPanelEfficiencyFromKerbolDistance(d))}
-        />m <Preset options={bodies['Kerbol'].isOrbitedBy().reduce((acc, p) => {
-            acc[p.name] = orbits[p.name].semiMajorAxis;
+        />%, equivalent to a distance to the sun of <SiInput
+            value={sunDistanceFromSolarPanelEfficiency(system, solarEfficiency)}
+            onChange={d => setSolarEfficiency(solarPanelEfficiencyFromSunDistance(system, d))}
+        />m <SystemSelect value={system} onChange={setSystem}/>
+        <Preset options={kspSystems[system].bodies[kspSystems[system].root].children.reduce((acc, bodyName) => {
+            acc[bodyName] = kspSystems[system].bodies[bodyName].orbit.semiMajorAxis
             return acc
         }, {})}
-                    value={kerbolDistanceFromSolarPanelEfficiency(solarEfficiency)}
-                    onChange={d => setSolarEfficiency(solarPanelEfficiencyFromKerbolDistance(d))}
+                value={sunDistanceFromSolarPanelEfficiency(system, solarEfficiency)}
+                onChange={d => setSolarEfficiency(solarPanelEfficiencyFromSunDistance(system, parseInt(d)))}
         /><br/>
 
         <div style={{display: 'inline', cursor: 'pointer'}}

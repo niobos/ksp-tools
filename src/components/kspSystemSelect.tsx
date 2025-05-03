@@ -1,5 +1,5 @@
-import * as React from "react";
-import kspSystems from "../utils/kspSystems";
+import * as React from "react"
+import kspSystems from "../utils/kspSystems"
 
 export interface SystemSelectProps {
     value: string
@@ -22,37 +22,44 @@ export interface HierarchicalBodySelectProps {
     value: string
     onChange: (value: string) => void
     customValue?: string
+    planetsOnly?: boolean,
 }
 
-export function HierarchicalBodySelect(props: HierarchicalBodySelectProps) {
+export function HierarchicalBodySelect({
+    systemName,
+    value,
+    onChange,
+    customValue,
+    planetsOnly = false,
+}: HierarchicalBodySelectProps) {
     const options = []
 
     let i = 0
-    if(props.customValue != null) {
-        options.push(<option key={i++} value="" disabled>{props.customValue}</option>)
+    if(customValue != null) {
+        options.push(<option key={i++} value="" disabled>{customValue}</option>)
     }
 
     // optgroup's don't nest, so we can only do 1 level
-    // start by finding the parent
-    const system = kspSystems[props.systemName]
-    let parentName = system.defaultBody
-    while(system.bodies[parentName].parent != null) {
-        parentName = system.bodies[parentName].parent
-    }
-    options.push(<option key={i++} value={parentName}>{parentName}</option>)
-    for(let childName of system.bodies[parentName].children) {
+    const system = kspSystems[systemName]
+
+    options.push(<option key={i++} value={system.root}>{system.root}</option>)
+    for(let childName of system.bodies[system.root].children) {
         const descendants = [
             <option key={i++} value={childName}>{childName}</option>,
         ]
 
-        for(const descendantName of system.recurseChildrenNames(childName)) {
-            descendants.push(<option key={i++} value={descendantName}>{descendantName}</option>)
-        }
+        if(planetsOnly) {
+            options.push(descendants[0])
+        } else {
+            for (const descendantName of system.recurseChildrenNames(childName)) {
+                descendants.push(<option key={i++} value={descendantName}>{descendantName}</option>)
+            }
 
-        options.push(<optgroup key={i++} label={`${childName} system`}>{descendants}</optgroup>)
+            options.push(<optgroup key={i++} label={`${childName} system`}>{descendants}</optgroup>)
+        }
     }
 
-    return <select value={props.value} onChange={e => props.onChange(e.target.value)}>
+    return <select value={value} onChange={e => onChange(e.target.value)}>
         {options}
     </select>
 }
