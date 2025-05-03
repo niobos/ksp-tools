@@ -98,6 +98,15 @@ class KspSystem {
             yield* this.recurseChildrenNames(childName)
         }
     }
+
+    hierarchicalLocation(bodyName: string): string[] {
+        const hierarchy = [bodyName]
+        while(this.bodies[bodyName].parent != null) {
+            bodyName = this.bodies[bodyName].parent
+            hierarchy.unshift(bodyName)
+        }
+        return hierarchy
+    }
 }
 
 const kspSystems: {[name: string]: KspSystem} = {}

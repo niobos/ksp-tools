@@ -2,11 +2,11 @@ import * as React from "react";
 import {useState} from "react";  // JSX support
 import Antenna from "../utils/kspParts-antenna";
 import {formatValueSi, SiInput} from "formattedInput";
-import KspHierBody from "../components/kspHierBody";
-import {bodiesHierFind} from "../utils/kspBody";
-import {orbits} from "../utils/kspOrbit";
+import {HierarchicalBodySelect} from "../components/kspSystemSelect";
+import kspSystems from "../utils/kspSystems";
 
 interface LinkProps {
+    systemName: string
     value: number
     powerA: number
     powerB: number
@@ -14,31 +14,32 @@ interface LinkProps {
 }
 
 function maybeChange(
+    systemName: string,
     bodyNameA: string,
     bodyNameB: string,
     onChange: (number) => void,
 ): void {
-    if(bodyNameA === "") return;
-    if(bodyNameB === "") return;
+    if(bodyNameA === "") return
+    if(bodyNameB === "") return
 
-    const locA = bodiesHierFind(bodyNameA);
-    const locB = bodiesHierFind(bodyNameB);
-    let common = 0;
-    while(locA[common] === locB[common] && common < locA.length) common++;
+    const locA = kspSystems[systemName].hierarchicalLocation(bodyNameA)
+    const locB = kspSystems[systemName].hierarchicalLocation(bodyNameB)
+    let common = 0
+    while(locA[common] === locB[common] && common < locA.length) common++
 
-    let maxDistA;
-    if(locA[common] === undefined) maxDistA = 0;
+    let maxDistA
+    if(locA[common] === undefined) maxDistA = 0
     else {
-        maxDistA = orbits[locA[common]].distanceAtApoapsis;
+        maxDistA = kspSystems[systemName].bodies[locA[common]].orbit.distanceAtApoapsis
     }
 
-    let maxDistB;
-    if(locB[common] === undefined) maxDistB = 0;
+    let maxDistB
+    if(locB[common] === undefined) maxDistB = 0
     else {
-        maxDistB = orbits[locB[common]].distanceAtApoapsis;
+        maxDistB = kspSystems[systemName].bodies[locB[common]].orbit.distanceAtApoapsis
     }
 
-    onChange(maxDistA + maxDistB);
+    onChange(maxDistA + maxDistB)
 }
 
 export default function Link(props: LinkProps) {
@@ -57,17 +58,19 @@ export default function Link(props: LinkProps) {
                 setDistB("");
             }}
         />m (max range {formatValueSi(maxRange)}m)<br/>
-        Distance between <KspHierBody
+        Distance between <HierarchicalBodySelect
+            systemName={props.systemName}
             customValue="Select body"
             value={distA} onChange={(b) => {
                 setDistA(b);
-                maybeChange(b, distB, props.onChange);
+                maybeChange(props.systemName, b, distB, props.onChange);
             }}
-        /> and <KspHierBody
+        /> and <HierarchicalBodySelect
+            systemName={props.systemName}
             customValue="Select body"
             value={distB} onChange={(b) => {
                 setDistB(b);
-                maybeChange(distA, b, props.onChange);
+                maybeChange(props.systemName, distA, b, props.onChange);
             }}
         /><br/>
         Signal strength {(signalStrength*100).toFixed(0)}%
