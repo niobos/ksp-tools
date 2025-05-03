@@ -1,7 +1,6 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
 import {useEffect, useMemo, useState} from "react";
-import {default as Body, bodies as kspBodies, GRAVITATIONAL_CONSTANT} from "../utils/kspBody"
 import {default as BodyComp} from "./body"
 import Orbit from "../utils/orbit"
 import {default as OrbitComp, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit"
@@ -10,10 +9,13 @@ import "./app.css"
 import {CalculatedTrajectory} from "./solver";
 import Vector from "../utils/vector";
 import useFragmentState from "useFragmentState";
+import kspSystems, {Body, GRAVITATIONAL_CONSTANT} from "../utils/kspSystems";
 
 let REQUEST_ID = 0;
 
 function App() {
+    const [systemName, setSystemName] = useFragmentState<string>('sys', "Stock")
+    const system = kspSystems[systemName]
     const [primaryBody, setPrimaryBody] = useFragmentState<Body>('p',
         s => {
             try {
@@ -37,6 +39,7 @@ function App() {
     )
     const [orbitStart, setOrbitStart] = useFragmentState<Orbit>('f',
         s => OrbitFromString(
+            system,
             s,
             Orbit.FromOrbitalElements(primaryBody.gravity, Orbit.smaEFromApsides(700e3, 750e3)),
             primaryBody.gravity),
@@ -44,6 +47,7 @@ function App() {
         )
     const [orbitEnd, setOrbitEnd] = useFragmentState<Orbit>('t',
         s => OrbitFromString(
+            system,
             s, Orbit.FromOrbitalElements(primaryBody.gravity,
                 {...Orbit.smaEFromApsides(15e6, 15.5e6), inc: 5*Math.PI/180}),
             primaryBody.gravity),

@@ -1,7 +1,7 @@
-import * as React from "react";  // JSX
-import Altitude from "./altitude";
-import {FloatInput} from "formattedInput";
-import Body from "../utils/kspBody";
+import * as React from "react"  // JSX
+import Altitude from "./altitude"
+import {FloatInput} from "formattedInput"
+import {Body} from "../utils/kspSystems"
 
 interface ApsideProps {
     altitude: number

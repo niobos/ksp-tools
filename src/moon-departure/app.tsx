@@ -2,8 +2,6 @@ import * as React from 'react'
 import {useCallback, useMemo, useState} from 'react'
 import ReactDOM from 'react-dom'
 import useFragmentState from "useFragmentState"
-import {bodies as kspBodies, planets as kspPlanets} from "../utils/kspBody"
-import {orbits as kspOrbits} from "../utils/kspOrbit"
 import {formatValueYdhms, formatValueYdhmsAbs, KerbalAbsYdhmsInput, KerbalYdhmsInput} from "../components/formattedInput"
 import {default as OrbitComponent, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit"
 import Orbit from "../utils/orbit"
@@ -15,6 +13,8 @@ import {formatValueSi} from "formattedInput"
 import PanZoomAreaAxes from "./panZoomAreaAxes"
 import {expandAbsolute, findMinimumNelderMeadAsync} from "../utils/optimize";
 import './app.css'
+import kspSystems from "../utils/kspSystems";
+import {SystemSelect} from "../components/kspSystemSelect";
 
 let REQUEST_ID = 0
 
@@ -27,25 +27,28 @@ enum PlotType {
 }
 
 export default function App() {
-    const [departingPlanet, setDepartingPlanet] = useFragmentState<string>(
+    const [systemName, setSystemName] = useFragmentState<string>('sys', 'Stock')
+    const system = kspSystems[systemName]
+
+    const [departingPlanetName, setDepartingPlanet] = useFragmentState<string>(
         'f',
         s => {
-            if(kspPlanets.includes(s)) return s;
+            if(system.bodies[s] != null) return s;
             return "Kerbin";
         },
         v => v,
         )
     const [departingOrbit, setDepartingOrbit] = useFragmentState<Orbit>(
         'o',
-        s => OrbitFromString(s, kspOrbits.Minmus, kspBodies[departingPlanet].gravity),
+        s => OrbitFromString(system, s, system.bodies["Minmus"].orbit, system.bodies[departingPlanetName].gravity),
         OrbitToString,
     )
     const [departingDoDive, setDepartingDoDive] = useFragmentState<boolean>('di', true)
     const [departingDivePeriapsis_, setDepartingDivePeriapsis] = useFragmentState<number>('da', null)
-    const [targetPlanet, setTargetPlanet] = useFragmentState<string>(
+    const [targetPlanetName, setTargetPlanet] = useFragmentState<string>(
         't',
         s => {
-            if(kspPlanets.includes(s)) return s;
+            if(system.bodies[system.rootName].childrenNames.includes(s)) return s;
             return "Duna";
         },
         v => v,
@@ -63,30 +66,31 @@ export default function App() {
     const [findingMinimum, setFindingMinimum] = useState<boolean>(false)
 
     const planetOptions = [];
-    for(let planetName of kspPlanets) {
+    for(let planetName of system.bodies[system.rootName].childrenNames) {
         planetOptions.push(<option key={planetName} value={planetName}>{planetName}</option>);
     }
 
-    const departingPlanetOrbit = kspOrbits[departingPlanet]
-    const primaryBody = kspBodies[departingPlanet]
-    const targetPlanetOrbit = kspOrbits[targetPlanet]
+    const primaryBody = system.bodies[departingPlanetName]
+    const departingPlanetOrbit = primaryBody.orbit
+    const targetPlanet = system.bodies[targetPlanetName]
+    const targetPlanetOrbit = targetPlanet.orbit
 
     const departingDivePeriapsis = departingDivePeriapsis_ != null ? departingDivePeriapsis_ : (
-        kspBodies[departingPlanet].radius
-        + Math.max(kspBodies[departingPlanet].atmosphere | 0, kspBodies[departingPlanet].terrain | 0)
+        primaryBody.radius
+        + Math.max(primaryBody.atmosphereHeight | 0, primaryBody.terrainMaxHeight | 0)
         + 10000
     )
     const arrivalParkingRadius = arrivalParkingRadius_ != null ? arrivalParkingRadius_ : (
-        kspBodies[targetPlanet].radius
-        + Math.max(kspBodies[targetPlanet].atmosphere | 0, kspBodies[targetPlanet].terrain | 0)
+        targetPlanet.radius
+        + Math.max(targetPlanet.atmosphereHeight | 0, targetPlanet.terrainMaxHeight | 0)
         + 10000
     )
 
     const moonOptions = [<option key="" value="">custom</option>]
-    for(let moon of primaryBody.isOrbitedBy()) {
-        moonOptions.push(<option key={moon.name} value={moon.name}>{moon.name}</option>)
-        if(moonPreset == "" && departingOrbit == kspOrbits[moon.name]) {
-            setMoonPreset(moon.name)
+    for(let moonName of primaryBody.childrenNames) {
+        moonOptions.push(<option key={moonName} value={moonName}>{moonName}</option>)
+        if(moonPreset == "" && departingOrbit == system.bodies[moonName].orbit) {
+            setMoonPreset(moonName)
         }
     }
 
@@ -109,7 +113,7 @@ export default function App() {
     const minTravelTime = (() => {
         if(minTravelTime_ != null) return minTravelTime_
         const roughTransferOrbit = Orbit.FromOrbitalElements(
-            kspOrbits[departingPlanet].gravity,
+            primaryBody.orbit.gravity,
             Orbit.smaEFromApsides(
                 departingPlanetOrbit.semiMajorAxis,
                 targetPlanetOrbit.semiMajorAxis,
@@ -121,7 +125,7 @@ export default function App() {
     const maxTravelTime = (() => {
         if(maxTravelTime_ != null) return maxTravelTime_
         const roughTransferOrbit = Orbit.FromOrbitalElements(
-            kspOrbits[departingPlanet].gravity,
+            primaryBody.orbit.gravity,
             Orbit.smaEFromApsides(
                 departingPlanetOrbit.semiMajorAxis,
                 targetPlanetOrbit.semiMajorAxis,
@@ -151,14 +155,14 @@ export default function App() {
                 parkingOrbitAroundDepartingPlanet: departingOrbit,
                 minPeriapsis: departingDoDive ? departingDivePeriapsis : null,
                 targetPlanetOrbit,
-                targetPlanetGravity: kspBodies[targetPlanet].gravity,
+                targetPlanetGravity: system.bodies[targetPlanetName].gravity,
                 targetPlanetParkingOrbitRadius: arrivalParkingRadius,
-                targetPlanetSoi: kspBodies[targetPlanet].soi,
+                targetPlanetSoi: system.bodies[targetPlanetName].soi,
                 departureAndTravelTimes: t0dts,
             }
             worker.postMessage(m)
         })
-    }, [departingPlanet, departingOrbit, departingDoDive, departingDivePeriapsis, targetPlanet, arrivalParkingRadius])
+    }, [departingPlanetName, departingOrbit, departingDoDive, departingDivePeriapsis, targetPlanetName, arrivalParkingRadius])
 
     const plotColorFunc: PlotFuncType<SingleOutput> = useCallback((result, state) => {
         if (state == null) state = {minDv: Infinity}
@@ -301,28 +305,31 @@ export default function App() {
             and do a powered slingshot around it to launch on an interplanetary trajectory.</p>
 
         <table><tbody>
+        <tr><td>Planet system</td><td><SystemSelect value={systemName} onChange={setSystemName}/></td></tr>
         <tr><td>Departing planet</td><td>
             <select
-                value={departingPlanet}
+                value={departingPlanetName}
                 onChange={e => {
                     setDepartingPlanet(e.target.value)
                     setDepartingOrbit(Orbit.FromOrbitWithUpdatedOrbitalElements(
                         departingOrbit,
-                        {gravity: kspBodies[e.target.value].gravity}
+                        {gravity: system.bodies[e.target.value].gravity}
                     ))
                 }}
             >{planetOptions}</select> (
             {formatValueSi(departingPlanetOrbit.distanceAtApoapsis)}m
-            {" × "}{formatValueSi(departingPlanetOrbit.distanceAtPeriapsis)}m around Kerbol)
+            {" × "}{formatValueSi(departingPlanetOrbit.distanceAtPeriapsis)}m around Kerbol,
+            SoI {formatValueSi(primaryBody.soi)}m)
         </td></tr>
-        <tr><td>Departing orbit<br/>around {departingPlanet}</td><td>
+        <tr><td>Departing orbit<br/>around {departingPlanetName}</td><td>
             <select value={moonPreset} onChange={e => {
                 setMoonPreset(e.target.value)
-                setDepartingOrbit(kspOrbits[e.target.value])
+                setDepartingOrbit(system.bodies[e.target.value].orbit)
             }}>
                 {moonOptions}
             </select>
             <OrbitComponent
+                system={system}
                 value={departingOrbit}
                 onChange={v => {setDepartingOrbit(v); setMoonPreset("")}}
                 primaryBody={primaryBody}
@@ -337,11 +344,11 @@ export default function App() {
             <Altitude
                 value={departingDivePeriapsis}
                 onChange={v => setDepartingDivePeriapsis(v)}
-                primaryBody={kspBodies[departingPlanet]}
+                primaryBody={system.bodies[departingPlanetName]}
             /></td></tr>
         <tr><td>Target planet</td><td>
             <select
-                value={targetPlanet}
+                value={targetPlanetName}
                 onChange={e => setTargetPlanet(e.target.value)}
             >{planetOptions}</select> (
             {formatValueSi(targetPlanetOrbit.distanceAtApoapsis)}m
@@ -351,7 +358,7 @@ export default function App() {
             <Altitude
                 value={arrivalParkingRadius}
                 onChange={v => setArrivalParkingRadius(v)}
-                primaryBody={kspBodies[targetPlanet]}
+                primaryBody={system.bodies[targetPlanetName]}
             />
         </td></tr>
         <tr><td>Departure</td><td><KerbalAbsYdhmsInput

@@ -2,10 +2,11 @@ import * as React from "react";
 import {useState} from "react";
 import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 import Orbit, {orbitalDarkness} from "../utils/orbit";
-import Body, {bodies} from "../utils/kspBody";
 import {formatValueSi, SiInput} from "formattedInput";
 import {formatValueYdhmsSingleUnit, KerbalYdhmsInput} from "../components/formattedInput";
 import KspHierBody from "../components/kspHierBody";
+import kspSystems, {Body} from "../utils/kspSystems";
+import {HierarchicalBodySelect} from "../components/kspSystemSelect";
 
 type Shade = {
     d: number,
@@ -43,6 +44,7 @@ export function toString(v: ValueType): string {
 }
 
 function calcOrbitalDarkness(body: Body, altitude: number): DurationDuty {
+    if(body == null) return {duration: 0, duty: 0, interval: 0}
     const duration = orbitalDarkness(body.gravity, body.radius, altitude);
     const interval = Orbit.periodFromSma(body.gravity, body.radius + altitude);
     const duty = duration / interval;
@@ -50,21 +52,22 @@ function calcOrbitalDarkness(body: Body, altitude: number): DurationDuty {
 }
 
 function calcSolarNight(body: Body): DurationDuty {
+    if(body == null) return {duration: 0, duty: 0, interval: 0}
     const interval = body.solarDay;
     const duration = body.solarDay / 2;
     const duty = 0.5;
     return {duration, duty, interval};
 }
 
-export function calcShade(shades: ValueType): DurationInterval {
+export function calcShade(systemName: string, shades: ValueType): DurationInterval {
     let maxDuration = 0;
     let maxDuty = 0;
     for (let shade of shades) {
         let duration, duty;
         if ('o' in shade) {  // orbital darkness
-            ({duration, duty} = calcOrbitalDarkness(bodies[shade.o], shade.a));
+            ({duration, duty} = calcOrbitalDarkness(kspSystems[systemName].bodies[shade.o], shade.a));
         } else if ('s' in shade) {  // solar night
-            ({duration, duty} = calcSolarNight(bodies[shade.s]));
+            ({duration, duty} = calcSolarNight(kspSystems[systemName].bodies[shade.s]));
         } else if ('d' in shade) {  // custom
             duration = shade.d;
             duty = shade.d === 0 ? 0 : shade.d / shade.i;
@@ -80,13 +83,15 @@ export function custom(duration: number, interval: number): ValueType {
 }
 
 export interface ShadeCalcProps {
+    systemName: string
     value: ValueType
     onChange: (v: ValueType) => void
 }
 
-export function ShadeCalc(props) {
-    const [selectedSolarNight, setSelectedSolarNight] = useState('Kerbin');
-    const [selectedOrbitalDarknessBody, setSelectedOrbitalDarknessBody] = useState('Kerbin');
+export function ShadeCalc(props: ShadeCalcProps) {
+    const system = kspSystems[props.systemName]
+    const [selectedSolarNight, setSelectedSolarNight] = useState(system.defaultBody);
+    const [selectedOrbitalDarknessBody, setSelectedOrbitalDarknessBody] = useState(system.defaultBody);
     const [orbitalDarknessAlt, setOrbitalDarknessAlt] = useState(100_000);
 
     const shades = [];
@@ -94,7 +99,8 @@ export function ShadeCalc(props) {
         const shade = props.value[i];
         let shadeJsx;
         if ('o' in shade) {  // orbital darkness
-            const body = bodies[shade.o];
+            const body = system.bodies[shade.o]
+            if(body == null) continue
             const {duration, interval} = calcOrbitalDarkness(body, shade.a);
             shadeJsx = <span>Orbital darkness
                 at {formatValueSi(shade.a)}mAGL
@@ -103,7 +109,8 @@ export function ShadeCalc(props) {
                 every {formatValueYdhmsSingleUnit(interval)})
             </span>;
         } else if ('s' in shade) {  // solar night
-            const body = bodies[shade.s];
+            const body = system.bodies[shade.s]
+            if(body == null) continue
             const {duration, interval} = calcSolarNight(body);
             shadeJsx = <span>Solar night on {shade.s} (
                 {formatValueYdhmsSingleUnit(duration)}{" "}
@@ -135,7 +142,7 @@ export function ShadeCalc(props) {
         <input type="button" value="Add solar night on"
                onClick={() => props.onChange(arrayInsertElement(props.value,
                    {'s': selectedSolarNight}))}
-        /><KspHierBody value={selectedSolarNight}
+        /><HierarchicalBodySelect systemName={props.systemName} value={selectedSolarNight}
                        onChange={v => setSelectedSolarNight(v)}
     /><br/>
         <input type="button" value="Add orbital darkness at"
@@ -147,7 +154,7 @@ export function ShadeCalc(props) {
         /><SiInput
         value={orbitalDarknessAlt}
         onChange={v => setOrbitalDarknessAlt(v)}
-    />mAGL above <KspHierBody
+    />mAGL above <HierarchicalBodySelect systemName={props.systemName}
         value={selectedOrbitalDarknessBody}
         onChange={v => setSelectedOrbitalDarknessBody(v)}
     /><br/>

@@ -7,21 +7,21 @@ export const GRAVITATIONAL_CONSTANT = 6.67430e-11
 
 export class Body {
     readonly name: string
-    readonly children: string[]
+    readonly childrenNames: string[]
+    readonly soi: number  // m
     readonly atmosphereHeight: number = 0  // m
     readonly atmospherePressure: number = 0  // Pa
     readonly solarDay?: number  // s
     readonly terrainMaxHeight?: number  // m
 
     constructor(
-        public readonly parent: string,
+        public readonly parentName: string,
         public readonly mass: number,  // kg
         public readonly radius: number,  // m
-        public readonly soi: number,  // m
         public readonly orbit: Orbit,
-        other_properties: Omit<Partial<Body>, 'parent' | 'mass' | 'radius' | 'soi'>,
+        other_properties: Omit<Partial<Body>, 'parentName' | 'mass' | 'radius' | 'orbit'> = {},
     ) {
-        this.children = []
+        this.childrenNames = []
         for(const prop in other_properties) {
             this[prop] = other_properties[prop]
         }
@@ -30,12 +30,12 @@ export class Body {
     copy(): Body {
         // Return a new body
         return new Body(
-            this.parent,
+            this.parentName,
             this.mass,
             this.radius,
-            this.soi,
             this.orbit,
             {
+                soi: this.soi,
                 atmosphereHeight: this.atmosphereHeight,
                 atmospherePressure: this.atmospherePressure,
                 solarDay: this.solarDay,
@@ -62,8 +62,8 @@ export class Body {
     }
 }
 
-class KspSystem {
-    readonly root: string
+export class KspSystem {
+    readonly rootName: string
 
     constructor(
         public readonly bodies: {[name: string]: Body},
@@ -78,22 +78,27 @@ class KspSystem {
 
             writableBody.name = bodyName
 
-            if(body.parent != null) {
-                if(this.bodies[body.parent] == null) {
+            if(body.parentName != null) {
+                if(this.bodies[body.parentName] == null) {
                     throw new Error("Parent body not found")
                 } else {
-                    const parent = this.bodies[body.parent] as Writeable<Body>
-                    parent.children.push(bodyName)
+                    const parent = this.bodies[body.parentName] as Writeable<Body>
+                    parent.childrenNames.push(bodyName)
                     writableBody.orbit = Orbit.FromOrbitWithUpdatedOrbitalElements(body.orbit, {gravity: parent.gravity})
+                    // https://en.wikipedia.org/wiki/Sphere_of_influence_%28astrodynamics%29
+                    writableBody.soi = body.orbit.semiMajorAxis * Math.pow(
+                        body.mass / parent.mass,
+                        2/5)
                 }
             } else {
-                this.root = bodyName
+                this.rootName = bodyName
+                writableBody.soi = Infinity
             }
         }
     }
 
     *recurseChildrenNames(bodyName: string): Generator<string> {
-        for(const childName of this.bodies[bodyName].children) {
+        for(const childName of this.bodies[bodyName].childrenNames) {
             yield childName
             yield* this.recurseChildrenNames(childName)
         }
@@ -101,8 +106,8 @@ class KspSystem {
 
     hierarchicalLocation(bodyName: string): string[] {
         const hierarchy = [bodyName]
-        while(this.bodies[bodyName].parent != null) {
-            bodyName = this.bodies[bodyName].parent
+        while(this.bodies[bodyName].parentName != null) {
+            bodyName = this.bodies[bodyName].parentName
             hierarchy.unshift(bodyName)
         }
         return hierarchy
@@ -112,85 +117,85 @@ class KspSystem {
 const kspSystems: {[name: string]: KspSystem} = {}
 kspSystems["Stock"] = new KspSystem(
     {
-        "Kerbol": new Body(null, 1.7565459e28, 261_600_000, Infinity,
+        "Kerbol": new Body(null, 1.7565459e28, 261_600_000,
             null,
             {atmosphereHeight: 600_000, atmospherePressure: 16_000}),
-        "Moho": new Body("Kerbol", 2.5263314e21, 250_000, 9_646_663,
+        "Moho": new Body("Kerbol", 2.5263314e21, 250_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 5_263_138_304, e: 0.2, argp: 15/180*Math.PI, inc: 7/180*Math.PI, lon_an: 70/180*Math.PI},
                 {ma0: 3.14}),
             {solarDay: 2_665_723.4, atmosphereHeight: 0, terrainMaxHeight: 6817}),
-        "Eve": new Body("Kerbol", 1.2243980e23, 700_000, 85_109_365,
+        "Eve": new Body("Kerbol", 1.2243980e23, 700_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 9_832_684_544, e: 0.01, argp: 0, inc: 2.1/180*Math.PI, lon_an: 15/180*Math.PI},
                 {ma0: 3.14}),
             {solarDay: 81_661.857, atmosphereHeight: 90_000, atmospherePressure: 506_625, terrainMaxHeight: 7526}),
-        "Gilly": new Body("Eve", 1.2420363e17, 13_000, 126_123.27,
+        "Gilly": new Body("Eve", 1.2420363e17, 13_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 31_500_000, e: 0.55, argp: 10/180*Math.PI, inc: 12/180*Math.PI, lon_an: 80/180*Math.PI},
                 {ma0: 0.9}),
             {solarDay: 28_255, atmosphereHeight: 0, terrainMaxHeight: 6401}),
-        "Kerbin": new Body("Kerbol", 5.2915158e22, 600_000, 84_159_286,
+        "Kerbin": new Body("Kerbol", 5.2915158e22, 600_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 13_599_840_256, e: 0, argp: 0, inc: 0, lon_an: 0},
                 {ma0: 3.14}),
             {solarDay: 21_600, atmosphereHeight: 70_000, atmospherePressure: 101_325, terrainMaxHeight: 6764.1}),
-        'Mun': new Body('Kerbin', 9.7599066e20, 200_000, 2_429_559.1,
+        'Mun': new Body('Kerbin', 9.7599066e20, 200_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 12_000_000, e: 0, argp: 0, inc: 0, lon_an: 0},
                 {ma0: 1.7}),
             {solarDay: 138_984.38, atmosphereHeight: 0, terrainMaxHeight: 7061}),
-        'Minmus': new Body('Kerbin', 2.6457580e19, 60_000, 2_247_428.4,
+        'Minmus': new Body('Kerbin', 2.6457580e19, 60_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 47_000_000, e: 0, argp: 38/180*Math.PI, inc: 6/180*Math.PI, lon_an: 78/180*Math.PI},
                 {ma0: 0.9}),
             {solarDay: 40_400, atmosphereHeight: 0, terrainMaxHeight: 5700}),
-        'Duna': new Body("Kerbol", 4.5154270e21, 320_000, 47_921_949,
+        'Duna': new Body("Kerbol", 4.5154270e21, 320_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 20_726_155_264, e: 0.051, argp: 0, inc: 0.06/180*Math.PI, lon_an: 135.5/180*Math.PI},
                 {ma0: 3.14}),
             {solarDay: 65_766.707, atmosphereHeight: 50_000, atmospherePressure: 6_755, terrainMaxHeight: 8264}),
-        'Ike': new Body('Duna', 2.7821615e20, 130_000, 1_049_598.9,
+        'Ike': new Body('Duna', 2.7821615e20, 130_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 3_200_000, e: 0.03, argp: 0, inc: 0.2/180*Math.PI, lon_an: 0},
                 {ma0: 1.7}),
             {solarDay: 65_517.862, atmosphereHeight: 0, terrainMaxHeight: 12738}),
-        'Dres': new Body("Kerbol", 3.2190937e20, 138_000, 32_832_840,
+        'Dres': new Body("Kerbol", 3.2190937e20, 138_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 40_839_348_203, e: 0.145, argp: 90/180*Math.PI, inc: 5/180*Math.PI, lon_an: 280/180*Math.PI},
                 {ma0: 3.14}),
             {solarDay: 34_825.305, atmosphereHeight: 0, terrainMaxHeight: 5700}),
-        'Jool': new Body("Kerbol", 4.2332127e24, 6_000_000, 2_455_985_200,
+        'Jool': new Body("Kerbol", 4.2332127e24, 6_000_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 68_773_560_320, e: 0.05, argp: 0, inc: 1.304/180*Math.PI, lon_an: 52/180*Math.PI},
                 {ma0: 0.1}),
             {solarDay: 36_000, atmosphereHeight: 200_000, atmospherePressure: 1_519_880, terrainMaxHeight: 0}),
-        'Laythe': new Body('Jool', 2.9397311e22, 500_000, 3_723_645.8,
+        'Laythe': new Body('Jool', 2.9397311e22, 500_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 27_184_000, e: 0, argp: 0, inc: 0, lon_an: 0},
                 {ma0: 3.14}),
             {solarDay: 52_980.879, atmosphereHeight: 50_000, atmospherePressure: 60_795, terrainMaxHeight: 6079}),
-        'Vall': new Body('Jool', 3.1087655e21, 300_000, 2_406_401.4,
+        'Vall': new Body('Jool', 3.1087655e21, 300_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 43_152_000, e: 0, argp: 0, inc: 0, lon_an: 0},
                 {ma0: 0.9}),
             {solarDay: 105_962.09, atmosphereHeight: 0, terrainMaxHeight: 7985}),
-        'Tylo': new Body('Jool', 4.2332127e22, 600_000, 10_856_518,
+        'Tylo': new Body('Jool', 4.2332127e22, 600_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 68_500_000, e: 0, argp: 0, inc: 0.025/180*Math.PI, lon_an: 0},
                 {ma0: 3.14}),
             {solarDay: 211_926.36, atmosphereHeight: 0, terrainMaxHeight: 12904}),
-        'Bop': new Body('Jool', 3.7261090e19, 65_000, 1_221_060.9,
+        'Bop': new Body('Jool', 3.7261090e19, 65_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 128_500_000, e: 0.235, argp: 25/180*Math.PI, inc: 15/180*Math.PI, lon_an: 10/180*Math.PI},
                 {ma0: 0.9}),
             {solarDay: 544_507.43, atmosphereHeight: 0, terrainMaxHeight: 21757}),
-        'Pol': new Body('Jool', 1.0813507e19, 44_000, 1_042_138.9,
+        'Pol': new Body('Jool', 1.0813507e19, 44_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 179_890_000, e: 0.171, argp: 15/180*Math.PI, inc: 4.25/180*Math.PI, lon_an: 2/180*Math.PI},
                 {ma0: 0.9}),
             {solarDay: 901_902.62, atmosphereHeight: 0, terrainMaxHeight: 4891}),
-        'Eeloo': new Body("Kerbol", 1.1149224e21, 210_000, 119_082_940,
+        'Eeloo': new Body("Kerbol", 1.1149224e21, 210_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 90_118_820_000, e: 0.26, argp: 260/180*Math.PI, inc: 6.15/180*Math.PI, lon_an: 50/180*Math.PI},
                 {ma0: 3.14}),
@@ -199,29 +204,54 @@ kspSystems["Stock"] = new KspSystem(
     "Kerbin",
 )
 
+function copyFrom(systemName: string, planetName: string): {[name: string]: Body} {
+    return {
+        [planetName]: kspSystems[systemName].bodies[planetName].copy()
+    }
+}
+
 kspSystems["Outer Planets"] = new KspSystem(
     {
-        ...Object.assign({}, ...[
-                "Kerbol",
-                "Moho",
-                "Eve", "Gilly",
-                "Kerbin", "Mun", "Minmus",
-                "Duna", "Ike",
-                "Dres",
-                "Jool", "Laythe", "Vall", "Tylo", "Bop", "Pol",
-                // Not Eeloo
-            ].map(name => ({[name]: kspSystems["Stock"].bodies[name].copy()}))),
+        ...copyFrom("Stock", "Kerbol"),
+        ...copyFrom("Stock", "Moho"),
+        ...copyFrom("Stock", "Eve"),
+        ...copyFrom("Stock", "Gilly"),
+        ...copyFrom("Stock", "Kerbin"),
+        ...copyFrom("Stock", "Mun"),
+        ...copyFrom("Stock", "Minmus"),
+        ...copyFrom("Stock", "Duna"),
+        ...copyFrom("Stock", "Ike"),
+        ...copyFrom("Stock", "Dres"),
+        ...copyFrom("Stock", "Jool"),
+        ...copyFrom("Stock", "Laythe"),
+        ...copyFrom("Stock", "Vall"),
+        ...copyFrom("Stock", "Tylo"),
+        ...copyFrom("Stock", "Bop"),
+        ...copyFrom("Stock", "Pol"),
+        // Not Eeloo
         /* from https://forum.kerbalspaceprogram.com/topic/184789-131-112x-outer-planets-mod-v2211-31st-aug-2024/
          * and https://github.com/Poodmund/Outer-Planets-Mod/tree/master/GameData/OPM/KopernicusConfigs/OuterPlanets
          */
-        'Sarnus': new Body("Kerbol", Body.massFromGASL(0.298, 5_300_000), 5_300_000, null,
+        'Sarnus': new Body("Kerbol", Body.massFromGASL(0.298, 5_300_000), 5_300_000,
             Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
                 {sma: 125_798_522_368, e: 0.0534, argp: 0/180*Math.PI, inc: 2.02/180*Math.PI, lon_an: 184/180*Math.PI},
-                {ma0: 2.88114666938782}),
-            {solarDay: 28_500, atmosphereHeight: 580_000, atmospherePressure: 141_855, terrainMaxHeight: 0}),
-        //'Urlum':
-        //'Neidon':
-        //'Plock':
+                {ma0: 2.88114666938782, t0: 359.279999999964}),
+            {solarDay: 28_500, atmosphereHeight: 580_000, atmospherePressure: 1418.55*100}),
+        'Urlum': new Body("Kerbol", Body.massFromGASL(0.257, 2_177_000), 2_177_000,
+            Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
+                {sma: 254_317_012_787, e: 0.045214674, argp: 0/180*Math.PI, inc: 0.64/180*Math.PI, lon_an: 61/180*Math.PI},
+                {ma0: 5.59607362747192, t0: 422.539999999906}),
+            {solarDay: 41_000, atmosphereHeight: 325_000, atmospherePressure: 709.275*100}),
+        'Neidon': new Body("Kerbol", Body.massFromGASL(0.314, 2_145_000), 2_145_000,
+            Orbit.FromOrbitalElements(1  /* filled in automatically from parent */,
+                {sma: 409_355_191_706, e: 0.0127567, argp: 0/180*Math.PI, inc: 1.27/180*Math.PI, lon_an: 259/180*Math.PI},
+                {ma0: 2.27167344093323, t0: 99.6799999999973}),
+            {solarDay: 40_250, atmosphereHeight: 260_000, atmospherePressure: 607.95*100}),
+        'Plock': new Body("Kerbol", Body.massFromGASL(0.148, 189_000), 189000,
+            Orbit.FromOrbitalElements(1 /* filled in automatically from parent */,
+                {sma: 535_833_706_086, e: 0.26, argp: 50/180*Math.PI, inc: 6.15, lon_an: 260/180*Math.PI},
+                {ma0: 0, t0: 213}),
+            ),
     },
     "Kerbin",
 )

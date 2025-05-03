@@ -1,6 +1,6 @@
 import * as React from "react";  // JSX
 import {SiInput} from "formattedInput";
-import Body from "../utils/kspBody";
+import {Body} from "../utils/kspSystems";
 
 import "./apside.css";
 
@@ -14,9 +14,9 @@ interface AltitudeProps {
 }
 
 export default function Altitude(props: AltitudeProps) {
-    const onFocus = props.onFocus !== undefined ? props.onFocus : () => null;
-    const onBlur = props.onBlur !== undefined ? props.onBlur : () => null;
-    const primaryBody = props.primaryBody !== undefined ? props.primaryBody : Body.create({});
+    const onFocus = props.onFocus !== undefined ? props.onFocus : () => null
+    const onBlur = props.onBlur !== undefined ? props.onBlur : () => null
+    const primaryBody = props.primaryBody !== undefined ? props.primaryBody : new Body(null, 0, 0, null)
 
     let maybeAgl: any = "", maybeAa: any = "";
     if(primaryBody.radius !== undefined && props.value >= 0) {
@@ -31,20 +31,16 @@ export default function Altitude(props: AltitudeProps) {
             />mAGL
         </>;
 
-        let highestObstacle;
-        if(primaryBody.terrain === undefined) {
-            highestObstacle = 'atmosphere';
-        } else if(primaryBody.atmosphere === undefined) {
-            highestObstacle = 'terrain';
-        } else {  // both defined
-            highestObstacle = primaryBody.atmosphere > primaryBody.terrain ?
-                'atmosphere' : 'terrain';
-        }
-        if(primaryBody[highestObstacle] !== undefined) {
+        const obstacles = []
+        if(primaryBody.atmosphereHeight != null) obstacles.push({name: 'atmosphere', height: primaryBody.atmosphereHeight || 0})
+        if(primaryBody.terrainMaxHeight != null) obstacles.push({name: 'terrain', height: primaryBody.terrainMaxHeight || 0})
+        obstacles.sort((a, b) => b.height - a.height)  // reverse sort in-place by height
+        if(obstacles.length > 0) {
+            const {name: highestObstacle, height: obstacleHeight} = obstacles[0]
             maybeAa = <>
                 {" = "}<SiInput
-                    value={props.value - primaryBody.radius - primaryBody[highestObstacle]}
-                    onChange={props.onChange != null ? v => props.onChange(v + primaryBody.radius + primaryBody[highestObstacle]) : null}
+                    value={props.value - primaryBody.radius - obstacleHeight}
+                    onChange={props.onChange != null ? v => props.onChange(v + primaryBody.radius + obstacleHeight) : null}
                     readOnly={props.readOnly}
                     onFocus={onFocus}
                     onBlur={onBlur}

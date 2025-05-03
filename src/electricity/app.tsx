@@ -252,7 +252,7 @@ export default function App() {
 
     const continuousPowerValue = calcContinuousPowerFromDevices(continuousPower);
     const burstPowerValue = calcBurstPowerFromDevices(burstPower);
-    const shadeValue = calcShade(shade);
+    const shadeValue = calcShade(system, shade);
     const {value: fuelTankValue, preset: fuelTankPreset} = fromPreset(
         fuelTank, objectMap(fuelTanks, (ft) => {
             return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost / ft.mass}
@@ -324,13 +324,13 @@ export default function App() {
             </tr>
         </tbody></table>
         <h2>Solar situation</h2>
+        System: <SystemSelect value={system} onChange={setSystem}/><br/>
         Panel efficiency: <FloatInput decimals={0} value={solarEfficiency * 100}
                                       onChange={v => setSolarEfficiency(v / 100)}
         />%, equivalent to a distance to the sun of <SiInput
             value={sunDistanceFromSolarPanelEfficiency(system, solarEfficiency)}
             onChange={d => setSolarEfficiency(solarPanelEfficiencyFromSunDistance(system, d))}
-        />m <SystemSelect value={system} onChange={setSystem}/>
-        <Preset options={kspSystems[system].bodies[kspSystems[system].root].children.reduce((acc, bodyName) => {
+        />m <Preset options={kspSystems[system].bodies[kspSystems[system].rootName].childrenNames.reduce((acc, bodyName) => {
             acc[bodyName] = kspSystems[system].bodies[bodyName].orbit.semiMajorAxis
             return acc
         }, {})}
@@ -354,7 +354,7 @@ export default function App() {
             marginLeft: "0.3em",
             paddingLeft: "0.3em",
         }}>
-            <ShadeCalc value={shade} onChange={v => setShade(v)}/>
+            <ShadeCalc systemName={system} value={shade} onChange={v => setShade(v)}/>
         </div>
         <h2>Info for fuel cells</h2>
         <table><tbody>

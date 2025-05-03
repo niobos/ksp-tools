@@ -42,8 +42,8 @@ export function HierarchicalBodySelect({
     // optgroup's don't nest, so we can only do 1 level
     const system = kspSystems[systemName]
 
-    options.push(<option key={i++} value={system.root}>{system.root}</option>)
-    for(let childName of system.bodies[system.root].children) {
+    options.push(<option key={i++} value={system.rootName}>{system.rootName}</option>)
+    for(let childName of system.bodies[system.rootName].childrenNames) {
         const descendants = [
             <option key={i++} value={childName}>{childName}</option>,
         ]

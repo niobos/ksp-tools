@@ -3,20 +3,20 @@ import {useState} from "react";
 import {FloatInput} from 'formattedInput';
 import {DegreesInput} from "./formattedInput";
 import Apside from "./apside";
-import Body from "../utils/kspBody";
-import {orbits as kspOrbits} from "../utils/kspOrbit";
 import {default as kspOrbit} from "../utils/orbit";
 import Vector from "../utils/vector";
+import kspSystems, {KspSystem, Body} from "../utils/kspSystems"
 import Sma from "./sma";
 
 interface OrbitProps {
+    system: KspSystem
     value: kspOrbit
     onChange?: (value: kspOrbit) => void
     primaryBody?: Body
     phasing?: boolean
 }
 
-export function fromString(s: string, defaultOrbit?: kspOrbit, gravity: number = 1): kspOrbit {
+export function fromString(system: KspSystem, s: string, defaultOrbit?: kspOrbit, gravity: number = 1): kspOrbit {
     if(s === "" || s == null) {
         if(defaultOrbit == null) {
             defaultOrbit = kspOrbit.FromOrbitalElements(gravity,
@@ -26,7 +26,7 @@ export function fromString(s: string, defaultOrbit?: kspOrbit, gravity: number =
         return defaultOrbit;
     }
     const o = JSON.parse(s);
-    if(typeof o === 'string') return kspOrbits[o];
+    if(typeof o === 'string') return system.bodies[o].orbit;
     return kspOrbit.FromOrbitalElements(gravity,
         {sma: o.sma, e: o.e, argp: o.argp, inc: o.inc, lon_an: o.lon_an},
         {ma0: o.ma0}
@@ -134,7 +134,7 @@ export default function Orbit(props: OrbitProps) {
 
     let value = props.value;
     if(typeof value === 'string') {
-        value = kspOrbits[value];
+        value = props.system.bodies[value].orbit
     }
     value = kspOrbit.FromOrbitWithUpdatedOrbitalElements(value, {
         gravity: props.primaryBody !== undefined ? props.primaryBody.gravity : null,
