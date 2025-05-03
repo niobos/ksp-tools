@@ -13,7 +13,8 @@ import {fuelTanks} from "../utils/kspParts-fuelTanks"
 import {engines as kspEngines} from "../utils/kspParts-engine"
 import {fromPreset, objectMap} from "../utils/utils"
 import {dvForDm, massBeforeDv} from "../utils/rocket"
-import kspSystems, {Body, HierarchicalBodySelect, SystemSelect} from "../utils/kspSystems";
+import kspSystems, {Body} from "../utils/kspSystems"
+import {HierarchicalBodySelect, SystemSelect} from "../components/kspSystemSelect"
 import './app.css'
 
 const fuelTypes = ['lf', 'ox', 'air', 'sf', 'xe', 'mono']
