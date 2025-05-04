@@ -12,7 +12,7 @@ import {fuelTanks} from "../utils/kspParts-fuelTanks";
 import {batteries, electricalGenerators, FuelCell, SolarPanel} from "../utils/kspParts-solarPanel";
 import {fromPreset, objectMap} from "../utils/utils";
 import {SystemSelect} from "../components/kspSystemSelect"
-import kspSystems from "../utils/kspSystems"
+import kspSystems, {KspSystem} from "../utils/kspSystems"
 import {
     calcPowerFromDevices as calcContinuousPowerFromDevices,
     ContinuousPowerCalc,
@@ -38,12 +38,12 @@ import {
 import {KspFund} from "../components/kspIcon"
 import './app.css'
 
-function solarPanelEfficiencyFromSunDistance(systemName: string, d: number): number {
-    const homeWorldSma = kspSystems[systemName].bodies[kspSystems[systemName].defaultBody].orbit.semiMajorAxis
+function solarPanelEfficiencyFromSunDistance(system: KspSystem, d: number): number {
+    const homeWorldSma = system.defaultBody.orbit.semiMajorAxis
     return 1 / Math.pow(d/homeWorldSma, 2);
 }
-function sunDistanceFromSolarPanelEfficiency(systemName: string, e: number): number {
-    const homeWorldSma = kspSystems[systemName].bodies[kspSystems[systemName].defaultBody].orbit.semiMajorAxis
+function sunDistanceFromSolarPanelEfficiency(system: KspSystem, e: number): number {
+    const homeWorldSma = system.defaultBody.orbit.semiMajorAxis
     return Math.sqrt(1/e) * homeWorldSma
 }
 
@@ -238,7 +238,8 @@ function rtgSolutions(burstPowerValue, continuousPowerValue): Solution[] {
 }
 
 export default function App() {
-    const [system, setSystem] = useFragmentState<string>('sys', "Stock")
+    const [systemName, setSystemName] = useFragmentState<string>('sys', "Stock")
+    const system = kspSystems[systemName]
     const [continuousPower, setContinuousPower] = useFragmentState('c', ContinuousPowerCalcFromString, ContinuousPowerCalcToString);
     const [continuousPowerCalcOpen, setContinuousPowerCalcOpen] = useState(false);
     const [burstPower, setBurstPower] = useFragmentState('b', BurstPowerCalcFromString, BurstPowerCalcToString);
@@ -324,14 +325,14 @@ export default function App() {
             </tr>
         </tbody></table>
         <h2>Solar situation</h2>
-        System: <SystemSelect value={system} onChange={setSystem}/><br/>
+        System: <SystemSelect value={systemName} onChange={setSystemName}/><br/>
         Panel efficiency: <FloatInput decimals={0} value={solarEfficiency * 100}
                                       onChange={v => setSolarEfficiency(v / 100)}
         />%, equivalent to a distance to the sun of <SiInput
             value={sunDistanceFromSolarPanelEfficiency(system, solarEfficiency)}
             onChange={d => setSolarEfficiency(solarPanelEfficiencyFromSunDistance(system, d))}
-        />m <Preset options={kspSystems[system].bodies[kspSystems[system].rootName].childrenNames.reduce((acc, bodyName) => {
-            acc[bodyName] = kspSystems[system].bodies[bodyName].orbit.semiMajorAxis
+        />m <Preset options={system.root.childrenNames.reduce((acc, bodyName) => {
+            acc[bodyName] = system.bodies[bodyName].orbit.semiMajorAxis
             return acc
         }, {})}
                 value={sunDistanceFromSolarPanelEfficiency(system, solarEfficiency)}
@@ -354,7 +355,7 @@ export default function App() {
             marginLeft: "0.3em",
             paddingLeft: "0.3em",
         }}>
-            <ShadeCalc systemName={system} value={shade} onChange={v => setShade(v)}/>
+            <ShadeCalc system={system} value={shade} onChange={v => setShade(v)}/>
         </div>
         <h2>Info for fuel cells</h2>
         <table><tbody>

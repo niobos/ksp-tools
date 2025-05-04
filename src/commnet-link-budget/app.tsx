@@ -8,9 +8,11 @@ import {SystemSelect} from "../components/kspSystemSelect";
 
 import './app.css';
 import Antenna, {antennas as kspAntennas} from "../utils/kspParts-antenna";
+import kspSystems from "../utils/kspSystems";
 
 export default function App() {
-    const [system, setSystem] = useFragmentState<string>('sys', "Stock")
+    const [systemName, setSystemName] = useFragmentState<string>('sys', "Stock")
+    const system = kspSystems[systemName]
     const [hops, setHops] = useFragmentState('h', [
         {a: ['pod built-in'], d: 100000},
         {a: ['KSC DSN Tier 3']},
@@ -37,7 +39,7 @@ export default function App() {
             <Endpoint value={hop.a}
                       onChange={v => setHops(arrayReplaceElement(hops, hopNr, Object.assign({}, hop, {a: v})))}
             />
-            <Link systemName={system} value={hop.d}
+            <Link system={system} value={hop.d}
                   powerA={powerA} powerB={powerB}
                   onChange={v => setHops(arrayReplaceElement(hops, hopNr, Object.assign({}, hop, {d: v})))}
             />
@@ -48,7 +50,7 @@ export default function App() {
 
     return <div>
         <h1>CommNet link budget calculator</h1>
-        System <SystemSelect value={system} onChange={setSystem}/>
+        System <SystemSelect value={systemName} onChange={setSystemName}/>
         {hopsJsx}
         <Endpoint value={hops[hops.length-1].a}
                   onChange={v => setHops(arrayReplaceElement(hops, hops.length-1, {a: v}))}

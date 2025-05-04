@@ -1,5 +1,5 @@
 import * as React from "react"
-import kspSystems from "../utils/kspSystems"
+import kspSystems, {KspSystem} from "../utils/kspSystems"
 
 export interface SystemSelectProps {
     value: string
@@ -18,7 +18,7 @@ export function SystemSelect(props: SystemSelectProps){
 }
 
 export interface HierarchicalBodySelectProps {
-    systemName: string
+    system: KspSystem
     value: string
     onChange: (value: string) => void
     customValue?: string
@@ -26,7 +26,7 @@ export interface HierarchicalBodySelectProps {
 }
 
 export function HierarchicalBodySelect({
-    systemName,
+    system,
     value,
     onChange,
     customValue,
@@ -40,8 +40,6 @@ export function HierarchicalBodySelect({
     }
 
     // optgroup's don't nest, so we can only do 1 level
-    const system = kspSystems[systemName]
-
     options.push(<option key={i++} value={system.rootName}>{system.rootName}</option>)
     for(let childName of system.bodies[system.rootName].childrenNames) {
         const descendants = [

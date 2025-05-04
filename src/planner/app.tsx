@@ -1,20 +1,20 @@
-import './app.css';
-import * as React from "react";
-import {ReactChild, ReactNode, useEffect, useMemo, useState} from "react";
-import ReactDOM from 'react-dom';
-import useFragmentState from "useFragmentState";
-import Orbit from "../utils/orbit";
-import OrbitAround from "../utils/orbitAround";
-import {bodies as kspBodies} from "../utils/kspBody";
-import Vector from "../utils/vector";
-import {Burn, ConicSegment, SegmentReason} from "./simWorker";
-import OrbitDetails from "../components/orbit";
-import {formatValueYdhmsAbs, KerbalAbsYdhmsInput, KerbalYdhmsInput} from "../components/formattedInput";
-import KspHierBody from "../components/kspHierBody";
-import {OrbitSummary} from "./orbitSummary";
-import {formatValueSi} from "formattedInput";
-import BurnDetails from "./burnDetails";
-import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
+import * as React from "react"
+import {ReactChild, ReactElement, ReactNode, useEffect, useMemo, useState} from "react"
+import ReactDOM from 'react-dom'
+import useFragmentState from "useFragmentState"
+import Orbit from "../utils/orbit"
+import OrbitAround from "../utils/orbitAround"
+import kspSystems, {KspSystem} from "../utils/kspSystems"
+import Vector from "../utils/vector"
+import {Burn, ConicSegment, SegmentReason} from "./simWorker"
+import OrbitDetails from "../components/orbit"
+import {formatValueYdhmsAbs, KerbalAbsYdhmsInput, KerbalYdhmsInput} from "../components/formattedInput"
+import {OrbitSummary} from "./orbitSummary"
+import {formatValueSi} from "formattedInput"
+import BurnDetails from "./burnDetails"
+import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list"
+import {HierarchicalBodySelect, SystemSelect} from "../components/kspSystemSelect";
+import './app.css'
 
 type Seconds = number
 
@@ -58,6 +58,7 @@ function Event(props: EventProps): JSX.Element {
 }
 
 interface InitialOrbitDetailsProps {
+    system: KspSystem
     startTime: Seconds
     setStartTime: (Seconds) => void
     initialOrbit: OrbitAround
@@ -69,26 +70,30 @@ function InitialOrbitDetails(props: InitialOrbitDetailsProps): JSX.Element {
             value={props.startTime}
             onChange={props.setStartTime}
         /></p>
-        <p>Around <KspHierBody
+        <p>Around <HierarchicalBodySelect
+            system={props.system}
             value={props.initialOrbit.body.name}
             onChange={bodyName => {
-                const body = kspBodies[bodyName];
+                const body = props.system.bodies[bodyName];
                 const orbit = Orbit.FromOrbitWithUpdatedOrbitalElements(
                     props.initialOrbit.orbit,
                     {gravity: body.gravity}
                 )
                 props.setInitialOrbit(new OrbitAround(
-                    body,
+                    props.system,
+                    bodyName,
                     orbit
                 ))
             }}
         /></p>
         <OrbitDetails
+            system={props.system}
             value={props.initialOrbit.orbit}
             primaryBody={props.initialOrbit.body}
             onChange={newOrbit => {
                 props.setInitialOrbit(new OrbitAround(
-                    props.initialOrbit.body,
+                    props.system,
+                    props.initialOrbit.bodyName,
                     newOrbit,
                 ))
             }}
@@ -97,6 +102,7 @@ function InitialOrbitDetails(props: InitialOrbitDetailsProps): JSX.Element {
 }
 
 interface BurnEventDetailsProps {
+    system: KspSystem
     burn: Burn
     onChange: (Burn) => void
     orbit?: OrbitAround
@@ -119,6 +125,7 @@ function BurnEventDetails(props: BurnEventDetailsProps): JSX.Element {
 
         {props.orbit ? <>New orbit:<br/>
             <OrbitDetails
+                system={props.system}
                 value={props.orbit.orbit}
                 primaryBody={props.orbit.body}
             />
@@ -127,12 +134,14 @@ function BurnEventDetails(props: BurnEventDetailsProps): JSX.Element {
 }
 
 interface SoiChangeDetailsProps {
+    system: KspSystem
     orbit: OrbitAround
 }
 function SoiChangeDetails(props: SoiChangeDetailsProps): JSX.Element {
     return <>
         <p>Orbit around {props.orbit.body.name}</p>
         <OrbitDetails
+            system={props.system}
             value={props.orbit.orbit}
             primaryBody={props.orbit.body}
         />
@@ -163,6 +172,8 @@ function EndOfSimulationDetails(props: EndOfSimulationDetailsProps): JSX.Element
 }
 
 function App() {
+    const [systemName, setSystemName] = useFragmentState<string>('sys', "Stock")
+    const system = kspSystems[systemName]
     const [simulationStart, setSimulationStart] = useFragmentState<number>('t0',
         s => {
             const t = parseFloat(s);
@@ -177,9 +188,10 @@ function App() {
                 return OrbitAround.Unserialize(s)
             } catch(e) {
                 return new OrbitAround(
-                    kspBodies['Kerbin'],
+                    system,
+                    system.defaultBodyName,
                     Orbit.FromOrbitalElements(
-                        kspBodies['Kerbin'].gravity,
+                        system.defaultBody.gravity,
                         {sma: 700e3},
                         {ma0: 0},
                     )
@@ -244,7 +256,7 @@ function App() {
         })
     }, [simulationEnd])
 
-    const events: Array<JSX.Element> = [
+    const events: ReactElement[] = [
         <Event
             key="initial"
             className="initial"
@@ -253,6 +265,7 @@ function App() {
             addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
         >
             <InitialOrbitDetails
+                system={system}
                 initialOrbit={initialOrbit}
                 setInitialOrbit={setInitialOrbit}
                 startTime={simulationStart}
@@ -277,6 +290,7 @@ function App() {
                         summary={<>{formatValueSi(burn.prn.norm)}m/s burn to <OrbitSummary value={segment.orbit}/></>}
                         addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
                     ><BurnEventDetails
+                        system={system}
                         burn={burn}
                         onChange={b => {setBurns(arrayReplaceElement(burns, segment.burnIdx, b))}}
                         orbit={segment.orbit}
@@ -290,6 +304,7 @@ function App() {
                         summary={<>SoI change to <OrbitSummary value={segment.orbit}/></>}
                         addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
                     ><SoiChangeDetails
+                        system={system}
                         orbit={segment.orbit}
                     /></Event>)
                 break
@@ -345,6 +360,7 @@ function App() {
                 summary={<>{formatValueSi(burn.prn.norm)}m/s burn</>}
                 addBurn={(b) => setBurns(arrayInsertElement(burns, b))}
             ><BurnEventDetails
+                system={system}
                 burn={burns[burnIdx]}
                 onChange={b => {setBurns(
                     b != null
@@ -358,6 +374,7 @@ function App() {
 
     return <><React.StrictMode>
         <h1>Mission planner</h1>
+        System: <SystemSelect value={systemName} onChange={setSystemName}/><br/>
         <h2>Segments</h2>
         <ol id="segments">{eventsJsx}</ol>
     </React.StrictMode></>;

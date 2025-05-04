@@ -1,10 +1,12 @@
 import * as React from "react";
-import {default as BodyData, bodies as kspBodies, GRAVITATIONAL_CONSTANT} from "../utils/kspBody"
 import KspHierBody from "../components/kspHierBody"
 import {SiInput} from "formattedInput"
-import {useState} from "react";
+import {useState} from "react"
+import {KspSystem, Body as BodyData, GRAVITATIONAL_CONSTANT} from "../utils/kspSystems"
+import {HierarchicalBodySelect} from "../components/kspSystemSelect";
 
 interface BodyProps {
+    system: KspSystem
     value: BodyData
     onChange?: (value: BodyData) => void
 }
@@ -15,12 +17,13 @@ export default function Body(props: BodyProps) {
 
     return <table><tbody>
         <tr><td>Preset body</td><td>
-            <KspHierBody
+            <HierarchicalBodySelect
+                system={props.system}
                 customValue="custom"
                 value={preset}
                 onChange={(bodyName) => {
                     setPreset(bodyName)
-                    props.onChange(kspBodies[bodyName])
+                    props.onChange(props.system.bodies[bodyName])
                 }}/>
         </td></tr>
         <tr><td>Gravity</td><td>
@@ -42,10 +45,10 @@ export default function Body(props: BodyProps) {
         </td></tr>
         <tr><td>Atmosphere height</td><td>
             <SiInput
-                value={props.value.atmosphere}
+                value={props.value.atmosphereHeight}
                 onChange={(h) => {
                     setPreset("")
-                    props.onChange(namelessValue.copy({atmosphere: h}))
+                    props.onChange(namelessValue.copy({atmosphereHeight: h}))
                 }}/>m
         </td></tr>
         <tr><td>Sphere of Influence</td><td>

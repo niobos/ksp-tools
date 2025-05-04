@@ -163,7 +163,8 @@ function calcNextSegment() {
         const v = orbit.orbit.velocityAtTa(ta)
         const vNew = v.add(orbit.orbit.prnToGlobal(burns[nextBurnIdx].prn, ta))
         orbit = new OrbitAround(
-            orbit.body,
+            orbit.system,
+            orbit.bodyName,
             Orbit.FromStateVector(orbit.orbit.gravity, r, vNew, t),
         );
         segments.push({startT: t, reason: SegmentReason.Burn, orbit, burnIdx: burns[nextBurnIdx].origBurnIdx})

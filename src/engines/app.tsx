@@ -80,7 +80,8 @@ type EngineConfig = {
 }
 
 export default function App() {
-    const [system, setSystem] = useFragmentState<string>('sys', "Stock")
+    const [systemName, setSystemName] = useFragmentState<string>('sys', "Stock")
+    const system = kspSystems[systemName]
     const [dv, setDv] = useFragmentState('dv', 1000);
     const [mass, setMass] = useFragmentState('m', 1.5);
     const [acceleration, setAcceleration] = useFragmentState('a', 14.715);
@@ -121,11 +122,11 @@ export default function App() {
     const [showAll, setShowAll] = useState(false);
 
     const {value: gravityValue, preset: gravityPreset} = fromPreset(
-        gravity, objectMap(kspSystems[system].bodies, (b: Body) => b.surface_gravity)
+        gravity, objectMap(system.bodies, (b: Body) => b.surface_gravity)
     )
     const {value: pressureValue, preset: pressurePreset} = fromPreset(
-        pressure, objectMap(kspSystems[system].bodies,
-            (b: Body) => (b.atmospherePressure ?? 0) / kspSystems[system].bodies[kspSystems[system].defaultBody].atmospherePressure)
+        pressure, objectMap(system.bodies,
+            (b: Body) => (b.atmospherePressure ?? 0) / system.bodies[system.defaultBodyName].atmospherePressure)
     )
     const {value: tankValue, preset: tankPreset} = fromPreset(
         tank, objectMap(fuelTanks, (ft) => {return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost/ft.mass}})
@@ -313,7 +314,7 @@ export default function App() {
         <h1>Engine selection</h1>
         <table><tbody>
         <tr><td>Planet system</td><td>
-            <SystemSelect value={system} onChange={setSystem}/>
+            <SystemSelect value={systemName} onChange={setSystemName}/>
         </td></tr>
         <tr><td>Payload mass</td><td>
             <FloatInput value={mass} decimals={1}
@@ -335,7 +336,7 @@ export default function App() {
             {" @ "}<FloatInput value={gravityValue} decimals={2}
                         onChange={setGravity}
             />{"kN/t "}
-            <HierarchicalBodySelect systemName={system}
+            <HierarchicalBodySelect system={system}
                                     value={gravityPreset} customValue="custom"
                                     onChange={setGravity}
             />)
@@ -344,7 +345,7 @@ export default function App() {
             <FloatInput value={pressureValue} decimals={1}
                         onChange={(v) => setPressure(v)}
             />{"atm "}
-            <HierarchicalBodySelect systemName={system}
+            <HierarchicalBodySelect system={system}
                                     value={pressurePreset} customValue="custom"
                                     onChange={setPressure}
             />

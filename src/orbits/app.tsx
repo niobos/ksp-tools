@@ -1,15 +1,16 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react"
 import {default as BodyComp} from "./body"
 import Orbit from "../utils/orbit"
 import {default as OrbitComp, fromString as OrbitFromString, toString as OrbitToString} from "../components/orbit"
 import Solution from "./solution"
+import {CalculatedTrajectory} from "./solver"
+import Vector from "../utils/vector"
+import useFragmentState from "useFragmentState"
+import kspSystems, {Body, GRAVITATIONAL_CONSTANT} from "../utils/kspSystems"
 import "./app.css"
-import {CalculatedTrajectory} from "./solver";
-import Vector from "../utils/vector";
-import useFragmentState from "useFragmentState";
-import kspSystems, {Body, GRAVITATIONAL_CONSTANT} from "../utils/kspSystems";
+import {SystemSelect} from "../components/kspSystemSelect";
 
 let REQUEST_ID = 0;
 
@@ -20,21 +21,16 @@ function App() {
         s => {
             try {
                 const j = JSON.parse(s)
-                if(j == null) return kspBodies["Kerbin"]
-                if(typeof j === "string") return kspBodies[j]
-                return Body.create(j)
+                if(j == null) return system.bodies[system.defaultBodyName]
+                if(typeof j === "string") return system.bodies[j]
+                return Body.Deserialize(j)
             } catch(e) {
-                return kspBodies["Kerbin"]
+                return system.bodies[system.defaultBodyName]
             }
         },
         b => {
             if(b.name != null) return JSON.stringify(b.name)
-            return JSON.stringify({
-                mass: b.gravity / GRAVITATIONAL_CONSTANT,
-                radius: b.radius,
-                atmosphere: b.atmosphere,
-                soi: b.soi,
-            })
+            return JSON.stringify(b.serialize())
         }
     )
     const [orbitStart, setOrbitStart] = useFragmentState<Orbit>('f',
@@ -91,7 +87,9 @@ function App() {
             This tool will try various strategies to transfer from one orbit to another.
             There is no guarantee that the optimal solution is found.
         </p>
+        System: <SystemSelect value={systemName} onChange={setSystemName}/><br/>
         <BodyComp
+            system={system}
             value={primaryBody}
             onChange={(b) => {
                 setPrimaryBody(b)
@@ -101,6 +99,7 @@ function App() {
         />
         <h2>Start orbit</h2>
         <OrbitComp
+            system={system}
             key={"orbitStart"}
             primaryBody={primaryBody}
             value={orbitStart}
@@ -113,6 +112,7 @@ function App() {
         }}/></p>
         <h2>Target orbit</h2>
         <OrbitComp
+            system={system}
             key={"orbitTarget"}
             primaryBody={primaryBody}
             value={orbitEnd}

@@ -3,40 +3,40 @@ import {useState} from "react";  // JSX support
 import Antenna from "../utils/kspParts-antenna";
 import {formatValueSi, SiInput} from "formattedInput";
 import {HierarchicalBodySelect} from "../components/kspSystemSelect";
-import kspSystems from "../utils/kspSystems";
+import {KspSystem} from "../utils/kspSystems";
 
 interface LinkProps {
-    systemName: string
+    system: KspSystem
     value: number
     powerA: number
     powerB: number
-    onChange: (number) => void
+    onChange: (value: number) => void
 }
 
 function maybeChange(
-    systemName: string,
+    system: KspSystem,
     bodyNameA: string,
     bodyNameB: string,
-    onChange: (number) => void,
+    onChange: (value: number) => void,
 ): void {
     if(bodyNameA === "") return
     if(bodyNameB === "") return
 
-    const locA = kspSystems[systemName].hierarchicalLocation(bodyNameA)
-    const locB = kspSystems[systemName].hierarchicalLocation(bodyNameB)
+    const locA = system.hierarchicalLocation(bodyNameA)
+    const locB = system.hierarchicalLocation(bodyNameB)
     let common = 0
     while(locA[common] === locB[common] && common < locA.length) common++
 
     let maxDistA
     if(locA[common] === undefined) maxDistA = 0
     else {
-        maxDistA = kspSystems[systemName].bodies[locA[common]].orbit.distanceAtApoapsis
+        maxDistA = system.bodies[locA[common]].orbit.distanceAtApoapsis
     }
 
     let maxDistB
     if(locB[common] === undefined) maxDistB = 0
     else {
-        maxDistB = kspSystems[systemName].bodies[locB[common]].orbit.distanceAtApoapsis
+        maxDistB = system.bodies[locB[common]].orbit.distanceAtApoapsis
     }
 
     onChange(maxDistA + maxDistB)
@@ -59,18 +59,18 @@ export default function Link(props: LinkProps) {
             }}
         />m (max range {formatValueSi(maxRange)}m)<br/>
         Distance between <HierarchicalBodySelect
-            systemName={props.systemName}
+            system={props.system}
             customValue="Select body"
             value={distA} onChange={(b) => {
                 setDistA(b);
-                maybeChange(props.systemName, b, distB, props.onChange);
+                maybeChange(props.system, b, distB, props.onChange);
             }}
         /> and <HierarchicalBodySelect
-            systemName={props.systemName}
+            system={props.system}
             customValue="Select body"
             value={distB} onChange={(b) => {
                 setDistB(b);
-                maybeChange(props.systemName, distA, b, props.onChange);
+                maybeChange(props.system, distA, b, props.onChange);
             }}
         /><br/>
         Signal strength {(signalStrength*100).toFixed(0)}%

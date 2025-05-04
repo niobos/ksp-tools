@@ -1,8 +1,6 @@
-import Body from './kspBody';
-import Orbit, {OrbitalPhase} from "./orbit";
-import {bodies as kspBodies} from './kspBody';
-import {orbits as kspOrbits} from './kspOrbit';
-import {findZeroBisect} from "./optimize";
+import kspSystems, {Body, KspSystem} from "./kspSystems"
+import Orbit, {OrbitalPhase} from "./orbit"
+import {findZeroBisect} from "./optimize"
 
 export enum orbitEvent {
     exitSoI,
@@ -17,31 +15,41 @@ export default class OrbitAround {
      */
 
     constructor(
-        public body: Body,
+        public system: KspSystem,
+        public bodyName: string,
         public orbit: Orbit,
     ) {
-        if(body.gravity !== orbit.gravity) throw "Gravity mismatch";
+        if(system.bodies[bodyName].gravity !== orbit.gravity) throw "Gravity mismatch";
     }
 
     static FromObject(o: any): OrbitAround {
+        const system = KspSystem.FromObject(o.system)
         return new OrbitAround(
-            kspBodies[o.body.name],
+            system,
+            o.bodyName,
             Orbit.FromObject(o.orbit),
         );
     }
 
     serialize(): string {
         return JSON.stringify({
-            b: this.body.name,
+            sys: this.system.name,
+            b: this.bodyName,
             o: this.orbit.serialize(),
         });
     }
     static Unserialize(s: string): OrbitAround {
         const o = JSON.parse(s);
+        const system = kspSystems[o.sys]
         return new OrbitAround(
-            kspBodies[o.b],
+            system,
+            o.b,
             Orbit.Unserialize(o.o),
         )
+    }
+
+    get body() {
+        return this.system.bodies[this.bodyName]
     }
 
     nextEvent(
@@ -65,7 +73,7 @@ export default class OrbitAround {
             type: orbitEvent.collideSurface,
             body: this.body,
         }
-        if(this.body.atmosphere != null && r.norm < this.body.radius + this.body.atmosphere) return {
+        if(this.body.atmosphereHeight != null && r.norm < this.body.radius + this.body.atmosphereHeight) return {
             t: t,
             type: orbitEvent.enterAtmosphere,
             body: this.body,
@@ -87,25 +95,26 @@ export default class OrbitAround {
             });
         }
 
-        const taCollide = this.orbit.taAtDistance(this.body.radius + (this.body.atmosphere || 0));
+        const taCollide = this.orbit.taAtDistance(this.body.radius + (this.body.atmosphereHeight || 0));
         if(!isNaN(taCollide)) {
             let tCollide = this.orbit.tAtTa(taCollide);
             while(tCollide < t) tCollide += this.orbit.period || Infinity;
             events.push({
                 t: tCollide,
-                type: this.body.atmosphere != null ? orbitEvent.enterAtmosphere : orbitEvent.collideSurface,
+                type: this.body.atmosphereHeight != null ? orbitEvent.enterAtmosphere : orbitEvent.collideSurface,
                 body: this.body,
             })
         }
-        events.sort((a, b) => a.t - b.t);  // in-place
 
         function smartMin(a, b) {
             // Math.min(), but works with undefined, null, NaN
             return a < b ? a : b
         }
 
-        for(let subBody of this.body.isOrbitedBy()) {
-            const subBodyOrbit = kspOrbits[subBody.name];
+        for(let subBodyName of this.body.childrenNames) {
+            const subBody = this.system.bodies[subBodyName]
+            const subBodyOrbit = subBody.orbit
+            events.sort((a, b) => a.t - b.t);  // in-place
             const nextIntercept = this.orbit.nextIntercept(
                 subBodyOrbit,
                 t,
@@ -130,7 +139,7 @@ export default class OrbitAround {
                         });
                     } catch(e) {
                         console.log("Couldn't determine exact SoI change moment for orbit ", this.orbit,
-                            " with body ", subBody.name, ". Should be between ", t, " and ", nextIntercept.t);
+                            " with body ", subBodyName, ". Should be between ", t, " and ", nextIntercept.t);
                         throw e;
                     }
                 } else {
@@ -148,7 +157,7 @@ export default class OrbitAround {
     }
 
     exitSoI(t: number): OrbitAround {
-        if(this.body.orbitsAround == null) throw "Can't exit SoI, no parent body";
+        if(this.body.parentName == null) throw "Can't exit SoI, no parent body";
 
         const taOld = this.orbit.taAtT(t);
         const rOld = this.orbit.positionAtTa(taOld);
@@ -158,15 +167,16 @@ export default class OrbitAround {
             throw "Not at SoI edge";
         }
 
-        const bodyOrbit = kspOrbits[this.body.name];
+        const bodyOrbit = this.body.orbit;
         const taBody = bodyOrbit.taAtT(t);
         const rBody = bodyOrbit.positionAtTa(taBody);
         const vBody = bodyOrbit.velocityAtTa(taBody);
 
         return new OrbitAround(
-            this.body.orbitsAround,
+            this.system,
+            this.body.parentName,
             Orbit.FromStateVector(
-                this.body.orbitsAround.gravity,
+                this.system.bodies[this.body.parentName].gravity,
                 rBody.add(rOld),
                 vBody.add(vOld),
                 t,
@@ -175,13 +185,13 @@ export default class OrbitAround {
     }
 
     enterSoI(t: number, subBody: Body): OrbitAround {
-        if(subBody.orbitsAround !== this.body) throw `${subBody.name} is not a sub-body of ${this.body.name}`;
+        if(subBody.parentName !== this.body.name) throw `${subBody.name} is not a sub-body of ${this.body.name}`;
 
         const taOld = this.orbit.taAtT(t);
         const rOld = this.orbit.positionAtTa(taOld);
         const vOld = this.orbit.velocityAtTa(taOld);
 
-        const bodyOrbit = kspOrbits[subBody.name];
+        const bodyOrbit = subBody.orbit
         const taBody = bodyOrbit.taAtT(t);
         const rBody = bodyOrbit.positionAtTa(taBody);
         const vBody = bodyOrbit.velocityAtTa(taBody);
@@ -194,7 +204,8 @@ export default class OrbitAround {
         }
 
         return new OrbitAround(
-            subBody,
+            this.system,
+            subBody.name,
             Orbit.FromStateVector(
                 subBody.gravity,
                 rNew,

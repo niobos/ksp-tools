@@ -5,7 +5,7 @@ import {DegreesInput} from "./formattedInput";
 import Apside from "./apside";
 import {default as kspOrbit} from "../utils/orbit";
 import Vector from "../utils/vector";
-import kspSystems, {KspSystem, Body} from "../utils/kspSystems"
+import {KspSystem, Body} from "../utils/kspSystems"
 import Sma from "./sma";
 
 interface OrbitProps {

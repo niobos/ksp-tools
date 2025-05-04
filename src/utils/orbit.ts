@@ -1061,8 +1061,8 @@ export default class Orbit {
         tEnd: Seconds = Infinity,
         accuracy: Seconds = 10,
     ): {t: number, separation: number} {
-        /* Returns the time & separation of the next intercept: A minimum in the distance between the two objects.
-         * Note that this may not return the closest intercept. For that you need to iteratively call this function
+        /* Returns the time and separation of the next intercept: A minimum in the distance between the two objects.
+         * Note that this may not return the closest intercept. For that, you need to iteratively call this function
          * to exhaustively search through time.
          * Sometimes, two intercepts happen very close to each other. When they are closer than `accuracy` seconds
          * apart, this function may only report one of them.
@@ -1086,7 +1086,8 @@ export default class Orbit {
         let prevT = t;
         t += accuracy;  // prevent finding the same intercept twice
         while(t < tEnd) {
-            let tStep = Math.min(this.period, otherOrbit.period) / 10;  // move 1/10 revolution forward
+            const myPeriod = this.period || Infinity  // Hyperbolic & Parabolic's don't have a period, use otherOrbit only
+            let tStep = Math.min(myPeriod, otherOrbit.period) / 10;  // move 1/10 revolution forward
 
             const separation = [d(t-dt), d(t), d(t+dt)];
             const separationP = (separation[2] - separation[0]) / (2*dt);  // estimate of d/dt separation(t)
