@@ -1086,8 +1086,11 @@ export default class Orbit {
         let prevT = t;
         t += accuracy;  // prevent finding the same intercept twice
         while(t < tEnd) {
-            const myPeriod = this.period || Infinity  // Hyperbolic & Parabolic's don't have a period, use otherOrbit only
-            let tStep = Math.min(myPeriod, otherOrbit.period) / 10;  // move 1/10 revolution forward
+            // move 1/10 revolution forward, but in a way that's compatible with parabolic/hyperbolic orbits (where period is null)
+            let tStep = Math.min(
+                2 * this.timeSincePeriapsisAtTa(2 * Math.PI / 20),
+                2 * otherOrbit.timeSincePeriapsisAtTa(2 * Math.PI / 20)
+            )
 
             const separation = [d(t-dt), d(t), d(t+dt)];
             const separationP = (separation[2] - separation[0]) / (2*dt);  // estimate of d/dt separation(t)

@@ -1,5 +1,4 @@
 import * as React from "react";
-import KspHierBody from "../components/kspHierBody"
 import {SiInput} from "formattedInput"
 import {useState} from "react"
 import {KspSystem, Body as BodyData, GRAVITATIONAL_CONSTANT} from "../utils/kspSystems"

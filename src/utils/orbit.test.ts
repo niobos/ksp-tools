@@ -1,9 +1,10 @@
-import Orbit, {Meter, MeterPerSecond} from "./orbit";
-import Vector from "./vector";
-import {bodies as kspBodies} from "./kspBody";
+import Orbit, {Meter, MeterPerSecond} from "./orbit"
+import Vector from "./vector"
+import kspSystems from "./kspSystems"
 
 const earthGravity = 5.972161874653522e24 * 6.67430e-11;
 const earthRadius = 6378e3;
+const kerbin = kspSystems["Stock"].bodies["Kerbin"]
 
 describe('OMES examples', () => {
     test('example 2.9', () => {
@@ -476,7 +477,7 @@ describe('Hyperbolic orbits', () => {
 
 describe('Minmus departure', () => {
     test('Hyperbolic escape from any given position', () => {
-        const gravity = kspBodies['Kerbin'].gravity;
+        const gravity = kerbin.gravity;
         const r1 = new Vector(1e6, 1e5, 0);
         const vinf = new Vector(1000, 0, 0);
 
@@ -493,11 +494,11 @@ describe('Minmus departure', () => {
 describe('Lambert', () => {
     test('single-revolution', () => {
         const lko = Orbit.FromOrbitalElements(
-            kspBodies['Kerbin'].gravity,
+            kerbin.gravity,
             {sma: 700e3},
         )
         const lambertSol = Orbit.FromLambert(
-            kspBodies['Kerbin'].gravity,
+            kerbin.gravity,
             new Vector(700e3, 0, 0),
             new Vector(0, 700e3, 0),
             lko.period / 4,
@@ -509,11 +510,11 @@ describe('Lambert', () => {
 
     test('multi-revolution', () => {
         const lko = Orbit.FromOrbitalElements(
-            kspBodies['Kerbin'].gravity,
+            kerbin.gravity,
             {sma: 700e3},
         )
         const {orbit, arc} = Orbit.FromLambert(
-            kspBodies['Kerbin'].gravity,
+            kerbin.gravity,
             new Vector(700e3, 0, 0),
             new Vector(0, 700e3, 0),
             lko.period * 5 / 4,
@@ -529,13 +530,13 @@ describe('Lambert', () => {
 describe('next intercept', () => {
     it('works', () => {
         const o1 = Orbit.FromStateVector(
-            kspBodies['Kerbin'].gravity,
+            kerbin.gravity,
             new Vector(700e3, 0, 100),
             new Vector(0, 2500, 0),
             5000,
         );
         const o2 = Orbit.FromStateVector(
-            kspBodies['Kerbin'].gravity,
+            kerbin.gravity,
             new Vector(700e3, 0, 0),
             new Vector(0, 2300, 0),
             5000,
@@ -550,7 +551,7 @@ describe('next intercept', () => {
 describe('previous bugs', () => {
     test('position around Minmus', () => {
         const o1 = Orbit.FromStateVector(
-            kspBodies['Minmus'].gravity,
+            kspSystems["Stock"].bodies['Minmus'].gravity,
             new Vector(100e3, 0, 0),
             new Vector(-1, 1000, 0),
             0,
@@ -562,7 +563,7 @@ describe('previous bugs', () => {
 
     test('FromPositionAndHyperbolicExcessVelocityVector same sign error', () => {
         const o1 = Orbit.FromPositionAndHyperbolicExcessVelocityVector(
-            kspBodies['Kerbin'].gravity,
+            kerbin.gravity,
             new Vector(87614.25612076276, -674332.071107749, 7.392705806574268e-8),
             new Vector(546.91521487867, 1489.6556244085168, -269.63249167823324),
             "indirect",

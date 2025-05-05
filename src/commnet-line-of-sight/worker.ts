@@ -1,6 +1,6 @@
-import {exposeWorker} from "react-hooks-worker";
-import {Location, sphericalGrid} from "../utils/location";
-import {bodies as kspBodies} from "../utils/kspBody";
+import {exposeWorker} from "react-hooks-worker"
+import {Location, sphericalGrid} from "../utils/location"
+import kspSystems from "../utils/kspSystems"
 
 export type calcCoverageInput = {
     locations: Location[],
@@ -22,7 +22,7 @@ function calcCoverage(input: calcCoverageInput): calcCoverageOutput {
             }
         }
         if(distanceToClosestLocation < Math.PI/2) {
-            const alt = (1/Math.cos(distanceToClosestLocation) - 1) * kspBodies['Kerbin'].radius;
+            const alt = (1/Math.cos(distanceToClosestLocation) - 1) * kspSystems["Stock"].bodies['Kerbin'].radius;
             altitudes.push(alt);
         } else {
             altitudes.push(Infinity);

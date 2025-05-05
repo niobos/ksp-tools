@@ -1,15 +1,16 @@
-import {
-    calcShade
-} from "./shadeCalc";
+import {calcShade} from "./shadeCalc"
+import kspSystems from "../utils/kspSystems"
+
+const system = kspSystems["Stock"]
 
 it("should work with empty content", () => {
-    const shade = calcShade("Stock", []);
+    const shade = calcShade(system, []);
     expect(shade.duration).toEqual(0);
     expect(shade.interval).toEqual(Infinity);
 });
 
 it("should work with zero duration item", () => {
-    const shade = calcShade("Stock", [
+    const shade = calcShade(system, [
         {d: 0, i: 7},
     ]);
     expect(shade.duration).toEqual(0);
@@ -17,7 +18,7 @@ it("should work with zero duration item", () => {
 });
 
 it('should return the single custom', () => {
-    const shade = calcShade("Stock", [
+    const shade = calcShade(system, [
         {d: 5, i: 7},
     ]);
     expect(shade.duration).toEqual(5);
@@ -25,7 +26,7 @@ it('should return the single custom', () => {
 });
 
 it('should calculate nighttime on Kerbin', () => {
-    const shade = calcShade("Stock", [
+    const shade = calcShade(system, [
         {s: 'Kerbin'},
     ]);
     expect(shade.duration).toEqual(3*60*60);
@@ -33,7 +34,7 @@ it('should calculate nighttime on Kerbin', () => {
 });
 
 it('should calculate orbital darkness around Kerbin', () => {
-    const shade = calcShade("Stock", [
+    const shade = calcShade(system, [
         {o: 'Kerbin', a: 100_000},
     ]);
     expect(shade.duration).toBeCloseTo(641.8, 1);
@@ -41,7 +42,7 @@ it('should calculate orbital darkness around Kerbin', () => {
 });
 
 it('should combine correctly', () => {
-    const shade = calcShade("Stock", [
+    const shade = calcShade(system, [
         {d: 10, i: 100},
         {d: 30, i: 1000},
     ]);
