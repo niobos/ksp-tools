@@ -10,35 +10,28 @@ export function splitSecondsToYdhms(sec: Seconds): [number, number, number, numb
     const y = sec;
     return [y, d, h, m, s];
 }
-export function formatValueYdhms(seconds: Seconds): string {
-    if(isNaN(seconds)) return 'NaN';
+export function formatValueYdhms(seconds: Seconds, maxParts: number = Infinity): string {
+    if(isNaN(seconds)) return 'NaN'
 
-    let values: any[] = splitSecondsToYdhms(seconds);
-    let units: string[] = ['y', 'd', 'h', 'm', 's'];
+    let values: any[] = splitSecondsToYdhms(seconds)
+    let units: string[] = ['y', 'd', 'h', 'm', 's']
 
-    values[4] = values[4].toFixed(1);
+    values[4] = values[4].toFixed(1)
     while(values[0] === 0) {
-        values = values.slice(1);
-        units = units.slice(1);
+        values = values.slice(1)
+        units = units.slice(1)
     }
     while(values[values.length-1] === 0 || values[values.length-1] === "0.0") {
-        values = values.slice(0, values.length-1);
-        units = units.slice(0, units.length-1);
+        values = values.slice(0, values.length-1)
+        units = units.slice(0, units.length-1)
     }
 
-    if(values.length === 0) return "0s";
-    const parts = values.map((v, i) => '' + v + units[i]);
-    return parts.join(' ');
-}
-export function formatValueYdhmsSingleUnit(seconds: Seconds): string {
-    const factors = [60, 60, 6, 426];
-    const units = ['s', 'm', 'h', 'd'];
-    while(seconds >= factors[0]) {
-        seconds /= factors[0];
-        units.shift();
-        factors.shift();
+    if(values.length === 0) return "0s"
+    const parts = values.map((v, i) => '' + v + units[i])
+    if(maxParts != null && maxParts < parts.length) {
+        parts.splice(maxParts)
     }
-    return seconds.toFixed(1) + units[0];
+    return parts.join(' ')
 }
 export function parseToYdhms(text: string): [number, number, number, number, number] {
     const re = /^((?<y>\d+) *y)? *((?<d>\d+) *d)? *((?<h>\d+) *h)? *((?<m>\d+) *m)? *((?<s>\d+(.\d*)?) *s?)?$/;
@@ -62,24 +55,29 @@ export function parseValueYdhms(text: string | number): Seconds {
     }
 }
 export type KerbalYdhmsInputProps = Omit<FormattedInputProps<Seconds>, "formatValue" | "parseString"> & {
-    singleUnit?: boolean
+    maxUnits?: number
 }
 export function KerbalYdhmsInput(props: KerbalYdhmsInputProps) {
     const formattedInputProps = Object.assign({}, props, {
-        formatValue: props.singleUnit ? formatValueYdhmsSingleUnit : formatValueYdhms,
+        formatValue: v => formatValueYdhms(v, props.maxUnits),
         parseString: parseValueYdhms,
         className: (props.className || '') + ' KerbalYdhmsInput',
     });
     return FormattedInput(formattedInputProps);
 }
 
-export function formatValueYdhmsAbs(seconds: Seconds): string {
+export function formatValueYdhmsAbs(seconds: Seconds, maxParts: number = Infinity): string {
+    if(maxParts == null) maxParts = Infinity
     let [y, d, h, m, s] = splitSecondsToYdhms(seconds);
-    return `Y${y+1}, ` +
-        `D${d+1}, ` +
-        `${h.toString().padStart(2, '0')}` +
-        `:${m.toString().padStart(2, '0')}` +
-        `:${s.toFixed(1).padStart(4, '0')}`;
+    const parts = [
+        `Y${y+1}`, ", ",
+        `D${d+1}`, ", ",
+        `${h.toString().padStart(2, '0')}`, ":",
+        `${m.toString().padStart(2, '0')}`, ":",
+        `${s.toFixed(1).padStart(4, '0')}`
+    ]
+    parts.splice(maxParts*2 - 1)
+    return parts.join('')
 }
 export function parseToYdhmsAbs(text: string): [number, number, number, number, number] {
     const re = /^[Yy] *((?<y>\d+)) *,? *[Dd]( *(?<d>\d+)) *,? *((?<h>\d+)):((?<m>\d+)):((?<s>\d+(.\d*)?))$/;

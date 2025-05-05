@@ -402,7 +402,7 @@ export default function App() {
                     }}
                     onClick={xy => plotOnClick(xy.x, xy.y)}
                     cursor={selectedTransfer ? {x: selectedTransfer.departureTime, y: selectedTransfer.travelTime} : null}
-                    formatXValue={formatValueYdhmsAbs}
+                    formatXValue={v => formatValueYdhmsAbs(v, 2)}
                     formatX0={v => <>Departure<br/><KerbalAbsYdhmsInput
                         value={v}
                         onChange={v => setEarliestDeparture(v)}
@@ -411,7 +411,7 @@ export default function App() {
                         value={v}
                         onChange={v => setLatestDeparture(v)}
                     />}
-                    formatYValue={formatValueYdhms}
+                    formatYValue={v => formatValueYdhms(v, 2)}
                     formatY0={v => <>Travel time<br/><KerbalYdhmsInput
                         value={v}
                         onChange={v => {

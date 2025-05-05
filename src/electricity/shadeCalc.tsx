@@ -3,8 +3,8 @@ import {useState} from "react";
 import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 import Orbit, {orbitalDarkness} from "../utils/orbit";
 import {formatValueSi, SiInput} from "formattedInput";
-import {formatValueYdhmsSingleUnit, KerbalYdhmsInput} from "../components/formattedInput";
-import kspSystems, {Body, KspSystem} from "../utils/kspSystems";
+import {formatValueYdhms, KerbalYdhmsInput} from "../components/formattedInput";
+import {Body, KspSystem} from "../utils/kspSystems";
 import {HierarchicalBodySelect} from "../components/kspSystemSelect";
 
 type Shade = {
@@ -104,24 +104,24 @@ export function ShadeCalc(props: ShadeCalcProps) {
             shadeJsx = <span>Orbital darkness
                 at {formatValueSi(shade.a)}mAGL
                 above {shade.o} (
-                {formatValueYdhmsSingleUnit(duration)}{" "}
-                every {formatValueYdhmsSingleUnit(interval)})
+                {formatValueYdhms(duration, 1)}{" "}
+                every {formatValueYdhms(interval, 1)})
             </span>;
         } else if ('s' in shade) {  // solar night
             const body = system.bodies[shade.s]
             if(body == null) continue
             const {duration, interval} = calcSolarNight(body);
             shadeJsx = <span>Solar night on {shade.s} (
-                {formatValueYdhmsSingleUnit(duration)}{" "}
-                every {formatValueYdhmsSingleUnit(interval)})</span>;
+                {formatValueYdhms(duration, 1)}{" "}
+                every {formatValueYdhms(interval, 1)})</span>;
         } else if ('d' in shade) {  // custom
             shadeJsx = <span>
                 <KerbalYdhmsInput
-                    value={shade.d} singleUnit={true}
+                    value={shade.d} maxUnits={1}
                     onChange={v => props.onChange(arrayReplaceElement(props.value, i,
                         {d: v, i: shade.i}))}
                 /> every <KerbalYdhmsInput
-                value={shade.i} singleUnit={true}
+                value={shade.i} maxUnits={1}
                 onChange={v => props.onChange(arrayReplaceElement(props.value, i,
                     {d: shade.d, i: v}))}
             />

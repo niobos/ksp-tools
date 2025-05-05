@@ -308,7 +308,7 @@ export default function App() {
                     <FloatInput decimals={1} value={burstPowerValue.energy}
                                 onChange={v => setBurstPower(BurstFromEnergyInterval(v, burstPowerValue.interval))}
                     />⚡ storage, <KerbalYdhmsInput
-                    value={burstPowerValue.interval} singleUnit={true}
+                    value={burstPowerValue.interval} maxUnits={1}
                     onChange={v => setBurstPower(BurstFromEnergyInterval(burstPowerValue.energy, v))}
                 /> charge time
                     <div style={{
@@ -343,10 +343,10 @@ export default function App() {
              onClick={() => setShadeCalcOpen(!shadeCalcOpen)}>
             {shadeCalcOpen ? "▾" : "▸"}</div>
         Account for <KerbalYdhmsInput
-            value={shadeValue.duration} singleUnit={true}
+            value={shadeValue.duration} maxUnits={1}
             onChange={v => setShade(ShadeCustom(v, shadeValue.interval))}
         /> of shade every <KerbalYdhmsInput
-            value={shadeValue.interval} singleUnit={true}
+            value={shadeValue.interval} maxUnits={1}
             onChange={v => setShade(ShadeCustom(shadeValue.duration, v))}
         />
         <div style={{
