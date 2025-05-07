@@ -38,10 +38,11 @@ export type OrbitalElements = {
     e: Vector,  // [unitless, unitless, unitless]
 };
 export type OrbitalPhase = {
-    ma0: Radians,  // rad
+    ma0: Radians,
+    t0?: Seconds,
 } | {
-    ta: Radians,  // rad
-    t0?: Seconds,  // s
+    ta: Radians,
+    t0?: Seconds,
 }
 
 export class Nodes {
@@ -303,7 +304,7 @@ export default class Orbit {
                 const ma0 = orbitalPhase.ma0;
                 if(e_norm < 1) {  // elliptical
                     t0 = (-ma0) * h_norm*h_norm*h_norm / (gravity*gravity)
-                        / Math.pow(1 - e_norm*e_norm, 3/2);  // from [OMES 3.4]
+                        / Math.pow(1 - e_norm*e_norm, 3/2)  // from [OMES 3.4]
                     // at t=t0, Mean Anomaly is 0 and thus true anomaly is also 0
 
                 } else if(e_norm == 1) {  // parabolic
@@ -315,6 +316,9 @@ export default class Orbit {
                         / Math.pow(e_norm*e_norm - 1, 3/2);  // from [OMES 3.31]
                     // at t=t0, Hyperbolic anomaly is 0, thus true anomaly is 0
                 }
+
+                // but ma0 should be interpreted at t=orbitalPhase.t0
+                t0 += orbitalPhase.t0 ?? 0
 
             } else if('ta' in orbitalPhase) {
                 θ = orbitalPhase.ta;

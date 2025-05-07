@@ -151,6 +151,13 @@ describe('OMES examples', () => {
     });
 });
 
+function mod2Pi(angle: number): number {
+    angle = angle % (2*Math.PI)  // may still be <0
+    angle = angle + 2*Math.PI
+    angle = angle % (2*Math.PI)
+    return angle
+}
+
 describe('orbit', () => {
     it('should be calculated from orbital elements (elliptical)', () => {
         const o = Orbit.FromOrbitalElements(
@@ -243,6 +250,18 @@ describe('orbit', () => {
         expect(o.inclination).toBeCloseTo(Math.PI);
         expect(o.argumentOfPeriapsis).toBeCloseTo(135/180*Math.PI);
     });
+
+    it('should accept ma0 and t0', () => {
+        const o = Orbit.FromOrbitalElements(
+            2*2*Math.PI*Math.PI,
+            {sma: 1, e: 0, argp: 0, inc: 0, lon_an: 0},
+            {ma0: 1.2, t0: 1.5},
+        )
+        expect(o.period).toBeCloseTo(1);
+
+        expect(mod2Pi(o.taAtT(1.5))).toBeCloseTo(1.2);
+        expect(mod2Pi(o.taAtT(0))).toBeCloseTo(1.2-Math.PI + 2*Math.PI);
+    })
 })
 
 describe('Laws of physics', () => {
