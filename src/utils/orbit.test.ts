@@ -255,12 +255,20 @@ describe('orbit', () => {
         const o = Orbit.FromOrbitalElements(
             2*2*Math.PI*Math.PI,
             {sma: 1, e: 0, argp: 0, inc: 0, lon_an: 0},
-            {ma0: 1.2, t0: 1.5},
+            {ma0: 1.2, t0: 1.75},
         )
         expect(o.period).toBeCloseTo(1);
 
-        expect(mod2Pi(o.taAtT(1.5))).toBeCloseTo(1.2);
-        expect(mod2Pi(o.taAtT(0))).toBeCloseTo(1.2-Math.PI + 2*Math.PI);
+        expect(mod2Pi(o.taAtT(1.75))).toBeCloseTo(1.2);
+        expect(mod2Pi(o.taAtT(0))).toBeCloseTo(1.2-(0.75*2*Math.PI) + 2*Math.PI);
+    })
+    it('should keep an offset t0 for a given ma0', () => {
+        const o = Orbit.FromOrbitalElements(
+            2*2*Math.PI*Math.PI,
+            {sma: 1, e: 0, argp: 0, inc: 0, lon_an: 0},
+            {ma0: 1.2, t0: 1.75},
+        )
+        expect(mod2Pi(o.meanAnomalyAtEpoch)).toBeCloseTo(mod2Pi(1.2 - .75*2*Math.PI))
     })
 })
 

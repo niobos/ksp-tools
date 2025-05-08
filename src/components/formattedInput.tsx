@@ -1,19 +1,32 @@
 import FormattedInput, {FormattedInputProps} from "formattedInput";
+import {createContext, useContext} from "react";
+
+type TimeFormatNames = 'kerbal' | 'earth'
+type TimeFormat = {
+    hoursPerDay: number
+    daysPerYear: number
+}
+const timeFormats: {[name in TimeFormatNames]: TimeFormat} = {
+    "kerbal": {hoursPerDay: 6, daysPerYear: 426},
+    "earth": {hoursPerDay: 24, daysPerYear: 365},  // ignores leap years
+}
+export const timeFormatContext = createContext<TimeFormatNames>('kerbal')
 
 export type Seconds = number
 
-export function splitSecondsToYdhms(sec: Seconds): [number, number, number, number, number] {
-    const s = sec % 60; sec = (sec - s) / 60;
-    const m = sec % 60; sec = (sec - m) / 60;
-    const h = sec % 6; sec = (sec - h) / 6;
-    const d = sec % 426; sec = (sec - d) / 426;
-    const y = sec;
-    return [y, d, h, m, s];
+export function splitSecondsToYdhms(sec: Seconds, timeFormat: TimeFormat): [number, number, number, number, number] {
+    const s = sec % 60; sec = (sec - s) / 60
+    const m = sec % 60; sec = (sec - m) / 60
+    const h = sec % 6; sec = (sec - h) / timeFormat.hoursPerDay
+    const d = sec % 426; sec = (sec - d) / timeFormat.daysPerYear
+    const y = sec
+    return [y, d, h, m, s]
 }
 export function formatValueYdhms(seconds: Seconds, maxParts: number = Infinity): string {
     if(isNaN(seconds)) return 'NaN'
+    const timeFormat = timeFormats[useContext(timeFormatContext)]
 
-    let values: any[] = splitSecondsToYdhms(seconds)
+    let values: any[] = splitSecondsToYdhms(seconds, timeFormat)
     let units: string[] = ['y', 'd', 'h', 'm', 's']
 
     values[4] = values[4].toFixed(1)
@@ -45,13 +58,14 @@ export function parseToYdhms(text: string): [number, number, number, number, num
     return [i.y, i.d, i.h, i.m, i.s];
 }
 export function parseValueYdhms(text: string | number): Seconds {
-    if(text === Infinity || text === "∞") return Infinity;
+    if(text === Infinity || text === "∞") return Infinity
+    const timeFormat = timeFormats[useContext(timeFormatContext)]
 
     try {
-        const [y, d, h, m, s] = parseToYdhms('' + text);
-        return (((((y * 426) + d) * 6 + h) * 60 + m) * 60) + s;
+        const [y, d, h, m, s] = parseToYdhms('' + text)
+        return (((((y * timeFormat.daysPerYear) + d) * timeFormat.hoursPerDay + h) * 60 + m) * 60) + s
     } catch {
-        return 0;
+        return 0
     }
 }
 export type KerbalYdhmsInputProps = Omit<FormattedInputProps<Seconds>, "formatValue" | "parseString"> & {
@@ -68,7 +82,8 @@ export function KerbalYdhmsInput(props: KerbalYdhmsInputProps) {
 
 export function formatValueYdhmsAbs(seconds: Seconds, maxParts: number = Infinity): string {
     if(maxParts == null) maxParts = Infinity
-    let [y, d, h, m, s] = splitSecondsToYdhms(seconds);
+    const timeFormat = timeFormats[useContext(timeFormatContext)]
+    let [y, d, h, m, s] = splitSecondsToYdhms(seconds, timeFormat)
     const parts = [
         `Y${y+1}`, ", ",
         `D${d+1}`, ", ",
@@ -91,9 +106,10 @@ export function parseToYdhmsAbs(text: string): [number, number, number, number, 
     return [i.y, i.d, i.h, i.m, i.s];
 }
 export function parseValueYdhmsAbs(text: string | number): Seconds {
+    const timeFormat = timeFormats[useContext(timeFormatContext)]
     try {
         const [y, d, h, m, s] = parseToYdhmsAbs('' + text);
-        return ((((((y-1) * 426) + (d-1)) * 6 + h) * 60 + m) * 60) + s;
+        return ((((((y-1) * timeFormat.daysPerYear) + (d-1)) * timeFormat.hoursPerDay + h) * 60 + m) * 60) + s;
     } catch {
         return 0;
     }

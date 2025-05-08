@@ -373,7 +373,7 @@ export default class Orbit {
             o._cache['e'] = orbitalElements.e;
             o._cache['N'] = N;
         }
-        if(orbitalPhase !== undefined && 'ma0' in orbitalPhase) {
+        if(orbitalPhase !== undefined && 'ma0' in orbitalPhase && !('t0' in orbitalPhase)) {
             o._cache['ma0'] = orbitalPhase.ma0;
         }
         return o
