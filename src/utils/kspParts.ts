@@ -1,104 +1,102 @@
 import {Data} from "dataclass";
+import {objectMap} from "./utils";
 
-export class Resources extends Data {
-    static price = {
-        'lf': 0.8,
-        'ox': 0.16,
-        'sf': 0.6,
-        'mono': 1.2,
-        'xe': 4.0,
-        'el': 0,
-        'ore': 0.02,
-    };
-    static mass = {
-        'lf': 0.005,
-        'ox': 0.005,
-        'sf': 0.0075,
-        'mono': 0.004,
-        'xe': 0.0001,
-        'el': 0,
-        'ore': 0.010,
-    };
+export type ResourceProperties = {
+    name: string
+    cost: number
+    mass: number
+}
 
-    lf: number = 0;
-    ox: number = 0;
-    air: number = 0;
-    mono: number = 0;
-    sf: number = 0;
-    xe: number = 0;
-    el: number = 0;
-    ore: number = 0;
+export type ResourceType = "LF" | "Ox" | "SF" | "Mono" | "Xe" | "El" | "Ore" | "Air" |
+    /* Near Future Tech */ "Ar" | "LH2" | "LCH4" | "Li" | "EnrU" | "DeplU" | "SC" |
+    /* Far Future Tech */ "Anti" | "NSW" | "NUK" | "FIP" | "D" | "He3"
+export const ResourceInfo: Record<ResourceType, Readonly<ResourceProperties>> = {
+    LF: {name: "Liquid Fuel", cost: 0.8, mass: 0.005},
+    Ox: {name: "Oxidizer", cost: 0.16, mass: 0.005},
+    SF: {name: "Solid Fuel", cost: 0.6, mass: 0.0075},
+    Mono: {name: "Monopropellant", cost: 1.2, mass: 0.004},
+    Xe: {name: "Xenon", cost: 4.0, mass: 0.0001},
+    El: {name: "Electric Charge", cost: 0, mass: 0},
+    Ore: {name: "Ore", cost: 0.02, mass: 0.010},
+    Air: {name: "Air", cost: 0, mass: 0},
+    // Near Future fuels:
+    Ar: {name: "Argon", cost: (140620-33100)/10240000, mass: 18.27/10240000},
+    LH2: {name: "Liquid Hydrogen", cost: (199310.4-135806.4)/1728000, mass: (146.915-24.486)/1728000},
+    LCH4: {name: "Liquid Methane", cost: (647294.4-128894.4)/1152000, mass: (572.02-81.717)/1152000},
+    Li: {name: "Lithium", cost: (96205-74821)/35200, mass: 18.80/35200},
+    EnrU: {name: "Enriched Uranium", cost: 830400/960, mass: 10.53/960},
+    DeplU: {name: "Depleted Uranium", cost: 830400/960, mass: 10.53/960},
+    SC: {name: "Stored Charge", cost: 0, mass: 0},
+    // Far Future fuels:
+    Anti: {name: "Antimatter", cost: 3000000/300000, mass: 3/300000},
+    NSW: {name: "Nuclear Salt Water", cost: 336000/84000, mass: 88.20/84000},
+    NUK: {name: "Nuclear Pulse Units", cost: 980000/5600, mass: 280/5600},
+    FIP: {name: "Nuclear Fission Pellets", cost: 345600/28800, mass: 28.80/28800},
+    D: {name: "Deuterium", cost: (379500-187500)/750000, mass: (146.16-24.36)/750000},
+    He3: {name: "Helium-3", cost: (4185000-60000)/750000, mass: (53.1-8.85)/750000},
+} as const
 
-    get mass() {
-        let m = 0;
-        for(let resource in Resources.mass) {
-            m += this[resource] * Resources.mass[resource];
+export class Resources {
+    readonly amount: {[r in ResourceType]: number}
+
+    constructor(amount: Partial<Record<ResourceType, number>> = {}) {
+        this.amount = {} as {[r in ResourceType]: number}
+        for(const r in ResourceInfo) {
+            this.amount[r] = amount[r] || 0
         }
-        return m;
+    }
+    copy(changed_amount: Partial<Record<ResourceType, number>> = {}): Resources {
+        const changed = new Resources(this.amount)
+        for (const [key, value] of Object.entries(changed_amount)) {
+            changed.amount[key] = value
+        }
+        return changed
     }
 
-    get cost() {
-        let m = 0;
-        for(let resource in Resources.price) {
-            m += this[resource] * Resources.price[resource];
-        }
-        return m;
+    get mass(): {[r in ResourceType]: number} {
+        return objectMap(this.amount,
+            (amount, resource) => amount * ResourceInfo[resource].mass)
+    }
+    get cost(): {[r in ResourceType]: number} {
+        return objectMap(this.amount,
+            (amount, resource) => amount * ResourceInfo[resource].cost)
+    }
+    get total_mass(): number {
+        return Object.values(this.mass)
+            .reduce((acc, mass) => acc + mass, 0)
+    }
+    get total_cost(): number {
+        return Object.values(this.cost)
+            .reduce((acc, mass) => acc + mass, 0)
     }
 
     scaled(factor: number): Resources {
-        return Resources.create({
-            lf: this.lf * factor,
-            ox: this.ox * factor,
-            air: this.air * factor,
-            mono: this.mono * factor,
-            sf: this.sf * factor,
-            xe: this.xe * factor,
-            el: this.el * factor,
-            ore: this.ore * factor,
-        })
+        return new Resources(
+            objectMap(this.amount, (v) => factor*v)
+        )
     }
     add(other: Resources): Resources {
-        return Resources.create({
-            lf: this.lf + other.lf,
-            ox: this.ox + other.ox,
-            air: this.air + other.air,
-            mono: this.mono + other.mono,
-            sf: this.sf + other.sf,
-            xe: this.xe + other.xe,
-            el: this.el + other.el,
-            ore: this.ore + other.ore,
-        })
+        return new Resources(
+            objectMap(this.amount, (v, k) => v + other.amount[k])
+        )
     }
     sub(other: Resources): Resources {
-        return Resources.create({
-            lf: this.lf - other.lf,
-            ox: this.ox - other.ox,
-            air: this.air - other.air,
-            mono: this.mono - other.mono,
-            sf: this.sf - other.sf,
-            xe: this.xe - other.xe,
-            el: this.el - other.el,
-            ore: this.ore - other.ore,
-        })
+        return new Resources(
+            objectMap(this.amount, (v, k) => v - other.amount[k])
+        )
     }
-
-    consumedAtRatio(consumption: Resources): number {
-        /* Consume `this` resources at `consumption` rate.
-         * Calculates how many times `consumption` fits in `this` for the resource that is most critical
+    consumedAtRatio(rate: Resources): number {
+        /* Consume `this` resources at `rate`.
+         * Calculates how many times `rate` fits in `this` for the resource that is most critical
          * and returns that number.
          */
-        let number = Infinity;
-        if(consumption.lf > 0) number = Math.min(number, this.lf / consumption.lf)
-        if(consumption.ox > 0) number = Math.min(number, this.ox / consumption.ox)
-        if(consumption.air > 0) number = Math.min(number, this.air / consumption.air)
-        if(consumption.mono > 0) number = Math.min(number, this.mono / consumption.mono)
-        if(consumption.sf > 0) number = Math.min(number, this.sf / consumption.sf)
-        if(consumption.xe > 0) number = Math.min(number, this.xe / consumption.xe)
-        if(consumption.el > 0) number = Math.min(number, this.el / consumption.el)
-        if(consumption.ore > 0) number = Math.min(number, this.ore / consumption.ore)
-
-        if(number == Infinity) return null
-        return number
+        return Object.keys(this.amount).reduce(
+            (acc, key) => {
+                if( rate.amount[key] == 0) return acc
+                return Math.min(acc, this.amount[key] / rate.amount[key])
+            },
+            Infinity,
+        )
     }
 }
 
@@ -206,26 +204,20 @@ export class TechTreeNode extends Data {
 }
 
 export default class Part extends Data {
-    cost: number;
-    mass: number;
-    size: Set<Size>;
-    content: Resources = Resources.create();
-    consumption: Resources = Resources.create();
-    wikiUrl: string = undefined;
-    techTreeNode?: TechTreeNode;
+    cost: number
+    mass: number
+    size: Set<Size>
+    content: Resources = new Resources()
+    consumption: Resources = new Resources()
+    wikiUrl: string = undefined
+    techTreeNode?: TechTreeNode
 
     emptied() {
-        let {cost, mass, content} = this;
-        for(const resource in Resources.price) {
-            cost -= this.content[resource] * Resources.price[resource];
-            mass -= this.content[resource] * Resources.mass[resource];
-            content = content.copy({[resource]: 0});
-        }
         // @ts-ignore
         return this.copy({
-            cost,
-            mass,
-            content,
+            cost: this.cost - this.content.total_cost,
+            mass: this.mass - this.content.total_mass,
+            content: new Resources(),
         });
     }
 }

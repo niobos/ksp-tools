@@ -16,9 +16,9 @@ function App() {
     const drill = miningCalc(engineerStars, mining)
     const convert = convertingCalc(engineerStars, drill.totalOreProduction, converting)
 
-    const elec = drill.electricalPower - convert.resources.el
-    let fuel = convert.resources.lf
-    let ox = convert.resources.ox
+    const elec = drill.electricalPower - convert.resources.amount.El
+    let fuel = convert.resources.amount.LF
+    let ox = convert.resources.amount.Ox
 
     if(fuelCell) {
         fuel -= elec * 0.00125  // 0.0016875 -> 1.5 (0.001125); 0.02025 -> 18 (0.001125)
@@ -67,7 +67,7 @@ function App() {
         <tr><td>Fuel production:</td><td>
             {fuel.toFixed(3)} Lf/s = {(fuel*3600*6).toFixed(0)} Lf/d<br/>
             {ox.toFixed(3)} Ox/s = {(ox*3600*6).toFixed(0)} Ox/d<br/>
-            {convert.resources.mono.toFixed(3)} Mono/s = {(convert.resources.mono*3600*6).toFixed(0)} Mono/d<br/>
+            {convert.resources.amount.Mono.toFixed(3)} Mono/s = {(convert.resources.amount.Mono*3600*6).toFixed(0)} Mono/d<br/>
         </td></tr>
         </tbody></table>
     </div>

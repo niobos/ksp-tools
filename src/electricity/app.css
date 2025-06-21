@@ -15,5 +15,5 @@ input[type="text"] {
 }
 
 table.sortableTable, table.sortableTable th, table.sortableTable td {
-    border: 1px solid black;
+    border: 1px solid var(--foreground-color);
 }
