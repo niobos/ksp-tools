@@ -3,7 +3,7 @@
 
 export const g0 = 9.80665;  // https://wiki.kerbalspaceprogram.com/wiki/Specific_impulse
 
-export function dvForDm(startMass: number, endMass: number, isp: number) {
+export function dvForDm(startMass: number, endMass: number, isp: number): number {
     /* Tsiolkovsky rocket equation
      */
     const ve = isp * g0

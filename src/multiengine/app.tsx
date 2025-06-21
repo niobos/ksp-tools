@@ -4,12 +4,12 @@ import ReactDOM from 'react-dom';
 import useFragmentState from "useFragmentState";
 import {FloatInput} from "formattedInput";
 import {engines as kspEngines} from "../utils/kspParts-engine";
-import {Resources} from "../utils/kspParts";
+import {Resources, ResourceInfo} from "../utils/kspParts";
 import {KerbalYdhmsInput} from "../components/formattedInput";
 import {arrayInsertElement, arrayMoveElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 import {dtForDv, dvForDm, dvForDt, massAfterDv, massBeforeDv} from "../utils/rocket";
 
-const FUEL_TYPES = ['lf', 'ox', 'mono', 'xe']
+const FUEL_TYPES = ['LF', 'Ox', 'Mono', 'Xe']
 // Don't list air, electricity, solid fuel or ore
 const DEFAULT_ENGINE_NAME = Object.keys(kspEngines)[0]
 
@@ -148,13 +148,13 @@ function Burn(props: BurnProps): JSX.Element {
         <ul>{FUEL_TYPES.map((fuelType, idx) => <li
             key={idx}
             className={
-                Math.abs(props.fuelRemaining[fuelType]) < 0.1
+                Math.abs(props.fuelRemaining.amount[fuelType]) < 0.1
                     ? "zero"
-                    : props.fuelRemaining[fuelType] < 0 ? "error" : ""
+                    : props.fuelRemaining.amount[fuelType] < 0 ? "error" : ""
             }
         >
-            {props.fuelRemaining[fuelType].toFixed(1)} units{" = "}
-            {(props.fuelRemaining[fuelType] * Resources.mass[fuelType]).toFixed(3)}t {fuelType}
+            {props.fuelRemaining.amount[fuelType].toFixed(1)} units{" = "}
+            {props.fuelRemaining.mass[fuelType].toFixed(3)}t {fuelType}
         </li>)}</ul>
         End mass: {props.endMass.toFixed(3)}t<br/>
     </li>
@@ -163,7 +163,7 @@ function Burn(props: BurnProps): JSX.Element {
 function combineEngines(engines: Array<EngineSpecs>) {
     let totalThrust = 0
     let totalThrustPerIsp = 0
-    let fuelRatio = Resources.create({})
+    let fuelRatio = new Resources()
     for(let engine of engines) {
         const engineSpec = resolveEngine(engine.type)
         totalThrust += engine.number * engineSpec.thrust
@@ -181,19 +181,16 @@ function calcBurn(
 ): Omit<BurnProps, "onChange" | "onMove"> {
     const {thrust, isp, fuelRatio} = combineEngines(burn.engines)
 
-    let totalFuelMass = 0
-    for(let fuelType of FUEL_TYPES) {
-        totalFuelMass += fuelRemaining[fuelType] * Resources.mass[fuelType]
-    }
+    let totalFuelMass = fuelRemaining.total_mass
     const startMass = dryMass + totalFuelMass
     const endMass = massAfterDv(startMass, burn.dv, isp)
     const consumedFuelMass = startMass - endMass
-    fuelRemaining = fuelRemaining.sub(fuelRatio.scaled(consumedFuelMass / fuelRatio.mass))
+    fuelRemaining = fuelRemaining.sub(fuelRatio.scaled(consumedFuelMass / fuelRatio.total_mass))
 
     const minFuelRemaining = fuelRemaining.sub(fuelRatio.scaled(
         fuelRemaining.consumedAtRatio(fuelRatio)
     ))
-    const maxDv = dvForDm(startMass, dryMass + minFuelRemaining.mass, isp)
+    const maxDv = dvForDm(startMass, dryMass + minFuelRemaining.total_mass, isp)
 
     return {
         dv: burn.dv,
@@ -213,7 +210,7 @@ function calcFuelRequired(
 
     const startMass = massBeforeDv(endMass, burn.dv, isp)
     const fuelMass = startMass - endMass
-    return fuelRatio.scaled(fuelMass / fuelRatio.mass)
+    return fuelRatio.scaled(fuelMass / fuelRatio.total_mass)
 }
 
 function App(): JSX.Element {
@@ -229,8 +226,8 @@ function App(): JSX.Element {
     const [fuel, setFuel] = useFragmentState<Resources>(
         'f',
         s => {
-            if(s == null) return Resources.create({lf: 19/.005, ox: 11/.005})
-            return Resources.create(JSON.parse(s))
+            if(s == null) return new Resources({LF: 19/.005, Ox: 11/.005})
+            return new Resources(JSON.parse(s))
         },
         d => JSON.stringify(d),
     )
@@ -263,13 +260,13 @@ function App(): JSX.Element {
         totalDv += burn.dv
     }
 
-    let fuelFromZero = Resources.create({})
+    let fuelFromZero = new Resources()
     let mass = dryMass
     for(let idx=burns.length-1; idx >= 0; idx--) {
         // Iterate last to first
         const extraFuel = calcFuelRequired(burns[idx], mass)
         fuelFromZero = fuelFromZero.add(extraFuel)
-        mass += extraFuel.mass
+        mass += extraFuel.total_mass
     }
 
     return <>
@@ -286,12 +283,12 @@ function App(): JSX.Element {
             <ul>{FUEL_TYPES.map((fuelType, idx) => <li key={idx}>
                 <FloatInput
                     decimals={1}
-                    value={fuel[fuelType]}
+                    value={fuel.amount[fuelType]}
                     onChange={v => setFuel(fuel.copy({ [fuelType]: v}))}
                 /> units = <FloatInput
                     decimals={3}
-                    value={fuel[fuelType] * Resources.mass[fuelType]}
-                    onChange={v => setFuel(fuel.copy({ [fuelType]: v / Resources.mass[fuelType]}))}
+                    value={fuel.mass[fuelType]}
+                    onChange={v => setFuel(fuel.copy({ [fuelType]: v / ResourceInfo[fuelType].mass}))}
                 />t {fuelType}
             </li>)}</ul>
             <input type="button" value="Calculate to end up emtpy"

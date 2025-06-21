@@ -33,18 +33,18 @@ function generateDeviceMap() {
         const options = {};
         for (let deviceName in probeCores) {
             const device = probeCores[deviceName];
-            if (device.consumption.el === 0) continue;
+            if (device.consumption.amount.El === 0) continue;
 
             const shortName = deviceName;
             options[deviceName] = shortName;
-            valueMap[shortName] = device.consumption.el;
+            valueMap[shortName] = device.consumption.amount.El;
             labelMap[shortName] = deviceName;
 
             if (device.hibernateMultiplier !== undefined) {
                 deviceName = `${deviceName} (hibernating)`;
                 const hibernatingShortName = shortName + '@H';
                 options[deviceName] = hibernatingShortName;
-                valueMap[hibernatingShortName] = device.consumption.el * device.hibernateMultiplier;
+                valueMap[hibernatingShortName] = device.consumption.amount.El * device.hibernateMultiplier;
                 labelMap[hibernatingShortName] = deviceName;
             }
         }

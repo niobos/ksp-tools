@@ -131,10 +131,10 @@ function solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue, 
         const lightDuration = shadeValue.interval - shadeValue.duration;
         const shadeChargePower = shadeEnergy / lightDuration;
         const neededPowerDuringLight = continuousPowerValue + burstChargePower + shadeChargePower;
-        const panelPower = (-panel.consumption.el) * solarEfficiency;
+        const panelPower = (-panel.consumption.amount.El) * solarEfficiency;
         const numDev = Math.ceil(neededPowerDuringLight / panelPower);
         const batteryEnergy = shadeEnergy + burstPowerValue.energy;
-        const numBatteries = Math.ceil(batteryEnergy / battery.content.el);
+        const numBatteries = Math.ceil(batteryEnergy / battery.content.amount.El);
         if (panel.wikiUrl !== undefined) {
             panelName = <a href={panel.wikiUrl}>{panelName}</a>;
         }
@@ -147,7 +147,7 @@ function solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue, 
             cost: numDev * panel.cost + numBatteries * batteries["Z-100"].cost,
             mass: numDev * panel.mass + numBatteries * batteries["Z-100"].mass,
             maxPower: numDev * panelPower,
-            maxEnergy: numBatteries * battery.content.el,
+            maxEnergy: numBatteries * battery.content.amount.El,
             shadeBatteryEnergy: shadeEnergy,
             burstBatteryEnergy: burstPowerValue.energy,
             nominalPower: neededPowerDuringLight,
@@ -167,13 +167,13 @@ function fuelCellSolutions(burstPowerValue, continuousPowerValue, fuelTankValue,
 
         const burstChargePower = burstPowerValue.energy / burstPowerValue.interval;
         const neededPower = continuousPowerValue + burstChargePower;
-        const numDev = Math.ceil(neededPower / (-cell.consumption.el));
-        const numBatteries = Math.max(0, Math.ceil((burstPowerValue.energy - numDev * cell.content.el) / batteries['Z-100'].content.el));
+        const numDev = Math.ceil(neededPower / (-cell.consumption.amount.El));
+        const numBatteries = Math.max(0, Math.ceil((burstPowerValue.energy - numDev * cell.content.amount.El) / batteries['Z-100'].content.amount.El));
         const totalEnergy = neededPower * missionDuration;
-        const fullLoadTime = totalEnergy / (-cell.consumption.el);  // equivalent time at 100% load
+        const fullLoadTime = totalEnergy / (-cell.consumption.amount.El);  // equivalent time at 100% load
         const neededFuelMass = fullLoadTime * (
-            cell.consumption.lf * Resources.mass.lf
-            + cell.consumption.ox * Resources.mass.ox
+            cell.consumption.mass.LF
+            + cell.consumption.mass.Ox
         );
         /* fullTank = emptyTank + fuel
          * fullTank / emptyTank = WDR  => emptyTank = fullTank / WDR
@@ -195,8 +195,8 @@ function fuelCellSolutions(burstPowerValue, continuousPowerValue, fuelTankValue,
                 <span>{numDev} × {cellName} + {numBatteries} × {batteryNameJsx} + {neededTankMass.toFixed(1)}t fuel tanks</span>,
             cost: numDev * cell.cost + numBatteries * batteries["Z-100"].cost + neededFuelMass * fuelTankValue.cost,
             mass: numDev * cell.mass + numBatteries * batteries["Z-100"].mass + neededFuelMass,
-            maxPower: numDev * (-cell.consumption.el),
-            maxEnergy: numDev * cell.content.el + numBatteries * battery.content.el,
+            maxPower: numDev * (-cell.consumption.amount.El),
+            maxEnergy: numDev * cell.content.amount.El + numBatteries * battery.content.amount.El,
             shadeBatteryEnergy: 0,
             burstBatteryEnergy: burstPowerValue.energy,
             nominalPower: neededPower,
@@ -212,8 +212,8 @@ function rtgSolutions(burstPowerValue, continuousPowerValue): Solution[] {
     const dev = electricalGenerators["PB-NUK Radioisotope Thermoelectric Generator"];
     const burstCharge = burstPowerValue.energy / burstPowerValue.interval;
     const neededPower = continuousPowerValue + burstCharge;
-    const numDev = Math.ceil(neededPower / (-dev.consumption.el));
-    const numBatteries = Math.ceil(burstPowerValue.energy / batteries['Z-100'].content.el);
+    const numDev = Math.ceil(neededPower / (-dev.consumption.amount.El));
+    const numBatteries = Math.ceil(burstPowerValue.energy / batteries['Z-100'].content.amount.El);
     let genName: any = 'PB-NUK';
     if (dev.wikiUrl !== undefined) {
         genName = <a href={dev.wikiUrl}>{genName}</a>;
@@ -226,8 +226,8 @@ function rtgSolutions(burstPowerValue, continuousPowerValue): Solution[] {
         config: <span>{numDev} × {genName} + {numBatteries} × {batteryNameJsx}</span>,
         cost: numDev * dev.cost + numBatteries * batteries["Z-100"].cost,
         mass: numDev * dev.mass + numBatteries * batteries["Z-100"].mass,
-        maxPower: numDev * (-dev.consumption.el),
-        maxEnergy: numBatteries * battery.content.el,
+        maxPower: numDev * (-dev.consumption.amount.El),
+        maxEnergy: numBatteries * battery.content.amount.El,
         shadeBatteryEnergy: 0,
         burstBatteryEnergy: burstPowerValue.energy,
         nominalPower: continuousPowerValue + burstCharge,

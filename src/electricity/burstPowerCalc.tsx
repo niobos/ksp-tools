@@ -49,7 +49,7 @@ function generateDeviceMap() {
         const shortName = deviceName;
         const label = `${deviceName}`;
         options[label] = shortName;
-        valueMap[shortName] = device.consumption.el;
+        valueMap[shortName] = device.consumption.amount.El;
         labelMap[shortName] = label;
         hierLabelMap['Engines'] = options;
     }

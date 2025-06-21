@@ -127,8 +127,8 @@ export function calc(engineerStars, drillOreRate, value) {
     const thermal = maxThermal
 
     return {
-        maxResources: Resources.create({el: -maxElectricity, ore: -maxOreConsumption}),
-        resources: Resources.create({lf: lfProd, ox: oxProd, mono: monoProd, el: -elecCons, ore: -oreCons}),
+        maxResources: new Resources({El: -maxElectricity, Ore: -maxOreConsumption}),
+        resources: new Resources({LF: lfProd, Ox: oxProd, Mono: monoProd, El: -elecCons, Ore: -oreCons}),
         thermal,
         oreConsumptionLimit,
         limitFactor,
@@ -170,10 +170,10 @@ export function Converting(props: ConvertingProps) {
             <tr>
                 <td>Max input</td>
                 <td>
-                    {(-maxResources.ore).toFixed(3)} Ore/s
-                    {" = "}{((-maxResources.ore) * 3600).toFixed(1)} Ore/h
-                    {" = "}{((-maxResources.ore) * 3600 * 6).toFixed(1)} Ore/d<br/>
-                    {(-maxResources.el).toFixed(1)} ⚡/s<br/>
+                    {(-maxResources.amount.Ore).toFixed(3)} Ore/s
+                    {" = "}{((-maxResources.amount.Ore) * 3600).toFixed(1)} Ore/h
+                    {" = "}{((-maxResources.amount.Ore) * 3600 * 6).toFixed(1)} Ore/d<br/>
+                    {(-maxResources.amount.El).toFixed(1)} ⚡/s<br/>
                     {thermal} kW cooling
                 </td>
             </tr>
@@ -202,17 +202,17 @@ export function Converting(props: ConvertingProps) {
                 <td>Limited flow</td>
                 <td>
                     {(engineerMultiplier * limitFactor * 100).toFixed(2)} %<br/>
-                    {(-resources.ore).toFixed(3)} Ore/s
-                    = {((-resources.ore) * 3600).toFixed(1)} Ore/h{limitedBy === 'ore' ? " (limit)" : ""}<br/>
-                    {(-resources.el).toFixed(3)} ⚡/s
-                    = {((-resources.el) * 60).toFixed(1)} ⚡/m{limitedBy === 'elec' ? " (limit)" : ""}<br/>
+                    {(-resources.amount.Ore).toFixed(3)} Ore/s
+                    = {((-resources.amount.Ore) * 3600).toFixed(1)} Ore/h{limitedBy === 'ore' ? " (limit)" : ""}<br/>
+                    {(-resources.amount.El).toFixed(3)} ⚡/s
+                    = {((-resources.amount.El) * 60).toFixed(1)} ⚡/m{limitedBy === 'elec' ? " (limit)" : ""}<br/>
                     {/*{thermal.toFixed(0)} kW<br/>*/}
-                    {resources.lf.toFixed(3)} Lf/s = {(resources.lf * 3600).toFixed(1)} Lf/h
-                    = {(resources.lf * 3600 * 6).toFixed(0)} Lf/d<br/>
-                    {resources.ox.toFixed(3)} Ox/s = {(resources.ox * 3600).toFixed(1)} Ox/h
-                    = {(resources.ox * 3600 * 6).toFixed(0)} Ox/d<br/>
-                    {resources.mono.toFixed(3)} Mono/s = {(resources.mono * 3600).toFixed(1)} Mono/h
-                    = {(resources.mono * 3600 * 6).toFixed(0)} Mono/d<br/>
+                    {resources.amount.LF.toFixed(3)} Lf/s = {(resources.amount.LF * 3600).toFixed(1)} Lf/h
+                    = {(resources.amount.LF * 3600 * 6).toFixed(0)} Lf/d<br/>
+                    {resources.amount.Ox.toFixed(3)} Ox/s = {(resources.amount.Ox * 3600).toFixed(1)} Ox/h
+                    = {(resources.amount.Ox * 3600 * 6).toFixed(0)} Ox/d<br/>
+                    {resources.amount.Mono.toFixed(3)} Mono/s = {(resources.amount.Mono * 3600).toFixed(1)} Mono/h
+                    = {(resources.amount.Mono * 3600 * 6).toFixed(0)} Mono/d<br/>
                 </td>
             </tr>
             </tbody>

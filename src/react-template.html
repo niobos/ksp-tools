@@ -34,6 +34,29 @@
          background-color: rgb(19, 22, 33);
          background-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.15));
      }
+
+     /* Dark mode styles */
+     :root {
+      --background-color: white;
+      --foreground-color: black;
+      --alert-color: #ffdddd;
+      --link-color: #0000ff;
+     }
+     @media (prefers-color-scheme: dark) {
+      :root {
+       --background-color: #121212;
+       --foreground-color: white;
+       --alert-color: #800000;
+       --link-color: #6060ff;
+      }
+     }
+     body {
+      background-color: var(--background-color);
+      color: var(--foreground-color);
+     }
+     a {
+      color: var(--link-color);
+     }
  </style>
 </head>
 <body>

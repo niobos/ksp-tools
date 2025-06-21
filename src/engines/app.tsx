@@ -19,14 +19,20 @@ import './app.css'
 
 const fuelTypes = ['lf', 'ox', 'air', 'sf', 'xe', 'mono']
 
-function calcFuelTankMass(dv, isp, payloadMass, tankWetDryRatio, payloadMassDry) {
+function calcFuelTankMass(
+    dv: number,
+    isp: number,
+    payloadMass: number,
+    tankWetDryRatio: number,
+    payloadMassDry: number,
+): number {
     /* Calculate the mass of fuel tanks needed to get the desired ∆v
      * Returns either the mass of tanks (with the given wet:dry ratio) required.
      * or NaN, if no amount of fuel would achieve the requested ∆v
      */
-    if(payloadMassDry === undefined) payloadMassDry = payloadMass;
+    if(payloadMassDry === undefined) payloadMassDry = payloadMass
 
-    const wetDryRatio = massBeforeDv(1, dv, isp)
+    const wetDryRatio = massBeforeDv(1, dv, isp)  // needed wet-to-dry ratio
     if(wetDryRatio >= tankWetDryRatio) return NaN;
 
     /* m_wet     m_payload_w + m_empty_tanks + m_fuel
@@ -223,7 +229,8 @@ export default function App() {
 
         let numEngines: number
         let fuelTankMass: number, totalMass: number, emptyMass: number, actualDv: number
-        if(engine.consumption.sf > 0) { // SRB
+        if(engine.consumption.sf > 0) {
+            // SRBs: we can't add fuel, fuel is always integrated with the engine
             /* a = n * F / m = n * F / (m_payload + n*m_engine)
              * => a * m_payload + a * n * m_engine = n * F
              * => (F - a * m_engine) * n = a * m_payload
@@ -296,7 +303,7 @@ export default function App() {
             accelerationEmpty: engine.thrust(pressureValue) * numEngines / emptyMass,
             size: [...engine.size].map(s => s.shortDescription).join(', '),
             gimbal: engine.gimbal,
-            alternator: Math.max(0, -engine.consumption.scaled(numEngines).el),
+            alternator: Math.max(0, -engine.consumption.scaled(numEngines).amount.El),
         });
     }
 
