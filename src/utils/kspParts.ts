@@ -3,6 +3,7 @@ import {objectMap} from "./utils";
 
 export type ResourceProperties = {
     name: string
+    mod?: string
     cost: number
     mass: number
 }
@@ -20,20 +21,20 @@ export const ResourceInfo: Record<ResourceType, Readonly<ResourceProperties>> = 
     Ore: {name: "Ore", cost: 0.02, mass: 0.010},
     Air: {name: "Air", cost: 0, mass: 0},
     // Near Future fuels:
-    Ar: {name: "Argon", cost: (140620-33100)/10240000, mass: 18.27/10240000},
-    LH2: {name: "Liquid Hydrogen", cost: (199310.4-135806.4)/1728000, mass: (146.915-24.486)/1728000},
-    LCH4: {name: "Liquid Methane", cost: (647294.4-128894.4)/1152000, mass: (572.02-81.717)/1152000},
-    Li: {name: "Lithium", cost: (96205-74821)/35200, mass: 18.80/35200},
-    EnrU: {name: "Enriched Uranium", cost: 830400/960, mass: 10.53/960},
-    DeplU: {name: "Depleted Uranium", cost: 830400/960, mass: 10.53/960},
-    SC: {name: "Stored Charge", cost: 0, mass: 0},
+    Ar: {name: "Argon", mod: "NFT", cost: (140620-33100)/10240000, mass: 18.27/10240000},
+    LH2: {name: "Liquid Hydrogen", mod: "NFT", cost: (199310.4-135806.4)/1728000, mass: (146.915-24.486)/1728000},
+    LCH4: {name: "Liquid Methane", mod: "NFT", cost: (647294.4-128894.4)/1152000, mass: (572.02-81.717)/1152000},
+    Li: {name: "Lithium", mod: "NFT", cost: (96205-74821)/35200, mass: 18.80/35200},
+    EnrU: {name: "Enriched Uranium", mod: "NFT", cost: 830400/960, mass: 10.53/960},
+    DeplU: {name: "Depleted Uranium", mod: "NFT", cost: 830400/960, mass: 10.53/960},
+    SC: {name: "Stored Charge", mod: "NFT", cost: 0, mass: 0},
     // Far Future fuels:
-    Anti: {name: "Antimatter", cost: 3000000/300000, mass: 3/300000},
-    NSW: {name: "Nuclear Salt Water", cost: 336000/84000, mass: 88.20/84000},
-    NUK: {name: "Nuclear Pulse Units", cost: 980000/5600, mass: 280/5600},
-    FIP: {name: "Nuclear Fission Pellets", cost: 345600/28800, mass: 28.80/28800},
-    D: {name: "Deuterium", cost: (379500-187500)/750000, mass: (146.16-24.36)/750000},
-    He3: {name: "Helium-3", cost: (4185000-60000)/750000, mass: (53.1-8.85)/750000},
+    Anti: {name: "Antimatter", mod: "FFT", cost: 3000000/300000, mass: 3/300000},
+    NSW: {name: "Nuclear Salt Water", mod: "FFT", cost: 336000/84000, mass: 88.20/84000},
+    NUK: {name: "Nuclear Pulse Units", mod: "FFT", cost: 980000/5600, mass: 280/5600},
+    FIP: {name: "Nuclear Fission Pellets", mod: "FFT", cost: 345600/28800, mass: 28.80/28800},
+    D: {name: "Deuterium", mod: "FFT", cost: (379500-187500)/750000, mass: (146.16-24.36)/750000},
+    He3: {name: "Helium-3", mod: "FFT", cost: (4185000-60000)/750000, mass: (53.1-8.85)/750000},
 } as const
 
 export class Resources {
