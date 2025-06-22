@@ -1,8 +1,8 @@
 import * as React from 'react'
 import {ReactElement, useState} from 'react'
 import ReactDOM from 'react-dom'
-import useFragmentState, {updatedHashValue} from 'useFragmentState'
-import {Size} from "../utils/kspParts"
+import useFragmentState from 'useFragmentState'
+import {ResourceInfo, Size} from "../utils/kspParts"
 import {FloatInput} from "formattedInput"
 import Multiselect from "../components/multiselect"
 import {KspFund} from "../components/kspIcon"
@@ -16,8 +16,6 @@ import {dvForDm, massBeforeDv} from "../utils/rocket"
 import kspSystems, {Body} from "../utils/kspSystems"
 import {HierarchicalBodySelect, SystemSelect} from "../components/kspSystemSelect"
 import './app.css'
-
-const fuelTypes = ['lf', 'ox', 'air', 'sf', 'xe', 'mono']
 
 function calcFuelTankMass(
     dv: number,
@@ -209,8 +207,8 @@ export default function App() {
 
         // Correct fuel type?
         let skip = false;
-        for (let fuel of fuelTypes) {
-            if (engine.consumption[fuel] > 0 && !fuelType.has(fuel)) {
+        for (let fuel of Object.keys(ResourceInfo)) {
+            if (engine.consumption.amount[fuel] > 0 && !fuelType.has(fuel)) {
                 skip = true;
                 break;
             }
@@ -362,7 +360,7 @@ export default function App() {
             <Multiselect items={objectMap(Size, v => v.longDescription)} value={sizes} onChange={setSizes}/>
         </td></tr>
         <tr><td>Fuel types</td><td>
-            <Multiselect items={fuelTypes} value={fuelType} onChange={setFuelType}/>
+            <Multiselect items={Object.keys(ResourceInfo)} value={fuelType} onChange={setFuelType}/>
         </td></tr>
         <tr><td>Fuel tank</td><td>
             <Preset options={Object.keys(fuelTanks).reduce((acc, el) => {acc[el] = el; return acc}, {})}
