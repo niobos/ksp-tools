@@ -6,10 +6,9 @@ import {KerbalYdhmsInput} from "../components/formattedInput";
 import useFragmentState from 'useFragmentState';
 import Preset from "../components/preset";
 import SortableTable from "sortableTable";
-import {Resources} from "../utils/kspParts";
 import FuelTank from "../components/fuelTank";
 import {fuelTanks} from "../utils/kspParts-fuelTanks";
-import {batteries, electricalGenerators, FuelCell, SolarPanel} from "../utils/kspParts-solarPanel";
+import {batteries, electricalGenerators, FuelCell, SolarPanel} from "../utils/kspParts-electric";
 import {fromPreset, objectMap} from "../utils/utils";
 import {SystemSelect} from "../components/kspSystemSelect"
 import kspSystems, {KspSystem} from "../utils/kspSystems"
@@ -289,7 +288,7 @@ export default function App() {
                     />⚡/h<br/>
                     <div style={{
                         display: continuousPowerCalcOpen ? "block" : "none",
-                        borderLeft: "1px solid black",
+                        borderLeft: "1px solid var(--foreground-color)",
                         marginLeft: "0.3em",
                         paddingLeft: "0.3em",
                     }}>
@@ -313,7 +312,7 @@ export default function App() {
                 /> charge time
                     <div style={{
                         display: burstPowerCalcOpen ? "block" : "none",
-                        borderLeft: "1px solid black",
+                        borderLeft: "1px solid var(--foreground-color)",
                         marginLeft: "0.3em",
                         paddingLeft: "0.3em",
                     }}>
