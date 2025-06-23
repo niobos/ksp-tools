@@ -8,9 +8,9 @@ export type ResourceProperties = {
     mass: number
 }
 
-export type ResourceType = "LF" | "Ox" | "SF" | "Mono" | "Xe" | "El" | "Ore" | "Air" |
+type ResourceType = "LF" | "Ox" | "SF" | "Mono" | "Xe" | "El" | "Ore" | "Abl" | "Air" |
     /* Near Future Tech */ "Ar" | "LH2" | "LCH4" | "Li" | "EnrU" | "DeplU" | "SC" |
-    /* Far Future Tech */ "Anti" | "NSW" | "NUK" | "FIP" | "D" | "He3"
+    /* Far Future Tech */ "Anti" | "NSW" | "NUK" | "FIP" | "Frag" | "D" | "He3"
 export const ResourceInfo: Record<ResourceType, Readonly<ResourceProperties>> = {
     LF: {name: "Liquid Fuel", cost: 0.8, mass: 0.005},
     Ox: {name: "Oxidizer", cost: 0.16, mass: 0.005},
@@ -20,6 +20,7 @@ export const ResourceInfo: Record<ResourceType, Readonly<ResourceProperties>> = 
     El: {name: "Electric Charge", cost: 0, mass: 0},
     Ore: {name: "Ore", cost: 0.02, mass: 0.010},
     Air: {name: "Air", cost: 0, mass: 0},
+    Abl: {name: "Ablator", cost: null, mass: null},
     // Near Future fuels:
     Ar: {name: "Argon", mod: "NFT", cost: (140620-33100)/10240000, mass: 18.27/10240000},
     LH2: {name: "Liquid Hydrogen", mod: "NFT", cost: (199310.4-135806.4)/1728000, mass: (146.915-24.486)/1728000},
@@ -32,7 +33,8 @@ export const ResourceInfo: Record<ResourceType, Readonly<ResourceProperties>> = 
     Anti: {name: "Antimatter", mod: "FFT", cost: 3000000/300000, mass: 3/300000},
     NSW: {name: "Nuclear Salt Water", mod: "FFT", cost: 336000/84000, mass: 88.20/84000},
     NUK: {name: "Nuclear Pulse Units", mod: "FFT", cost: 980000/5600, mass: 280/5600},
-    FIP: {name: "Nuclear Fission Pellets", mod: "FFT", cost: 345600/28800, mass: 28.80/28800},
+    FIP: {name: "Fission Pellets", mod: "FFT", cost: 345600/28800, mass: 28.80/28800},
+    Frag: {name: "Fissionable Particles", mod: "FFT", cost: (163200-131200)/640, mass: (1.382-0.461)/640},
     D: {name: "Deuterium", mod: "FFT", cost: (379500-187500)/750000, mass: (146.16-24.36)/750000},
     He3: {name: "Helium-3", mod: "FFT", cost: (4185000-60000)/750000, mass: (53.1-8.85)/750000},
 } as const
@@ -118,6 +120,27 @@ export class Size {
         public readonly shortDescription: string,
         public readonly longDescription: string
     ) {}
+}
+
+export function sizesWithMods(activeMods: Set<string>): Record<string, string> {
+    const sizes = {
+        "0": "0.625m",
+        "1": "1.25m/Mk1",
+        "2": "2.5m",
+        "3": "3.75m",
+        "Mk2": "Mk2",
+        "Mk3": "Mk3",
+        "R": "Radial",
+    }
+    if(activeMods.has("MH")) {
+        sizes["1.5"] = "1.875m"
+        sizes["4"] = "5m"
+    }
+    if(activeMods.has("NFT")) {
+        sizes["4"] = "5m"
+        sizes["5"] = "7.5m"
+    }
+    return sizes
 }
 
 export class AllDependencies {
@@ -207,7 +230,7 @@ export class TechTreeNode extends Data {
 export default class Part extends Data {
     cost: number
     mass: number
-    size: Set<Size>
+    size: Set<Size> | Set<string>
     content: Resources = new Resources()
     consumption: Resources = new Resources()
     wikiUrl: string = undefined

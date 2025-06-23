@@ -3,6 +3,8 @@ export type ModInfo = {
 }
 
 const kspMods: Record<string, ModInfo> = {
+    MH: {name: "Making History DLC"},
+    BG: {name: "Breaking Ground DLC"},
     OPM: {name: "Outer Planets"},
     KS: {name: "Kcalbeloh System"},
     NFT: {name: "Near Future Tech"},

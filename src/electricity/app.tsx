@@ -8,7 +8,7 @@ import Preset from "../components/preset";
 import SortableTable from "sortableTable";
 import FuelTank from "../components/fuelTank";
 import {fuelTanks} from "../utils/kspParts-fuelTanks";
-import {batteries, electricalGenerators, FuelCell, SolarPanel} from "../utils/kspParts-electric";
+import {Convertor, electricalPartsWithMods, RTG, SolarPanel} from "../utils/kspParts-electric";
 import {fromPreset, objectMap} from "../utils/utils";
 import {kspSystem, KspSystem} from "../utils/kspSystems"
 import {
@@ -115,116 +115,104 @@ type Solution = {
 };
 
 // Only use Z-100 batteries. Other batteries have same energy/mass ratio, but have higher cost/energy ratio
-const batteryName = "Z-100";
-const battery = batteries[batteryName];
+const batteryName = "Z-100"
+const battery = electricalPartsWithMods()[batteryName]  // TODO
 
-function solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue, solarEfficiency: number): Solution[] {
-    const solutions: Solution[] = [];
-    let panelName: any;
-    for (panelName in electricalGenerators) {
-        const panel = electricalGenerators[panelName];
-        if (!(panel instanceof SolarPanel)) continue;
-
-        const burstChargePower = burstPowerValue.energy / burstPowerValue.interval;
-        const shadeEnergy = shadeValue.duration * (continuousPowerValue + burstChargePower);
-        const lightDuration = shadeValue.interval - shadeValue.duration;
-        const shadeChargePower = shadeEnergy / lightDuration;
-        const neededPowerDuringLight = continuousPowerValue + burstChargePower + shadeChargePower;
-        const panelPower = (-panel.consumption.amount.El) * solarEfficiency;
-        const numDev = Math.ceil(neededPowerDuringLight / panelPower);
-        const batteryEnergy = shadeEnergy + burstPowerValue.energy;
-        const numBatteries = Math.ceil(batteryEnergy / battery.content.amount.El);
-        if (panel.wikiUrl !== undefined) {
-            panelName = <a href={panel.wikiUrl}>{panelName}</a>;
-        }
-        let batteryNameJsx: any = batteryName;
-        if(battery.wikiUrl !== undefined) {
-            batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>;
-        }
-        solutions.push({
-            config: <span>{numDev} × {panelName} + {numBatteries} × {batteryNameJsx}</span>,
-            cost: numDev * panel.cost + numBatteries * batteries["Z-100"].cost,
-            mass: numDev * panel.mass + numBatteries * batteries["Z-100"].mass,
-            maxPower: numDev * panelPower,
-            maxEnergy: numBatteries * battery.content.amount.El,
-            shadeBatteryEnergy: shadeEnergy,
-            burstBatteryEnergy: burstPowerValue.energy,
-            nominalPower: neededPowerDuringLight,
-            burstChargePower: burstChargePower,
-            darknessChargePower: shadeChargePower,
-        });
+function calcSolarPanelSolution(
+    panelName, panel: SolarPanel, shadeValue, continuousPowerValue, burstPowerValue, solarEfficiency: numbe
+): Solution {
+    const burstChargePower = burstPowerValue.energy / burstPowerValue.interval
+    const shadeEnergy = shadeValue.duration * (continuousPowerValue + burstChargePower)
+    const lightDuration = shadeValue.interval - shadeValue.duration
+    const shadeChargePower = shadeEnergy / lightDuration
+    const neededPowerDuringLight = continuousPowerValue + burstChargePower + shadeChargePower
+    const panelPower = (-panel.consumption.amount.El) * solarEfficiency
+    const numDev = Math.ceil(neededPowerDuringLight / panelPower)
+    const batteryEnergy = shadeEnergy + burstPowerValue.energy
+    const numBatteries = Math.ceil(batteryEnergy / battery.content.amount.El)
+    if (panel.wikiUrl !== undefined) {
+        panelName = <a href={panel.wikiUrl}>{panelName}</a>
     }
-    return solutions;
-}
-
-function fuelCellSolutions(burstPowerValue, continuousPowerValue, fuelTankValue, missionDuration): Solution[] {
-    const solutions: Solution[] = [];
-    let cellName: any;
-    for (cellName in electricalGenerators) {
-        const cell = electricalGenerators[cellName];
-        if (!(cell instanceof FuelCell)) continue;
-
-        const burstChargePower = burstPowerValue.energy / burstPowerValue.interval;
-        const neededPower = continuousPowerValue + burstChargePower;
-        const numDev = Math.ceil(neededPower / (-cell.consumption.amount.El));
-        const numBatteries = Math.max(0, Math.ceil((burstPowerValue.energy - numDev * cell.content.amount.El) / batteries['Z-100'].content.amount.El));
-        const totalEnergy = neededPower * missionDuration;
-        const fullLoadTime = totalEnergy / (-cell.consumption.amount.El);  // equivalent time at 100% load
-        const neededFuelMass = fullLoadTime * (
-            cell.consumption.mass.LF
-            + cell.consumption.mass.Ox
-        );
-        /* fullTank = emptyTank + fuel
-         * fullTank / emptyTank = WDR  => emptyTank = fullTank / WDR
-         * fullTank = fullTank / WDR + fuel
-         * (1 - 1/WDR) fullTank = fuel
-         * fullTank = fuel / (1 - 1/WDR)
-         */
-        const neededTankMass = neededFuelMass / (1 - 1 / fuelTankValue.fullEmptyRatio);
-
-        if (cell.wikiUrl !== undefined) {
-            cellName = <a href={cell.wikiUrl}>{cellName}</a>;
-        }
-        let batteryNameJsx: any = batteryName;
-        if(battery.wikiUrl !== undefined) {
-            batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>;
-        }
-        solutions.push({
-            config:
-                <span>{numDev} × {cellName} + {numBatteries} × {batteryNameJsx} + {neededTankMass.toFixed(1)}t fuel tanks</span>,
-            cost: numDev * cell.cost + numBatteries * batteries["Z-100"].cost + neededFuelMass * fuelTankValue.cost,
-            mass: numDev * cell.mass + numBatteries * batteries["Z-100"].mass + neededFuelMass,
-            maxPower: numDev * (-cell.consumption.amount.El),
-            maxEnergy: numDev * cell.content.amount.El + numBatteries * battery.content.amount.El,
-            shadeBatteryEnergy: 0,
-            burstBatteryEnergy: burstPowerValue.energy,
-            nominalPower: neededPower,
-            burstChargePower: burstChargePower,
-            darknessChargePower: 0,
-        });
-    }
-    return solutions;
-}
-
-function rtgSolutions(burstPowerValue, continuousPowerValue): Solution[] {
-    const solutions: Solution[] = [];
-    const dev = electricalGenerators["PB-NUK Radioisotope Thermoelectric Generator"];
-    const burstCharge = burstPowerValue.energy / burstPowerValue.interval;
-    const neededPower = continuousPowerValue + burstCharge;
-    const numDev = Math.ceil(neededPower / (-dev.consumption.amount.El));
-    const numBatteries = Math.ceil(burstPowerValue.energy / batteries['Z-100'].content.amount.El);
-    let genName: any = 'PB-NUK';
-    if (dev.wikiUrl !== undefined) {
-        genName = <a href={dev.wikiUrl}>{genName}</a>;
-    }
-    let batteryNameJsx: any = batteryName;
+    let batteryNameJsx: any = batteryName
     if(battery.wikiUrl !== undefined) {
-        batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>;
+        batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>
     }
-    solutions.push({
-        config: <span>{numDev} × {genName} + {numBatteries} × {batteryNameJsx}</span>,
-        cost: numDev * dev.cost + numBatteries * batteries["Z-100"].cost,
-        mass: numDev * dev.mass + numBatteries * batteries["Z-100"].mass,
+    return {
+        config: <span>{numDev} × {panelName} + {numBatteries} × {batteryNameJsx}</span>,
+        cost: numDev * panel.cost + numBatteries * battery.cost,
+        mass: numDev * panel.mass + numBatteries * battery.mass,
+        maxPower: numDev * panelPower,
+        maxEnergy: numBatteries * battery.content.amount.El,
+        shadeBatteryEnergy: shadeEnergy,
+        burstBatteryEnergy: burstPowerValue.energy,
+        nominalPower: neededPowerDuringLight,
+        burstChargePower: burstChargePower,
+        darknessChargePower: shadeChargePower,
+    }
+}
+
+function calcConvertorSolution(
+    name, conv, continuousPowerValue, burstPowerValue, fuelTankValue, missionDuration
+): Solution {
+    const burstChargePower = burstPowerValue.energy / burstPowerValue.interval
+    const neededPower = continuousPowerValue + burstChargePower
+    const numDev = Math.ceil(neededPower / (-conv.consumption.amount.El))
+    const numBatteries = Math.max(0, Math.ceil((burstPowerValue.energy - numDev * conv.content.amount.El) / battery.content.amount.El))
+    const totalEnergy = neededPower * missionDuration
+    const fullLoadTime = totalEnergy / (-conv.consumption.amount.El)  // equivalent time at 100% load
+    const neededFuelMass = fullLoadTime * (
+        conv.consumption.mass.LF
+        + conv.consumption.mass.Ox
+    )
+    /* fullTank = emptyTank + fuel
+     * fullTank / emptyTank = WDR  => emptyTank = fullTank / WDR
+     * fullTank = fullTank / WDR + fuel
+     * (1 - 1/WDR) fullTank = fuel
+     * fullTank = fuel / (1 - 1/WDR)
+     */
+    const neededTankMass = neededFuelMass / (1 - 1 / fuelTankValue.fullEmptyRatio)
+
+    if (conv.wikiUrl !== undefined) {
+        name = <a href={conv.wikiUrl}>{name}</a>
+    }
+    let batteryNameJsx: any = batteryName
+    if(battery.wikiUrl !== undefined) {
+        batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>
+    }
+    return {
+        config:
+            <span>{numDev} × {name} + {numBatteries} × {batteryNameJsx} + {neededTankMass.toFixed(1)}t fuel tanks</span>,
+        cost: numDev * conv.cost + numBatteries * battery.cost + neededFuelMass * fuelTankValue.cost,
+        mass: numDev * conv.mass + numBatteries * battery.mass + neededFuelMass,
+        maxPower: numDev * (-conv.consumption.amount.El),
+        maxEnergy: numDev * conv.content.amount.El + numBatteries * battery.content.amount.El,
+        shadeBatteryEnergy: 0,
+        burstBatteryEnergy: burstPowerValue.energy,
+        nominalPower: neededPower,
+        burstChargePower: burstChargePower,
+        darknessChargePower: 0,
+    }
+}
+
+
+function calcRtgSolution(
+    name, dev, continuousPowerValue, burstPowerValue, missionDuration
+): Solution {
+    const burstCharge = burstPowerValue.energy / burstPowerValue.interval
+    const neededPower = continuousPowerValue + burstCharge
+    const numDev = Math.ceil(neededPower / (-dev.consumption.amount.El))
+    const numBatteries = Math.ceil(burstPowerValue.energy / battery.content.amount.El)
+    if (dev.wikiUrl !== undefined) {
+        name = <a href={dev.wikiUrl}>{name}</a>
+    }
+    let batteryNameJsx: any = batteryName
+    if(battery.wikiUrl !== undefined) {
+        batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>
+    }
+    return {
+        config: <span>{numDev} × {name} + {numBatteries} × {batteryNameJsx}</span>,
+        cost: numDev * dev.cost + numBatteries * battery.cost,
+        mass: numDev * dev.mass + numBatteries * battery.mass,
         maxPower: numDev * (-dev.consumption.amount.El),
         maxEnergy: numBatteries * battery.content.amount.El,
         shadeBatteryEnergy: 0,
@@ -232,8 +220,7 @@ function rtgSolutions(burstPowerValue, continuousPowerValue): Solution[] {
         nominalPower: continuousPowerValue + burstCharge,
         burstChargePower: burstCharge,
         darknessChargePower: 0,
-    });
-    return solutions;
+    }
 }
 
 export default function App() {
@@ -265,10 +252,17 @@ export default function App() {
         })
     )
 
-    const solutions = [];
-    solutions.push(...solarPanelSolutions(shadeValue, continuousPowerValue, burstPowerValue, solarEfficiency));
-    solutions.push(...fuelCellSolutions(burstPowerValue, continuousPowerValue, fuelTankValue, missionDuration));
-    solutions.push(...rtgSolutions(burstPowerValue, continuousPowerValue));
+    const electricalParts = electricalPartsWithMods(activeMods)
+    const solutions: Array<Solution> = []
+    for(let [name, info] of Object.entries(electricalParts)) {
+        if(info instanceof SolarPanel) {
+            solutions.push(calcSolarPanelSolution(name, info, shadeValue, continuousPowerValue, burstPowerValue, solarEfficiency))
+        } else if(info instanceof Convertor) {
+            solutions.push(calcConvertorSolution(name, info, continuousPowerValue, burstPowerValue, fuelTankValue, missionDuration))
+        } else if(info instanceof RTG) {
+            solutions.push(calcRtgSolution(name, info, continuousPowerValue, burstPowerValue, missionDuration))
+        }
+    }
 
     return <div>
         <h1>Electricity options</h1>
