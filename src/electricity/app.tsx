@@ -10,8 +10,7 @@ import FuelTank from "../components/fuelTank";
 import {fuelTanks} from "../utils/kspParts-fuelTanks";
 import {batteries, electricalGenerators, FuelCell, SolarPanel} from "../utils/kspParts-electric";
 import {fromPreset, objectMap} from "../utils/utils";
-import {SystemSelect} from "../components/kspSystemSelect"
-import kspSystems, {KspSystem} from "../utils/kspSystems"
+import {kspSystem, KspSystem} from "../utils/kspSystems"
 import {
     calcPowerFromDevices as calcContinuousPowerFromDevices,
     ContinuousPowerCalc,
@@ -33,6 +32,7 @@ import {
     ShadeCalc,
     toString as ShadeCalcToString,
 } from "./shadeCalc";
+import KspModSelector from "../components/kspModSelector";
 
 import {KspFund} from "../components/kspIcon"
 import './app.css'
@@ -237,8 +237,13 @@ function rtgSolutions(burstPowerValue, continuousPowerValue): Solution[] {
 }
 
 export default function App() {
-    const [systemName, setSystemName] = useFragmentState<string>('sys', "Stock")
-    const system = kspSystems[systemName]
+    const [activeMods, setActiveMods] = useFragmentState<Set<string>>('mod',
+        s => {
+            const v: Array<string> = JSON.parse(s)
+            return new Set(v)
+        },
+        o => JSON.stringify([...o]),
+    )
     const [continuousPower, setContinuousPower] = useFragmentState('c', ContinuousPowerCalcFromString, ContinuousPowerCalcToString);
     const [continuousPowerCalcOpen, setContinuousPowerCalcOpen] = useState(false);
     const [burstPower, setBurstPower] = useFragmentState('b', BurstPowerCalcFromString, BurstPowerCalcToString);
@@ -250,6 +255,7 @@ export default function App() {
     const [shade, setShade] = useFragmentState('S', ShadeCalcFromString, ShadeCalcToString);
     const [shadeCalcOpen, setShadeCalcOpen] = useState(false);
 
+    const system = kspSystem(activeMods)
     const continuousPowerValue = calcContinuousPowerFromDevices(continuousPower);
     const burstPowerValue = calcBurstPowerFromDevices(burstPower);
     const shadeValue = calcShade(system, shade);
@@ -266,6 +272,8 @@ export default function App() {
 
     return <div>
         <h1>Electricity options</h1>
+        <KspModSelector value={activeMods}
+                        onChange={setActiveMods}/>
         <h2>Requirements</h2>
         <table>
             <tbody>
@@ -324,7 +332,6 @@ export default function App() {
             </tr>
         </tbody></table>
         <h2>Solar situation</h2>
-        System: <SystemSelect value={systemName} onChange={setSystemName}/><br/>
         Panel efficiency: <FloatInput decimals={0} value={solarEfficiency * 100}
                                       onChange={v => setSolarEfficiency(v / 100)}
         />%, equivalent to a distance to the sun of <SiInput

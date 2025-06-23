@@ -124,3 +124,10 @@ export const batteries = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Z-4K_Rechargeable_Battery_Bank"
     }),
 }
+
+export function electricalGeneratorsWithMods(activeMods: Set<string>): Record<string, Part> {
+    return electricalGenerators
+}
+export function batteriesWithMods(activeMods: Set<string>): Record<string, Part> {
+    return batteries
+}

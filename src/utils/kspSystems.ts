@@ -1,4 +1,5 @@
 import Orbit, {OrbitalElements, OrbitalPhase} from "./orbit";
+import kspMods from "./kspMods";
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 // https://stackoverflow.com/a/43001581
@@ -377,3 +378,12 @@ addSystem(new KspSystem("Outer Planets",
     },
     "Kerbin",
 ))
+
+export /* default */ function kspSystem(mods: Set<keyof typeof kspMods> = null) {
+    if(mods == null) mods = new Set()
+
+    if(mods.has("OPM")) {
+        return kspSystems["Outer Planets"]
+    }
+    return kspSystems["Stock"]
+}
