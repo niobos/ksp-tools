@@ -2,7 +2,7 @@ import {
     expandAbsolute,
     expandRelative,
     findMinimumNelderMead, findMinimumNelderMeadAsync,
-    findZeroBisect, findZeroBisectAsync,
+    findZeroBisect, findZeroBisectAsync, findZeroRegulaFalsi,
 } from "./optimize";
 
 describe('utility functions', () => {
@@ -115,5 +115,22 @@ describe('findZeroBisectAsync', () => {
         await expect(findZeroBisectAsync(x => x, 1, 2))
             .rejects
             .toThrow(RangeError)
+    })
+})
+
+describe('findZeroRegulaFalse', () => {
+    test('sync', () => {
+        const ret = findZeroRegulaFalsi(
+            (x) => x*x,
+            5, 10,
+        )
+        expect(ret).toBeCloseTo(0)
+    })
+    test('switching to bisect', () => {
+        const ret = findZeroRegulaFalsi(
+            (x) => Math.exp(x) - 1,
+            -5, 5,
+        )
+        expect(ret).toBeCloseTo(0)
     })
 })

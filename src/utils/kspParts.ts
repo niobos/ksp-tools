@@ -73,6 +73,23 @@ export class Resources {
             .reduce((acc, mass) => acc + mass, 0)
     }
 
+    selective_mass(filter: (resource: ResourceType, amount: number) => boolean): number {
+        const masses = this.mass
+        return Object.keys(masses).reduce((acc, resource) => {
+            const amount = masses[resource]
+            if(filter(resource as ResourceType, amount)) return acc + amount
+            return acc
+        }, 0)
+    }
+    selective_cost(filter: (resource: ResourceType, amount: number) => boolean): number {
+        const costs = this.mass
+        return Object.keys(costs).reduce((acc, resource) => {
+            const amount = costs[resource]
+            if(filter(resource as ResourceType, amount)) return acc + amount
+            return acc
+        }, 0)
+    }
+
     scaled(factor: number): Resources {
         return new Resources(
             objectMap(this.amount, (v) => factor*v)
@@ -137,6 +154,7 @@ export function sizesWithMods(activeMods: Set<string>): Record<string, string> {
         sizes["4"] = "5m"
     }
     if(activeMods.has("NFT")) {
+        sizes["1.5"] = "1.875m"
         sizes["4"] = "5m"
         sizes["5"] = "7.5m"
     }
@@ -228,6 +246,7 @@ export class TechTreeNode extends Data {
 }
 
 export default class Part extends Data {
+    name: string
     cost: number
     mass: number
     size: Set<Size> | Set<string>

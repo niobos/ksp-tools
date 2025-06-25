@@ -331,3 +331,59 @@ export async function findZeroBisectAsync(
     }
     return step.value
 }
+
+function* _findZeroRegulaFalsi(
+    a: number, b: number,
+    xTolerance: number = 1e-6, fxTolerance: number = 1e-6,
+): Generator<
+    number,  // type yield'ed
+    number,  // return type at end
+    number  // expected type passed into next()
+> {
+    /* Find zero of function `f(x)` by extrapolating from [a;b].
+     * As soon as f(a) * f(b) < 0 (i.e. they have a different sign,
+     * this method switches to Bisect
+     *
+     * Stops when |a-b| < xTolerance or |f(x)| < fxTolerance
+     */
+    let fa = yield a
+    let fb = yield b
+    while(Math.abs(a-b) > xTolerance) {
+        if(fa * fb < 0) {  // switch to Bisect
+            return yield* _findZeroBisect(
+                a, b,
+                xTolerance, fxTolerance,
+            )
+        }
+
+        const c = (a * fb - b * fa) / (fb - fa)
+        const fc = yield c
+        if(Math.abs(fc) < fxTolerance) return c
+        a = b; fa = fb
+        b = c; fb = fc
+    }
+}
+export function findZeroRegulaFalsi(
+    f: (x: number) => number,
+    a: number, b: number,
+    xTolerance: number = 1e-6, fxTolerance: number = 1e-6,
+): number {
+    const gen = _findZeroRegulaFalsi(a, b, xTolerance, fxTolerance)
+    let step = gen.next()
+    while(!step.done) {
+        step = gen.next(f(step.value))
+    }
+    return step.value
+}
+export async function findZeroRegulaFalsiAsync(
+    f: (x: number) => number,
+    a: number, b: number,
+    xTolerance: number = 1e-6, fxTolerance: number = 1e-6,
+): Promise<number> {
+    const gen = _findZeroRegulaFalsi(a, b, xTolerance, fxTolerance)
+    let step = gen.next()
+    while(!step.done) {
+        step = gen.next(await f(step.value))
+    }
+    return step.value
+}

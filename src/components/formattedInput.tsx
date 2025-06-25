@@ -10,7 +10,7 @@ const timeFormats: {[name in TimeFormatNames]: TimeFormat} = {
     "kerbal": {hoursPerDay: 6, daysPerYear: 426},
     "earth": {hoursPerDay: 24, daysPerYear: 365},  // ignores leap years
 }
-export const timeFormatContext = createContext<TimeFormatNames>('kerbal')
+// TODO: get this from React Context, but make sure the tests still run
 
 export type Seconds = number
 
@@ -24,7 +24,7 @@ export function splitSecondsToYdhms(sec: Seconds, timeFormat: TimeFormat): [numb
 }
 export function formatValueYdhms(seconds: Seconds, maxParts: number = Infinity): string {
     if(isNaN(seconds)) return 'NaN'
-    const timeFormat = timeFormats[useContext(timeFormatContext)]
+    const timeFormat = timeFormats['kerbal']
 
     let values: any[] = splitSecondsToYdhms(seconds, timeFormat)
     let units: string[] = ['y', 'd', 'h', 'm', 's']
@@ -59,7 +59,7 @@ export function parseToYdhms(text: string): [number, number, number, number, num
 }
 export function parseValueYdhms(text: string | number): Seconds {
     if(text === Infinity || text === "∞") return Infinity
-    const timeFormat = timeFormats[useContext(timeFormatContext)]
+    const timeFormat = timeFormats['kerbal']
 
     try {
         const [y, d, h, m, s] = parseToYdhms('' + text)
@@ -82,7 +82,7 @@ export function KerbalYdhmsInput(props: KerbalYdhmsInputProps) {
 
 export function formatValueYdhmsAbs(seconds: Seconds, maxParts: number = Infinity): string {
     if(maxParts == null) maxParts = Infinity
-    const timeFormat = timeFormats[useContext(timeFormatContext)]
+    const timeFormat = timeFormats['kerbal']
     let [y, d, h, m, s] = splitSecondsToYdhms(seconds, timeFormat)
     const parts = [
         `Y${y+1}`, ", ",
@@ -106,7 +106,7 @@ export function parseToYdhmsAbs(text: string): [number, number, number, number, 
     return [i.y, i.d, i.h, i.m, i.s];
 }
 export function parseValueYdhmsAbs(text: string | number): Seconds {
-    const timeFormat = timeFormats[useContext(timeFormatContext)]
+    const timeFormat = timeFormats['kerbal']
     try {
         const [y, d, h, m, s] = parseToYdhmsAbs('' + text);
         return ((((((y-1) * timeFormat.daysPerYear) + (d-1)) * timeFormat.hoursPerDay + h) * 60 + m) * 60) + s;

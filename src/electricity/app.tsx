@@ -1,15 +1,15 @@
-import * as React from "react";
-import {useState} from "react";
-import ReactDOM from "react-dom";
-import {FloatInput, SiInput} from "formattedInput";
-import {KerbalYdhmsInput} from "../components/formattedInput";
-import useFragmentState from 'useFragmentState';
-import Preset from "../components/preset";
-import SortableTable from "sortableTable";
-import FuelTank from "../components/fuelTank";
-import {fuelTanks} from "../utils/kspParts-fuelTanks";
-import {Convertor, electricalPartsWithMods, RTG, SolarPanel} from "../utils/kspParts-electric";
-import {fromPreset, objectMap} from "../utils/utils";
+import * as React from "react"
+import {ReactNode, useState} from "react"
+import ReactDOM from "react-dom"
+import {FloatInput, SiInput} from "formattedInput"
+import {formatValueYdhms, KerbalYdhmsInput} from "../components/formattedInput"
+import useFragmentState from 'useFragmentState'
+import Preset from "../components/preset"
+import SortableTable from "sortableTable"
+import FuelTank from "../components/fuelTank"
+import {fuelTanks} from "../utils/kspParts-fuelTanks"
+import {Battery, Convertor, electricalPartsWithMods, RTG, SolarPanel} from "../utils/kspParts-electric"
+import {fromPreset, objectMap} from "../utils/utils"
 import {kspSystem, KspSystem} from "../utils/kspSystems"
 import {
     calcPowerFromDevices as calcContinuousPowerFromDevices,
@@ -17,210 +17,163 @@ import {
     customOnly as ContinuousPowerCalcCustomOnly,
     fromString as ContinuousPowerCalcFromString,
     toString as ContinuousPowerCalcToString,
-} from "./continuousPowerCalc";
+} from "./continuousPowerCalc"
 import {
     BurstPowerCalc,
     calcBurstPowerFromDevices,
     fromEnergyInterval as BurstFromEnergyInterval,
     fromString as BurstPowerCalcFromString,
     toString as BurstPowerCalcToString,
-} from "./burstPowerCalc";
+} from "./burstPowerCalc"
 import {
     calcShade,
     custom as ShadeCustom,
     fromString as ShadeCalcFromString,
     ShadeCalc,
     toString as ShadeCalcToString,
-} from "./shadeCalc";
-import KspModSelector from "../components/kspModSelector";
-
+} from "./shadeCalc"
+import KspModSelector from "../components/kspModSelector"
 import {KspFund} from "../components/kspIcon"
+import Part from "../utils/kspParts";
+import CopyableNumber from "../components/copyableNumber";
+import knapsackMinimize, {Combo, ComboCost} from "../utils/knapsackMinimize";
+
 import './app.css'
+import {findZeroRegulaFalsi} from "../utils/optimize";
 
 function solarPanelEfficiencyFromSunDistance(system: KspSystem, d: number): number {
     const homeWorldSma = system.defaultBody.orbit.semiMajorAxis
-    return 1 / Math.pow(d/homeWorldSma, 2);
+    return 1 / Math.pow(d/homeWorldSma, 2)
 }
 function sunDistanceFromSolarPanelEfficiency(system: KspSystem, e: number): number {
     const homeWorldSma = system.defaultBody.orbit.semiMajorAxis
     return Math.sqrt(1/e) * homeWorldSma
 }
 
-const columns = [
-    {title: 'Config', value: i => i.config},
-    {
-        title: <>Cost [<KspFund/>]</>, value: i => i.cost.toFixed(0),
-        classList: i => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
-        cmp: (a, b) => a.cost - b.cost,
-    },
-    {
-        title: 'Mass [t]', classList: 'number', value: i => i.mass.toFixed(2),
-        cmp: (a, b) => a.mass - b.mass,
-    },
-    {
-        title: <>Power [⚡/m]</>, children: [
-            {
-                title: <>Max</>, classList: 'number',
-                value: i => (i.maxPower * 60).toFixed(1),
-                cmp: (a, b) => a.maxPower - b.maxPower,
-            },
-            {
-                title: <>Nominal</>, classList: 'number',
-                value: i => (i.nominalPower * 60).toFixed(1),
-                cmp: (a, b) => a.nominalPower - b.nominalPower,
-            },
-            {
-                title: <>Charge<br/>(burst+darkness)</>, classList: 'number',
-                value: i => `${((i.burstChargePower+i.darknessChargePower)*60).toFixed(1)} (`
-                    + `${(i.burstChargePower*60).toFixed(1)} + `
-                    + `${(i.darknessChargePower*60).toFixed(1)})`,
-                cmp: (a, b) => (a.burstChargePower + a.darknessChargePower) - (b.burstChargePower + b.darknessChargePower),
-            },
-            {
-                title: <>Spare</>, classList: 'number',
-                value: i => ((i.maxPower-i.nominalPower)*60).toFixed(1),
-                cmp: (a, b) => (a.maxPower-a.nominalPower) - (b.maxPower-b.nominalPower),
-            },
-        ],
-    },
-    {
-        title: <>Storage [⚡]</>, children: [
-            {
-                title: <>Available</>, classList: 'number',
-                value: i => i.maxEnergy.toFixed(0),
-                cmp: (a, b) => a.maxEnergy - b.maxEnergy,
-            },
-            {
-                title: <>Needed<br/>(burst+darkness)</>, classList: 'number',
-                value: i => `${(i.burstBatteryEnergy + i.shadeBatteryEnergy).toFixed(0)} (`
-                    + `${i.burstBatteryEnergy.toFixed(0)} + `
-                    + `${i.shadeBatteryEnergy.toFixed(0)})`,
-                cmp: (a, b) => (a.burstBatteryEnergy + a.shadeBatteryEnergy) - (b.burstBatteryEnergy + b.shadeBatteryEnergy),
-            },
-        ],
-    },
-];
-
 type Solution = {
-    config,
+    config: ReactNode,
     cost: number,
     mass: number,
     maxPower: number,
-    maxEnergy: number,
-    shadeBatteryEnergy: number,
-    burstBatteryEnergy: number,
     nominalPower: number,
-    burstChargePower: number,
-    darknessChargePower: number,
-};
+    sparePower: number,
+    endurance: number,
+}
+const columns = [
+    {title: 'Config', value: i => i.config},
+    {
+        title: <>Cost [<KspFund/>]</>,
+        value: (i: Solution) => <CopyableNumber value={i.cost} displayDecimals={0}/>,
+        classList: (i: Solution) => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
+        cmp: (a: Solution, b: Solution) => a.cost - b.cost,
+    },
+    {
+        title: 'Mass [t]', classList: 'number',
+        value: (i: Solution) => <CopyableNumber value={i.mass} displayDecimals={2}/>,
+        cmp: (a: Solution, b: Solution) => a.mass - b.mass,
+    },
+    {
+        title: <>Power [⚡/s]</>,
+        children: [
+            {
+                title: <>Peak</>, classList: 'number',
+                value: (i: Solution) => <CopyableNumber value={i.maxPower} displayDecimals={0}/>,
+                cmp: (a: Solution, b: Solution) => a.maxPower - b.maxPower,
+            },
+            {
+                title: <>Nominal</>, classList: 'number',
+                value: (i: Solution) => <CopyableNumber value={i.nominalPower} displayDecimals={0}/>,
+                cmp: (a: Solution, b: Solution) => a.nominalPower - b.nominalPower,
+            },
+            {
+                title: <>Spare</>, classList: 'number',
+                value: (i: Solution) => <CopyableNumber value={i.sparePower} displayDecimals={0}/>,
+                cmp: (a: Solution, b: Solution) => a.sparePower - b.sparePower,
+            },
+        ],
+    },
+    {
+        title: <>Endurance</>, classList: 'number',
+        value: (i: Solution) => {
+            if(i.endurance == Infinity) return "∞"
+            return formatValueYdhms(i.endurance, 1)
+        },
+        cmp: (a: Solution, b: Solution) => a.maxPower - b.maxPower,
+    },
+]
 
-// Only use Z-100 batteries. Other batteries have same energy/mass ratio, but have higher cost/energy ratio
-const batteryName = "Z-100"
-const battery = electricalPartsWithMods()[batteryName]  // TODO
 
-function calcSolarPanelSolution(
-    panelName, panel: SolarPanel, shadeValue, continuousPowerValue, burstPowerValue, solarEfficiency: numbe
-): Solution {
-    const burstChargePower = burstPowerValue.energy / burstPowerValue.interval
-    const shadeEnergy = shadeValue.duration * (continuousPowerValue + burstChargePower)
-    const lightDuration = shadeValue.interval - shadeValue.duration
-    const shadeChargePower = shadeEnergy / lightDuration
-    const neededPowerDuringLight = continuousPowerValue + burstChargePower + shadeChargePower
-    const panelPower = (-panel.consumption.amount.El) * solarEfficiency
-    const numDev = Math.ceil(neededPowerDuringLight / panelPower)
-    const batteryEnergy = shadeEnergy + burstPowerValue.energy
-    const numBatteries = Math.ceil(batteryEnergy / battery.content.amount.El)
-    if (panel.wikiUrl !== undefined) {
-        panelName = <a href={panel.wikiUrl}>{panelName}</a>
-    }
-    let batteryNameJsx: any = batteryName
-    if(battery.wikiUrl !== undefined) {
-        batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>
-    }
-    return {
-        config: <span>{numDev} × {panelName} + {numBatteries} × {batteryNameJsx}</span>,
-        cost: numDev * panel.cost + numBatteries * battery.cost,
-        mass: numDev * panel.mass + numBatteries * battery.mass,
-        maxPower: numDev * panelPower,
-        maxEnergy: numBatteries * battery.content.amount.El,
-        shadeBatteryEnergy: shadeEnergy,
-        burstBatteryEnergy: burstPowerValue.energy,
-        nominalPower: neededPowerDuringLight,
-        burstChargePower: burstChargePower,
-        darknessChargePower: shadeChargePower,
+function formatPower(power: number): string {
+    if(power < 0.1) {
+        power *= 60
+        if(power < 0.1) {
+            power *= 60
+            return `${power.toFixed(1)}⚡/h`
+        } else {
+            return `${power.toFixed(1)}⚡/m`
+        }
+    } else {
+        return `${power.toFixed(1)}⚡/s`
     }
 }
 
-function calcConvertorSolution(
-    name, conv, continuousPowerValue, burstPowerValue, fuelTankValue, missionDuration
-): Solution {
-    const burstChargePower = burstPowerValue.energy / burstPowerValue.interval
-    const neededPower = continuousPowerValue + burstChargePower
-    const numDev = Math.ceil(neededPower / (-conv.consumption.amount.El))
-    const numBatteries = Math.max(0, Math.ceil((burstPowerValue.energy - numDev * conv.content.amount.El) / battery.content.amount.El))
-    const totalEnergy = neededPower * missionDuration
-    const fullLoadTime = totalEnergy / (-conv.consumption.amount.El)  // equivalent time at 100% load
-    const neededFuelMass = fullLoadTime * (
-        conv.consumption.mass.LF
-        + conv.consumption.mass.Ox
+function findBestBatteryCombination(
+        electricalParts: Array<Part>,
+        energy: number,
+        costFunc: (p: Part) => number
+): ComboCost<Part> {
+    const {combination, cost, value} = knapsackMinimize(
+        electricalParts.filter(p => p instanceof Battery).map(p => (
+            {value: p.content.amount.El, cost: costFunc(p), part: p}
+        )),
+        energy
     )
-    /* fullTank = emptyTank + fuel
-     * fullTank / emptyTank = WDR  => emptyTank = fullTank / WDR
-     * fullTank = fullTank / WDR + fuel
-     * (1 - 1/WDR) fullTank = fuel
-     * fullTank = fuel / (1 - 1/WDR)
-     */
-    const neededTankMass = neededFuelMass / (1 - 1 / fuelTankValue.fullEmptyRatio)
-
-    if (conv.wikiUrl !== undefined) {
-        name = <a href={conv.wikiUrl}>{name}</a>
-    }
-    let batteryNameJsx: any = batteryName
-    if(battery.wikiUrl !== undefined) {
-        batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>
-    }
     return {
-        config:
-            <span>{numDev} × {name} + {numBatteries} × {batteryNameJsx} + {neededTankMass.toFixed(1)}t fuel tanks</span>,
-        cost: numDev * conv.cost + numBatteries * battery.cost + neededFuelMass * fuelTankValue.cost,
-        mass: numDev * conv.mass + numBatteries * battery.mass + neededFuelMass,
-        maxPower: numDev * (-conv.consumption.amount.El),
-        maxEnergy: numDev * conv.content.amount.El + numBatteries * battery.content.amount.El,
-        shadeBatteryEnergy: 0,
-        burstBatteryEnergy: burstPowerValue.energy,
-        nominalPower: neededPower,
-        burstChargePower: burstChargePower,
-        darknessChargePower: 0,
+        combination: combination.map(c => ({n: c.n, item: c.item.part})),
+        cost: cost,
+        value: value,
     }
 }
+function formatCombination<T>(
+        combination: Array<{n: number, item: T, joiner?: string, decimals?: number}>,
+        nameF: (p: T) => ReactNode,
+): ReactNode {
+    if(combination.length == 0) return <>0</>
+    const p = []
+    for(let {n: num, item: part, joiner = " × ", decimals = 0} of combination) {
+        if(p.length) p.push(" + ")
+        p.push(<>{num.toFixed(decimals)}{joiner}{nameF(part)}</>)
+    }
+    return <>{p}</>
+}
+function formatCombinationUnit(
+        cc: ComboCost<Part>,
+        unit: ReactNode
+): ReactNode {
+    return <>{formatCombination(cc.combination, p => p.name)} (<CopyableNumber value={cc.cost} displayDecimals={1}/>{unit})</>
+}
 
-
-function calcRtgSolution(
-    name, dev, continuousPowerValue, burstPowerValue, missionDuration
-): Solution {
-    const burstCharge = burstPowerValue.energy / burstPowerValue.interval
-    const neededPower = continuousPowerValue + burstCharge
-    const numDev = Math.ceil(neededPower / (-dev.consumption.amount.El))
-    const numBatteries = Math.ceil(burstPowerValue.energy / battery.content.amount.El)
-    if (dev.wikiUrl !== undefined) {
-        name = <a href={dev.wikiUrl}>{name}</a>
-    }
-    let batteryNameJsx: any = batteryName
-    if(battery.wikiUrl !== undefined) {
-        batteryNameJsx = <a href={battery.wikiUrl}>{batteryNameJsx}</a>
-    }
-    return {
-        config: <span>{numDev} × {name} + {numBatteries} × {batteryNameJsx}</span>,
-        cost: numDev * dev.cost + numBatteries * battery.cost,
-        mass: numDev * dev.mass + numBatteries * battery.mass,
-        maxPower: numDev * (-dev.consumption.amount.El),
-        maxEnergy: numBatteries * battery.content.amount.El,
-        shadeBatteryEnergy: 0,
-        burstBatteryEnergy: burstPowerValue.energy,
-        nominalPower: continuousPowerValue + burstCharge,
-        burstChargePower: burstCharge,
-        darknessChargePower: 0,
-    }
+function calcEndurance(combo: Combo<RTG>, power: number): number {
+    /* power = sum_{i} initialPower_{i} / 2^(t / halfLife_{i})
+     * => power = sum_{i} initialPower_{i} * (1/2)^(t / halfLife_{i}) )
+     * => power = sum_{i} initialPower_{i} * exp(ln(1/2) * t / halfLife_{i}) )
+     * => ???
+     */
+    const endurance = findZeroRegulaFalsi(
+        (t: number) => {
+            const powerAvail = combo.reduce(
+                (acc, c) => {
+                    const halfLifes = t / c.item.halfLife
+                    return acc + c[0] * (-c.item.consumption.amount.El) / Math.pow(2, halfLifes)
+                },
+                0,
+            )
+            return powerAvail - power
+        },
+        0, 426*6*60*60 /* 1 year */,
+    )
+    if(isNaN(endurance)) return Infinity
+    return endurance
 }
 
 export default function App() {
@@ -231,124 +184,177 @@ export default function App() {
         },
         o => JSON.stringify([...o]),
     )
-    const [continuousPower, setContinuousPower] = useFragmentState('c', ContinuousPowerCalcFromString, ContinuousPowerCalcToString);
-    const [continuousPowerCalcOpen, setContinuousPowerCalcOpen] = useState(false);
-    const [burstPower, setBurstPower] = useFragmentState('b', BurstPowerCalcFromString, BurstPowerCalcToString);
-    const [burstPowerCalcOpen, setBurstPowerCalcOpen] = useState(false);
-    const [missionDuration, setMissionDuration] = useFragmentState('d', 10 * 6 * 60 * 60);
+    const [burstPowerConfig, setBurstPowerConfig] = useFragmentState('b', BurstPowerCalcFromString, BurstPowerCalcToString)
+    const [burstPowerCalcOpen, setBurstPowerCalcOpen] = useState(false)
+    const [continuousPower, setContinuousPower] = useFragmentState('c', ContinuousPowerCalcFromString, ContinuousPowerCalcToString)
+    const [continuousPowerCalcOpen, setContinuousPowerCalcOpen] = useState(false)
+    const [storageOtherParts, setStorageOtherParts] = useFragmentState<number>('so', 0)
+    const [missionDuration, setMissionDuration] = useFragmentState('d', 10 * 6 * 60 * 60)
     const [fuelTank, setFuelTank] = useFragmentState<{fullEmptyRatio: number, cost: number} | string>(
-        'ft', {fullEmptyRatio: 8.69, cost: 233.50});
-    const [solarEfficiency, setSolarEfficiency] = useFragmentState('s', 1.00);
-    const [shade, setShade] = useFragmentState('S', ShadeCalcFromString, ShadeCalcToString);
-    const [shadeCalcOpen, setShadeCalcOpen] = useState(false);
+        'ft', {fullEmptyRatio: 8.69, cost: 233.50})
+    const [solarEfficiency, setSolarEfficiency] = useFragmentState('s', 1.00)
+    const [shade, setShade] = useFragmentState('S', ShadeCalcFromString, ShadeCalcToString)
+    const [shadeCalcOpen, setShadeCalcOpen] = useState(false)
 
     const system = kspSystem(activeMods)
-    const continuousPowerValue = calcContinuousPowerFromDevices(continuousPower);
-    const burstPowerValue = calcBurstPowerFromDevices(burstPower);
-    const shadeValue = calcShade(system, shade);
+
+    const burstPowerTotal = calcBurstPowerFromDevices(burstPowerConfig)
+
+    const continuousPowerValue = calcContinuousPowerFromDevices(continuousPower)
+
+    const shadeValue = calcShade(system, shade)
+    const shadeEnergy = shadeValue.duration * continuousPowerValue
+    const shadePower = shadeEnergy / (shadeValue.interval - shadeValue.duration)
+
     const {value: fuelTankValue, preset: fuelTankPreset} = fromPreset(
         fuelTank, objectMap(fuelTanks, (ft) => {
             return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost / ft.mass}
         })
     )
 
+    const netStorageNonSolar = Math.max(0, burstPowerTotal.energy - storageOtherParts)
+    const netStorageSolar = Math.max(0, burstPowerTotal.energy - storageOtherParts + shadeEnergy)
+    const totalPowerNeeded = continuousPowerValue + burstPowerTotal.energy/burstPowerTotal.interval
+    const totalSolarPowerNeeded = totalPowerNeeded + shadePower;
+
     const electricalParts = electricalPartsWithMods(activeMods)
-    const solutions: Array<Solution> = []
-    for(let [name, info] of Object.entries(electricalParts)) {
-        if(info instanceof SolarPanel) {
-            solutions.push(calcSolarPanelSolution(name, info, shadeValue, continuousPowerValue, burstPowerValue, solarEfficiency))
-        } else if(info instanceof Convertor) {
-            solutions.push(calcConvertorSolution(name, info, continuousPowerValue, burstPowerValue, fuelTankValue, missionDuration))
-        } else if(info instanceof RTG) {
-            solutions.push(calcRtgSolution(name, info, continuousPowerValue, burstPowerValue, missionDuration))
-        }
+    const batteryParts = electricalParts.filter(p => p instanceof Battery)
+    const solarParts = electricalParts.filter(p => p instanceof SolarPanel)
+
+    const solutions: Array<{combo: Combo<{name: string, cost: number, mass: number }, {joiner?: string, decimals?: number}>, maxPower: number, nominalPower: number, endurance: number}> = []
+    {
+        const solarMinCost = knapsackMinimize(
+            solarParts.map(p => ({value: -p.consumption.amount.El * solarEfficiency, cost: p.cost, part: p})),
+            totalSolarPowerNeeded,
+        )
+        const combo = solarMinCost.combination.map(c => ({n: c.n, item: c.item.part}))
+        solutions.push({
+            combo: combo,
+            maxPower: solarMinCost.value,
+            nominalPower: totalSolarPowerNeeded,
+            endurance: Infinity,
+        })
     }
+    {
+        const solarMinMass = knapsackMinimize(
+            solarParts.map(p => ({value: -p.consumption.amount.El * solarEfficiency, cost: p.mass, part: p})),
+            totalSolarPowerNeeded,
+        )
+        const combo = solarMinMass.combination.map(c => ({n: c.n, item: c.item.part}))
+        solutions.push({
+            combo: combo,
+            maxPower: solarMinMass.value,
+            nominalPower: totalSolarPowerNeeded,
+            endurance: Infinity,
+        })
+    }
+
+    // RTGs
+    {
+        const rtgMinCost = knapsackMinimize(
+            electricalParts.filter(p => p instanceof RTG).map(p => {
+                const missionDurationHalfLifes = missionDuration / p.halfLife
+                const powerAtEndOfMission = -p.consumption.amount.El / Math.pow(2, missionDurationHalfLifes)
+                return {value: powerAtEndOfMission, cost: p.cost, part: p}
+            }),
+            totalPowerNeeded,
+        )
+        const combo = rtgMinCost.combination.map(c => ({n: c.n, item: c.item.part as RTG}))
+        solutions.push({
+            combo: combo,
+            maxPower: rtgMinCost.value,
+            nominalPower: totalPowerNeeded,
+            endurance: calcEndurance(combo, totalPowerNeeded),
+        })
+    }
+    {
+        const rtgMinMass = knapsackMinimize(
+            electricalParts.filter(p => p instanceof RTG).map(p => {
+                const missionDurationHalfLifes = missionDuration / p.halfLife
+                const powerAtEndOfMission = -p.consumption.amount.El / Math.pow(2, missionDurationHalfLifes)
+                return {value: powerAtEndOfMission, cost: p.mass, part: p}
+            }),
+            totalPowerNeeded,
+        )
+        const combo = rtgMinMass.combination.map(c => ({n: c.n, item: c.item.part as RTG}))
+        solutions.push({
+            combo: combo,
+            maxPower: rtgMinMass.value,
+            nominalPower: totalPowerNeeded,
+            endurance: calcEndurance(combo, totalPowerNeeded),
+        })
+    }
+
+    // Convertor
+    // TODO: combine multiple devices together in Knapsack-style
+    for(let conv of electricalParts.filter(p => p instanceof Convertor)) {
+        const numDevices = Math.ceil(totalPowerNeeded / (-conv.consumption.amount.El))
+        let modulation = (totalPowerNeeded / numDevices / (-conv.consumption.amount.El) )
+        modulation = Math.max(modulation, conv.minimumModulation)
+        const fullLoadTime = missionDuration * modulation
+        const consumptionMassFlow = conv.consumption.selective_mass((r, m) => m > 0);
+        const neededFuelMass = fullLoadTime * consumptionMassFlow
+        const neededFuelMassInTanks = Math.max(0, neededFuelMass - conv.content.total_mass)
+        /* fullTank = emptyTank + fuel
+         * fullTank / emptyTank = WDR  => emptyTank = fullTank / WDR
+         * fullTank = fullTank / WDR + fuel
+         * (1 - 1/WDR) fullTank = fuel
+         * fullTank = fuel / (1 - 1/WDR)
+         */
+        const neededTankMass = neededFuelMassInTanks / (1 - 1 / fuelTankValue.fullEmptyRatio)
+
+        const totalFuelMass = neededFuelMassInTanks + conv.content.total_mass
+
+        solutions.push({
+            combo: [{n: numDevices, item: conv},
+                {n: Math.ceil(neededTankMass), decimals: 1, joiner: 't ', item: {name: "Fuel&Tank", mass: 1, cost: fuelTankValue.cost}}],
+            maxPower: numDevices * (-conv.consumption.amount.El),
+            nominalPower: totalPowerNeeded,
+            endurance: totalFuelMass / consumptionMassFlow / modulation,
+        })
+    }
+
+    const enrichedSolutions: Array<Solution> = solutions.map(solution => {
+        return {
+            config: formatCombination(solution.combo, p => p.name),
+            cost: solution.combo.reduce((acc, p) => acc + p.n * p.item.cost, 0),
+            mass: solution.combo.reduce((acc, p) => acc + p.n * p.item.mass, 0),
+            maxPower: solution.maxPower,
+            nominalPower: solution.nominalPower,
+            sparePower: solution.maxPower - solution.nominalPower,
+            endurance: solution.endurance,
+        }
+    })
 
     return <div>
         <h1>Electricity options</h1>
         <KspModSelector value={activeMods}
                         onChange={setActiveMods}/>
-        <h2>Requirements</h2>
-        <table>
-            <tbody>
-            <tr>
-                <td>Continuous:</td>
-                <td>
-                    <div style={{display: 'inline', cursor: 'pointer'}}
-                         onClick={() => setContinuousPowerCalcOpen(!continuousPowerCalcOpen)}>
-                        {continuousPowerCalcOpen ? "▾" : "▸"}</div>
-                    <FloatInput decimals={1} value={continuousPowerValue}
-                                onChange={v => setContinuousPower(ContinuousPowerCalcCustomOnly(v))}
-                    />⚡/s
-                    {" = "}
-                    <FloatInput decimals={1} value={continuousPowerValue * 60}
-                                onChange={v => setContinuousPower(ContinuousPowerCalcCustomOnly(v / 60))}
-                    />⚡/m
-                    {" = "}
-                    <FloatInput decimals={1} value={continuousPowerValue * 60 * 60}
-                                onChange={v => setContinuousPower(ContinuousPowerCalcCustomOnly(v / 60 / 60))}
-                    />⚡/h<br/>
-                    <div style={{
-                        display: continuousPowerCalcOpen ? "block" : "none",
-                        borderLeft: "1px solid var(--foreground-color)",
-                        marginLeft: "0.3em",
-                        paddingLeft: "0.3em",
-                    }}>
-                        <ContinuousPowerCalc value={continuousPower}
-                                             onChange={v => setContinuousPower(v)}
-                        />
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td>Burst:</td>
-                <td>
-                    <div style={{display: 'inline', cursor: 'pointer'}}
-                         onClick={() => setBurstPowerCalcOpen(!burstPowerCalcOpen)}>
-                        {burstPowerCalcOpen ? "▾" : "▸"}</div>
-                    <FloatInput decimals={1} value={burstPowerValue.energy}
-                                onChange={v => setBurstPower(BurstFromEnergyInterval(v, burstPowerValue.interval))}
-                    />⚡ storage, <KerbalYdhmsInput
-                    value={burstPowerValue.interval} maxUnits={1}
-                    onChange={v => setBurstPower(BurstFromEnergyInterval(burstPowerValue.energy, v))}
-                /> charge time
-                    <div style={{
-                        display: burstPowerCalcOpen ? "block" : "none",
-                        borderLeft: "1px solid var(--foreground-color)",
-                        marginLeft: "0.3em",
-                        paddingLeft: "0.3em",
-                    }}>
-                        <BurstPowerCalc value={burstPower}
-                                        onChange={v => setBurstPower(v)}
-                        />
-                    </div>
-                </td>
-            </tr>
-        </tbody></table>
+
         <h2>Solar situation</h2>
         Panel efficiency: <FloatInput decimals={0} value={solarEfficiency * 100}
                                       onChange={v => setSolarEfficiency(v / 100)}
-        />%, equivalent to a distance to the sun of <SiInput
-            value={sunDistanceFromSolarPanelEfficiency(system, solarEfficiency)}
-            onChange={d => setSolarEfficiency(solarPanelEfficiencyFromSunDistance(system, d))}
-        />m <Preset options={system.root.childrenNames.reduce((acc, bodyName) => {
-            acc[bodyName] = system.bodies[bodyName].orbit.semiMajorAxis
-            return acc
-        }, {})}
+    />%, equivalent to a distance to the sun of <SiInput
+        value={sunDistanceFromSolarPanelEfficiency(system, solarEfficiency)}
+        onChange={d => setSolarEfficiency(solarPanelEfficiencyFromSunDistance(system, d))}
+    />m <Preset options={system.root.childrenNames.reduce((acc, bodyName) => {
+        acc[bodyName] = system.bodies[bodyName].orbit.semiMajorAxis
+        return acc
+    }, {})}
                 value={sunDistanceFromSolarPanelEfficiency(system, solarEfficiency)}
                 onChange={d => setSolarEfficiency(solarPanelEfficiencyFromSunDistance(system, parseInt(d)))}
-        /><br/>
+    /><br/>
 
         <div style={{display: 'inline', cursor: 'pointer'}}
              onClick={() => setShadeCalcOpen(!shadeCalcOpen)}>
             {shadeCalcOpen ? "▾" : "▸"}</div>
         Account for <KerbalYdhmsInput
-            value={shadeValue.duration} maxUnits={1}
-            onChange={v => setShade(ShadeCustom(v, shadeValue.interval))}
-        /> of shade every <KerbalYdhmsInput
-            value={shadeValue.interval} maxUnits={1}
-            onChange={v => setShade(ShadeCustom(shadeValue.duration, v))}
-        />
+        value={shadeValue.duration} maxUnits={1}
+        onChange={v => setShade(ShadeCustom(v, shadeValue.interval))}
+    /> of shade every <KerbalYdhmsInput
+        value={shadeValue.interval} maxUnits={1}
+        onChange={v => setShade(ShadeCustom(shadeValue.duration, v))}
+    />
         <div style={{
             display: shadeCalcOpen ? "block" : "none",
             borderLeft: "1px solid black",
@@ -357,36 +363,118 @@ export default function App() {
         }}>
             <ShadeCalc system={system} value={shade} onChange={v => setShade(v)}/>
         </div>
-        <h2>Info for fuel cells</h2>
+
+        <h2>Info for convertors</h2>
         <table><tbody>
+        <tr>
+            <td>Mission duration:</td>
+            <td>
+                <KerbalYdhmsInput value={missionDuration}
+                                  onChange={v => setMissionDuration(v)}/>
+            </td>
+        </tr>
+        <tr>
+            <td>Resource tank:</td>
+            <td>
+                <Preset options={Object.keys(fuelTanks).reduce((acc, el) => {
+                    if (fuelTanks[el].content.amount.LF > 0 && fuelTanks[el].content.amount.Ox > 0) acc[el] = el  // only lf+ox tanks
+                    return acc
+                }, {})}
+                        value={fuelTankPreset} onChange={v => setFuelTank(v)}
+                /><br/>
+                <FuelTank value={fuelTankValue} onChange={v => setFuelTank(v)}/>
+            </td>
+        </tr>
+        </tbody>
+        </table>
+
+        <h2>Storage requirements</h2>
+        <div style={{display: 'inline', cursor: 'pointer'}}
+             onClick={() => setBurstPowerCalcOpen(!burstPowerCalcOpen)}>
+            {burstPowerCalcOpen ? "▾" : "▸"}</div>
+        <FloatInput decimals={1} value={burstPowerTotal.energy}
+                    onChange={v => setBurstPowerConfig(BurstFromEnergyInterval(v, burstPowerTotal.interval))}
+        />⚡ storage, <KerbalYdhmsInput
+            value={burstPowerTotal.interval} maxUnits={1}
+            onChange={v => setBurstPowerConfig(BurstFromEnergyInterval(burstPowerTotal.energy, v))}
+        /> charge time
+        <div style={{
+            display: burstPowerCalcOpen ? "block" : "none",
+            borderLeft: "1px solid var(--foreground-color)",
+            marginLeft: "0.3em",
+            paddingLeft: "0.3em",
+        }}>
+            <BurstPowerCalc value={burstPowerConfig}
+                            onChange={v => setBurstPowerConfig(v)}
+            />
+        </div><br/>
+        + {shadeEnergy.toFixed(0)}⚡
+        (= {(burstPowerTotal.energy + shadeEnergy).toFixed(0)}⚡)
+        every {formatValueYdhms(shadeValue.interval, 1)} when using Solar Panels to account for shade<br/>
+        - <FloatInput decimals={0} value={storageOtherParts}
+                      onChange={setStorageOtherParts}
+        />⚡ stored in other parts
+
+        <table className="storageTable">
+            <thead>
             <tr>
-                <td>Mission duration:</td>
-                <td>
-                    <KerbalYdhmsInput value={missionDuration}
-                                      onChange={v => setMissionDuration(v)}/>
-                </td>
+                <th>Storage</th>
+                <th>Lowest mass</th>
+                <th>Lowest cost</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>{netStorageNonSolar.toFixed(0)}⚡</td>
+                <td>{formatCombinationUnit(findBestBatteryCombination(batteryParts, netStorageNonSolar, p => p.mass), 't')}</td>
+                <td>{formatCombinationUnit(findBestBatteryCombination(batteryParts, netStorageNonSolar, p => p.cost), <KspFund/>)}</td>
             </tr>
             <tr>
-                <td>Fuel tank:</td>
-                <td>
-                    <Preset options={Object.keys(fuelTanks).reduce((acc, el) => {
-                        if (fuelTanks[el].content.lf > 0 && fuelTanks[el].content.ox > 0) acc[el] = el;  // only lf+ox tanks
-                        return acc;
-                    }, {})}
-                            value={fuelTankPreset} onChange={v => setFuelTank(v)}
-                    /><br/>
-                    <FuelTank value={fuelTankValue} onChange={v => setFuelTank(v)}/>
-                </td>
+                <td>{netStorageSolar.toFixed(0)}⚡</td>
+                <td>{formatCombinationUnit(findBestBatteryCombination(batteryParts, netStorageSolar, p => p.mass), 't')}</td>
+                <td>{formatCombinationUnit(findBestBatteryCombination(batteryParts, netStorageSolar, p => p.cost), <KspFund/>)}</td>
             </tr>
             </tbody>
         </table>
-        <h2>Options</h2>
-        <SortableTable columns={columns} data={solutions} initialSortColumnNr={2} initialSortDir={1}/>
-    </div>;
+
+        <h2>Generation requirements</h2>
+        <div style={{display: 'inline', cursor: 'pointer'}}
+             onClick={() => setContinuousPowerCalcOpen(!continuousPowerCalcOpen)}>
+            {continuousPowerCalcOpen ? "▾" : "▸"}</div>
+        <FloatInput decimals={1} value={continuousPowerValue}
+                    onChange={v => setContinuousPower(ContinuousPowerCalcCustomOnly(v))}
+        />⚡/s
+        {" = "}
+        <FloatInput decimals={1} value={continuousPowerValue * 60}
+                    onChange={v => setContinuousPower(ContinuousPowerCalcCustomOnly(v / 60))}
+        />⚡/m
+        {" = "}
+        <FloatInput decimals={1} value={continuousPowerValue * 60 * 60}
+                    onChange={v => setContinuousPower(ContinuousPowerCalcCustomOnly(v / 60 / 60))}
+        />⚡/h<br/>
+        <div style={{
+            display: continuousPowerCalcOpen ? "block" : "none",
+            borderLeft: "1px solid var(--foreground-color)",
+            marginLeft: "0.3em",
+            paddingLeft: "0.3em",
+        }}>
+            <ContinuousPowerCalc value={continuousPower}
+                                 onChange={v => setContinuousPower(v)}
+            />
+        </div>
+        + {formatPower(burstPowerTotal.energy/burstPowerTotal.interval)}{" "}
+        (= {formatPower(continuousPowerValue + burstPowerTotal.energy/burstPowerTotal.interval )})
+        to charge for burst power<br/>
+        + {formatPower(shadePower)}{" "}
+        (= {formatPower(totalSolarPowerNeeded)})
+        when using Solar Panels to store for periods of shade
+
+        <SortableTable columns={columns} data={enrichedSolutions} initialSortColumnNr={2} initialSortDir={1}/>
+    </div>
 }
 
 if(typeof window === 'object') { // @ts-ignore
     window.renderApp = function(selector) {
-        ReactDOM.render(React.createElement(App), document.querySelector(selector));
-    };
+        ReactDOM.render(React.createElement(App), document.querySelector(selector))
+    }
 }

@@ -26,8 +26,11 @@ export function objectFilter<K extends PropertyKey, V>(
     }, {} as { [k in K]?: V })
 }
 
-export function fromPreset(valueOrPreset, presets) {
-    let value, preset;
+export function fromPreset<T>(
+    valueOrPreset: string | T,
+    presets: Record<string, T>,
+): {value: T, preset: string} {
+    let value: T, preset: string;
     if(typeof valueOrPreset === 'string') {  // preset
         preset = valueOrPreset;
         value = presets[preset];
@@ -36,4 +39,19 @@ export function fromPreset(valueOrPreset, presets) {
         preset = "";
     }
     return {value, preset};
+}
+
+export function setEq<T>(a: Set<T>, b: Set<T>): boolean {
+    if (a.size != b.size) return false
+    return [...a].every(value => b.has(value))
+}
+
+export function combineWithOverride<T extends {name: string}>(...lists: Array<Array<T>>): Array<T> {
+    const index: Record<string, T> = {}
+    for(let list of lists) {
+        for(let item of list) {
+            index[item.name] = item
+        }
+    }
+    return Object.values(index)
 }

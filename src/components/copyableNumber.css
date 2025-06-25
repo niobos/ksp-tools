@@ -1,0 +1,4 @@
+span.copyable {
+    cursor: pointer;
+    text-decoration: underline dotted;
+}
