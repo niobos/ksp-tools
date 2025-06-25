@@ -51,13 +51,15 @@ function sunDistanceFromSolarPanelEfficiency(system: KspSystem, e: number): numb
 }
 
 type Solution = {
-    config: ReactNode,
-    cost: number,
-    mass: number,
-    maxPower: number,
-    nominalPower: number,
-    sparePower: number,
-    endurance: number,
+    config: ReactNode
+    cost: number
+    totalMass: number
+    generatorMass: number
+    fuelTankMass: number
+    maxPower: number
+    nominalPower: number
+    sparePower: number
+    endurance: number
 }
 const columns = [
     {title: 'Config', value: i => i.config},
@@ -68,9 +70,25 @@ const columns = [
         cmp: (a: Solution, b: Solution) => a.cost - b.cost,
     },
     {
-        title: 'Mass [t]', classList: 'number',
-        value: (i: Solution) => <CopyableNumber value={i.mass} displayDecimals={2}/>,
-        cmp: (a: Solution, b: Solution) => a.mass - b.mass,
+        title: 'Mass [t]',
+        children: [
+            {
+                title: 'Total', classList: 'number',
+                value: (i: Solution) => <CopyableNumber value={i.totalMass} displayDecimals={2}/>,
+                cmp: (a: Solution, b: Solution) => a.totalMass - b.totalMass,
+            },
+            {
+                title: 'Gen', classList: 'number',
+                value: (i: Solution) => <CopyableNumber value={i.generatorMass} displayDecimals={2}/>,
+                cmp: (a: Solution, b: Solution) => a.generatorMass - b.generatorMass,
+            },
+            {
+                title: 'Fuel&Tank',
+                value: (i: Solution) => <CopyableNumber value={i.fuelTankMass} displayDecimals={2}/>,
+                cmp: (a: Solution, b: Solution) => a.fuelTankMass - b.fuelTankMass,
+                classList: (i: Solution) => i.fuelTankMass == 0 ? ['number', 'zero'] : ['number'],
+            },
+        ],
     },
     {
         title: <>Power [⚡/s]</>,
@@ -135,14 +153,14 @@ function findBestBatteryCombination(
     }
 }
 function formatCombination<T>(
-        combination: Array<{n: number, item: T, joiner?: string, decimals?: number}>,
+        combination: Array<{n: number, item: T}>,
         nameF: (p: T) => ReactNode,
 ): ReactNode {
     if(combination.length == 0) return <>0</>
     const p = []
-    for(let {n: num, item: part, joiner = " × ", decimals = 0} of combination) {
+    for(let {n: num, item: part} of combination) {
         if(p.length) p.push(" + ")
-        p.push(<>{num.toFixed(decimals)}{joiner}{nameF(part)}</>)
+        p.push(<>{num} × {nameF(part)}</>)
     }
     return <>{p}</>
 }
@@ -221,7 +239,7 @@ export default function App() {
     const batteryParts = electricalParts.filter(p => p instanceof Battery)
     const solarParts = electricalParts.filter(p => p instanceof SolarPanel)
 
-    const solutions: Array<{combo: Combo<{name: string, cost: number, mass: number }, {joiner?: string, decimals?: number}>, maxPower: number, nominalPower: number, endurance: number}> = []
+    const solutions: Array<{combo: Combo<{name: string, cost: number, mass: number }>, fuel?: {mass: number, cost: number}, maxPower: number, nominalPower: number, endurance: number}> = []
     {
         const solarMinCost = knapsackMinimize(
             solarParts.map(p => ({value: -p.consumption.amount.El * solarEfficiency, cost: p.cost, part: p})),
@@ -306,8 +324,8 @@ export default function App() {
         const totalFuelMass = neededFuelMassInTanks + conv.content.total_mass
 
         solutions.push({
-            combo: [{n: numDevices, item: conv},
-                {n: Math.ceil(neededTankMass), decimals: 1, joiner: 't ', item: {name: "Fuel&Tank", mass: 1, cost: fuelTankValue.cost}}],
+            combo: [{n: numDevices, item: conv}],
+            fuel: {mass: neededTankMass, cost: neededTankMass * fuelTankValue.cost},
             maxPower: numDevices * (-conv.consumption.amount.El),
             nominalPower: totalPowerNeeded,
             endurance: totalFuelMass / consumptionMassFlow / modulation,
@@ -315,10 +333,15 @@ export default function App() {
     }
 
     const enrichedSolutions: Array<Solution> = solutions.map(solution => {
+        const genMass = solution.combo.reduce((acc, p) => acc + p.n * p.item.mass, 0)
+        const fuelTankMass = solution.fuel != null ? solution.fuel.mass : 0
+        const fuelTankCost = solution.fuel != null ? solution.fuel.cost : 0
         return {
             config: formatCombination(solution.combo, p => p.name),
-            cost: solution.combo.reduce((acc, p) => acc + p.n * p.item.cost, 0),
-            mass: solution.combo.reduce((acc, p) => acc + p.n * p.item.mass, 0),
+            cost: solution.combo.reduce((acc, p) => acc + p.n * p.item.cost, 0) + fuelTankCost,
+            totalMass: genMass + fuelTankMass,
+            generatorMass: genMass,
+            fuelTankMass: fuelTankMass,
             maxPower: solution.maxPower,
             nominalPower: solution.nominalPower,
             sparePower: solution.maxPower - solution.nominalPower,

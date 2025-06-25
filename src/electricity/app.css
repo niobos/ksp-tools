@@ -3,7 +3,7 @@ input[type="text"] {
 }
 
 .zero {
-    color: #f0f0f0;
+    color: rgb(from var(--foreground-color) r g b / 0.25)
 }
 
 .number {
@@ -15,5 +15,8 @@ input[type="text"] {
 }
 
 table.sortableTable, table.sortableTable th, table.sortableTable td {
+    border: 1px solid var(--foreground-color);
+}
+table.storageTable, table.storageTable th, table.storageTable td {
     border: 1px solid var(--foreground-color);
 }
