@@ -1,6 +1,7 @@
 import Part, {Resources, Size, TechTreeNode} from "./kspParts"
 import Spline from 'cubic-spline'
 import {thrustFromIspMdot} from "./rocket"
+import {combineWithOverride, setEq} from "./utils";
 
 export class Engine extends Part {
     gimbal: number = 0;  // degrees
@@ -21,36 +22,39 @@ export class Engine extends Part {
         return s.at(pressureAtm)
     }
 
-    thrust(pressureAtm: number): number {
-        return thrustFromIspMdot(this.isp(pressureAtm), this.consumption.total_mass)
+    thrust(resourceInfo: Record<string, {mass: number}>, pressureAtm: number): number {
+        return thrustFromIspMdot(this.isp(pressureAtm), this.consumption.total_mass(resourceInfo))
     }
 }
 
-export const engines = {
-    '24-77 "Twitch"': Engine.create({
+export const engineParts = [
+    Engine.create({
+        name: '24-77 "Twitch"',
         cost: 230,
         mass: 0.08,
-        size: new Set([Size.RADIAL]),
+        size: new Set(["R"]),
         gimbal: 8,
         ispCurve: [[0, 290], [1, 275], [7, 0.001]],
         consumption: new Resources({LF: 0.506, Ox: 0.619}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/24-77_%22Twitch%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
     }),
-    '48-7S "Spark"': Engine.create({
+    Engine.create({
+        name: '48-7S "Spark"',
         cost: 240,
         mass: 0.13,
-        size: new Set([Size.TINY]),
+        size: new Set(["0"]),
         gimbal: 3,
         ispCurve: [[0, 320], [1, 265], [7, 0.001]],
         consumption: new Resources({LF: 0.574, Ox: 0.701}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/48-7S_%22Spark%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.PropulsionSystems,
     }),
-    'BACC "Thumper"': Engine.create({
+    Engine.create({
+        name: 'BACC "Thumper"',
         cost: 850,
         mass: 7.65,
-        size: new Set([Size.SMALL, Size.RADIAL]),
+        size: new Set(["1", "R"]),
         gimbal: 0,
         ispCurve: [[0, 210], [1, 175], [6, 0.001]],
         consumption: new Resources({SF: 19.423}),
@@ -59,30 +63,33 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/BACC_%22Thumper%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.GeneralRocketry,
     }),
-    'CR-7 R.A.P.I.E.R. (closed cycle)': Engine.create({
+    Engine.create({
+        name: 'CR-7 R.A.P.I.E.R. (closed cycle)',
         cost: 6000,
         mass: 2.0,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 3,
         ispCurve: [[0, 305], [1, 275], [9, 0.001]],
         consumption: new Resources({LF: 5.416, Ox: 6.62}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/CR-7_R.A.P.I.E.R._Engine",
         techTreeNode: TechTreeNode.AerospaceTech,
     }),
-    'CR-7 R.A.P.I.E.R. (air breathing)': Engine.create({
+    Engine.create({
+        name: 'CR-7 R.A.P.I.E.R. (air breathing)',
         cost: 6000,
         mass: 2.0,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 3,
         ispCurve: [[0, 0], [1, 3200]],
         consumption: new Resources({LF: 0.669, Air: 4.015}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/CR-7_R.A.P.I.E.R._Engine",
         techTreeNode: TechTreeNode.AerospaceTech,
     }),
-    'F3S0 "Shrimp"': Engine.create({
+    Engine.create({
+        name: 'F3S0 "Shrimp"',
         cost: 150,
         mass: 0.825,
-        size: new Set([Size.TINY, Size.RADIAL]),
+        size: new Set(["0", "R"]),
         gimbal: 0,
         ispCurve: [[0, 215], [1, 190], [7, 0.001]],
         consumption: new Resources({SF: 1.897}),
@@ -91,10 +98,11 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/F3S0_%22Shrimp%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
     }),
-    'FM1 "Mite"': Engine.create({
+    Engine.create({
+        name: 'FM1 "Mite"',
         cost: 75,
         mass: 0.375,
-        size: new Set([Size.TINY, Size.RADIAL]),
+        size: new Set(["0", "R"]),
         gimbal: 0,
         ispCurve: [[0, 210], [1, 185], [7, 0.001]],
         consumption: new Resources({SF: 0.809}),
@@ -103,100 +111,110 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/FM1_%22Mite%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.PropulsionSystems,
     }),
-    'IX-6315 "Dawn"': Engine.create({
+    Engine.create({
+        name: 'IX-6315 "Dawn"',
         cost: 8000,
         mass: 0.25,
-        size: new Set([Size.TINY]),
+        size: new Set(["0"]),
         gimbal: 0,
         ispCurve: [[0, 4200], [1, 100], [1.2, 0.001]],
         consumption: new Resources({Xe: 0.486, El: 8.74}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/IX-6315_%22Dawn%22_Electric_Propulsion_System",
         techTreeNode: TechTreeNode.IonPropulsion,
     }),
-    'J-20 "Juno"': Engine.create({
+    Engine.create({
+        name: 'J-20 "Juno"',
         cost: 450,
         mass: 0.25,
-        size: new Set([Size.TINY]),
+        size: new Set(["0"]),
         gimbal: 0,
         ispCurve: [[0, 0], [1, 6400]],
         consumption: new Resources({LF: 0.064, Air: 1.402, El: -1}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-20_%22Juno%22_Basic_Jet_Engine",
         techTreeNode: TechTreeNode.Aviation,
     }),
-    'J-33 "Wheesley"': Engine.create({
+    Engine.create({
+        name: 'J-33 "Wheesley"',
         cost: 1400,
         mass: 1.5,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 0,
         ispCurve: [[0, 0], [1, 10500]],
         consumption: new Resources({LF: 0.233, Air: 29.601, El: -4}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-33_%22Wheesley%22_Turbofan_Engine",
         techTreeNode: TechTreeNode.Aerodynamics,
     }),
-    'J-404 "Panther" (dry)': Engine.create({
+    Engine.create({
+        name: 'J-404 "Panther" (dry)',
         cost: 2000,
         mass: 1.2,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 10,
         ispCurve: [[0, 0], [1, 9000]],
         consumption: new Resources({LF: 0.193, Air: 7.705, El: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-404_%22Panther%22_Afterburning_Turbofan",
         techTreeNode: TechTreeNode.SupersonicFlight,
     }),  // TO CHECK
-    'J-404 "Panther" (afterburning)': Engine.create({
+    Engine.create({
+        name: 'J-404 "Panther" (afterburning)',
         cost: 2000,
         mass: 1.2,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 10,
         ispCurve: [[0, 0], [1, 4000]],
         consumption: new Resources({LF: 0.663, Air: 7.954, El: -5}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-404_%22Panther%22_Afterburning_Turbofan",
         techTreeNode: TechTreeNode.SupersonicFlight,
     }),  // TO CHECK
-    'J-90 "Goliath"': Engine.create({
+    Engine.create({
+        name: 'J-90 "Goliath"',
         cost: 2600,
         mass: 4.517,
-        size: new Set([Size.RADIAL]),
+        size: new Set(["R"]),
         gimbal: 0,
         ispCurve: [[0, 0], [1, 12600]],
         consumption: new Resources({LF: 0.583, Air: 132.272, El: -16}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-90_%22Goliath%22_Turbofan_Engine",
         techTreeNode: TechTreeNode.HeavyAerodynamics,
     }),  // TODO: has air intake
-    'J-X4 "Whiplash"': Engine.create({
+    Engine.create({
+        name: 'J-X4 "Whiplash"',
         cost: 2250,
         mass: 1.8,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 1,
         ispCurve: [[0, 0], [1, 4000]],
         consumption: new Resources({LF: 0.663, Air: 5.303, El: -5}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/J-X4_%22Whiplash%22_Turbo_Ramjet_Engine",
         techTreeNode: TechTreeNode.HypersonicFlight,
     }),
-    'Kerbodyne KE-1 "Mastodon"': Engine.create({
+    Engine.create({
+        name: 'Kerbodyne KE-1 "Mastodon"',
         cost: 22000,
         mass: 5.0,
-        size: new Set([Size.SMALL, Size.MEDIUM, Size.LARGE]),
+        size: new Set(["1", "1.5", "2"]),
         gimbal: 5,
         ispCurve: [[0, 290], [1, 280]],
         consumption: new Resources({LF: 42.723, Ox: 52.217, El: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Kerbodyne_KE-1_%22Mastodon%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
     }),
-    'Kerbodyne KR-2L+ "Rhino"': Engine.create({
+    Engine.create({
+        name: 'Kerbodyne KR-2L+ "Rhino"',
         cost: 25000,
         mass: 9.0,
-        size: new Set([Size.EXTRA_LARGE]),
+        size: new Set(["3"]),
         gimbal: 4,
         ispCurve: [[0, 340], [1, 205], [5, 0.001]],
         consumption: new Resources({LF: 53.985, Ox: 65.982, El: -12}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Kerbodyne_KR-2L%2B_%22Rhino%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
     }),
-    'LFB KR-1x2 "Twin-Boar" (w/ fuel)': Engine.create({
+    Engine.create({
+        name: 'LFB KR-1x2 "Twin-Boar" (w/ fuel)',
         cost: 17000,
         mass: 42.5,
-        size: new Set([Size.LARGE, Size.RADIAL]),
+        size: new Set(["2", "R"]),
         gimbal: 1.5,
         ispCurve: [[0, 300], [1, 280], [9, 0.001]],
         consumption: new Resources({LF: 61.183, Ox: 74.779}),
@@ -204,181 +222,187 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LFB_KR-1x2_%22Twin-Boar%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
     }),
-    'LFB KR-1x2 "Twin-Boar" (w/o fuel)': Engine.create({
-        cost: 17000,
-        mass: 42.5,
-        size: new Set([Size.LARGE, Size.RADIAL]),
-        gimbal: 1.5,
-        ispCurve: [[0, 300], [1, 280], [9, 0.001]],
-        consumption: new Resources({LF: 61.183, Ox: 74.779}),
-        content: new Resources({LF: 2880, Ox: 3520}),
-        wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LFB_KR-1x2_%22Twin-Boar%22_Liquid_Fuel_Engine",
-        techTreeNode: TechTreeNode.HeavierRocketry,
-    }).emptied(),
-    'LV-1 "Ant"': Engine.create({
+    Engine.create({
+        name: 'LV-1 "Ant"',
         cost: 110,
         mass: 0.02,
-        size: new Set([Size.TINY, Size.RADIAL]),
+        size: new Set(["0", "R"]),
         gimbal: 0,
         ispCurve: [[0, 315], [1, 80], [3, 0.001]],
         consumption: new Resources({LF: 0.058, Ox: 0.071}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-1_%22Ant%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.PropulsionSystems,
     }),
-    'LV-1R "Spider"': Engine.create({
+    Engine.create({
+        name: 'LV-1R "Spider"',
         cost: 120,
         mass: 0.02,
-        size: new Set([Size.RADIAL]),
+        size: new Set(["R"]),
         gimbal: 10,
         ispCurve: [[0, 290], [1, 260], [8, 0.001]],
         consumption: new Resources({LF: 0.063, Ox: 0.077}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-1R_%22Spider%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
     }),
-    'LV-909 "Terrier"': Engine.create({
+    Engine.create({
+        name: 'LV-909 "Terrier"',
         cost: 390,
         mass: 0.5,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 4,
         ispCurve: [[0, 345], [1, 85], [3, 0.001]],
         consumption: new Resources({LF: 1.596, Ox: 1.951}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-909_%22Terrier%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.AdvancedRocketry,
     }),
-    'LV-N "Nerv"': Engine.create({
+    Engine.create({
+        name: 'LV-N "Nerv"',
         cost: 10000,
         mass: 3.0,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 0,
         ispCurve: [[0, 800], [1, 185], [2, 0.001]],
         consumption: new Resources({LF: 1.53, El: -5}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-N_%22Nerv%22_Atomic_Rocket_Motor",
         techTreeNode: TechTreeNode.NuclearPropulsion,
     }),
-    'LV-T30 "Reliant"': Engine.create({
+    Engine.create({
+        name: 'LV-T30 "Reliant"',
         cost: 1100,
         mass: 1.25,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 0,
         ispCurve: [[0, 310], [1, 265], [7, 0.001]],
         consumption: new Resources({LF: 7.105, Ox: 8.684, El: -7}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-T30_%22Reliant%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.GeneralRocketry,
     }),
-    'LV-T45 "Swivel"': Engine.create({
+    Engine.create({
+        name: 'LV-T45 "Swivel"',
         cost: 1200,
         mass: 1.5,
-        size: new Set([Size.SMALL]),
+        size: new Set(["1"]),
         gimbal: 3,
         ispCurve: [[0, 320], [1, 250], [6, 0.001]],
         consumption: new Resources({LF: 6.166, Ox: 7.536, El: -6}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-T45_%22Swivel%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.BasicRocketry,
     }),
-    'LV-T91 "Cheetah"': Engine.create({
+    Engine.create({
+        name: 'LV-T91 "Cheetah"',
         cost: 1000,
         mass: 1.0,
-        size: new Set([Size.MEDIUM]),
+        size: new Set(["1.5"]),
         gimbal: 3,
         ispCurve: [[0, 345], [1, 150]],
         consumption: new Resources({LF: 3.325, Ox: 4.064, El: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-T91_%22Cheetah%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
     }),
-    'LV-TX87 "Bobcat"': Engine.create({
+    Engine.create({
+        name: 'LV-TX87 "Bobcat"',
         cost: 2000,
         mass: 2.0,
-        size: new Set([Size.MEDIUM]),
+        size: new Set(["1.5"]),
         gimbal: 5,
         ispCurve: [[0, 310], [1, 290]],
         consumption: new Resources({LF: 11.842, Ox: 14.473, El: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/LV-TX87_%22Bobcat%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavyRocketry,
     }),
-    'Mk-55 "Thud"': Engine.create({
+    Engine.create({
+        name: 'Mk-55 "Thud"',
         cost: 820,
         mass: 0.9,
-        size: new Set([Size.RADIAL]),
+        size: new Set(["R"]),
         gimbal: 8,
         ispCurve: [[0, 305], [1, 275], [9, 0.001]],
         consumption: new Resources({LF: 3.611, Ox: 4.413}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Mk-55_%22Thud%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.AdvancedRocketry,
     }),
-    'O-10 "Puff"': Engine.create({
+    Engine.create({
+        name: 'O-10 "Puff"',
         cost: 150,
         mass: 0.09,
-        size: new Set([Size.RADIAL]),
+        size: new Set(["R"]),
         gimbal: 6,
         ispCurve: [[0, 250], [1, 120], [4, 0.001]],
         consumption: new Resources({Mono: 2.039}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/O-10_%22Puff%22_MonoPropellant_Fuel_Engine",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
     }),
-    'RE-I2 "Skiff"': Engine.create({
+    Engine.create({
+        name: 'RE-I2 "Skiff"',
         cost: 1500,
         mass: 1.0,
-        size: new Set([Size.LARGE]),
+        size: new Set(["2"]),
         gimbal: 2,
         ispCurve: [[0, 330], [1, 265]],
         consumption: new Resources({LF: 8.343, Ox: 10.197, El: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-I2_%22Skiff%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
     }),
-    'RE-I5 "Skipper"': Engine.create({
+    Engine.create({
+        name: 'RE-I5 "Skipper"',
         cost: 5300,
         mass: 3.0,
-        size: new Set([Size.LARGE]),
+        size: new Set(["2"]),
         gimbal: 2,
         ispCurve: [[0, 320], [1, 280], [6, 0.001]],
         consumption: new Resources({LF: 18.642, Ox: 22.784, El: -10}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-I5_%22Skipper%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavyRocketry,
     }),
-    'RE-J10 "Wolfhound"': Engine.create({
+    Engine.create({
+        name: 'RE-J10 "Wolfhound"',
         cost: 1680,
         mass: 2.5,
-        size: new Set([Size.LARGE]),
+        size: new Set(["2"]),
         gimbal: 3,
         ispCurve: [[0, 412], [1, 70]],
         consumption: new Resources({LF: 8.353, Ox: 10.21, El: -8}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-J10_%22Wolfhound%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
     }),
-    'RE-L10 "Poodle"': Engine.create({
+    Engine.create({
+        name: 'RE-L10 "Poodle"',
         cost: 1300,
         mass: 1.75,
-        size: new Set([Size.LARGE]),
+        size: new Set(["2"]),
         gimbal: 5,
         ispCurve: [[0, 350], [1, 90], [3, 0.001]],
         consumption: new Resources({LF: 6.555, Ox: 8.012, El: -8}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-L10_%22Poodle%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavyRocketry,
     }),
-    'RE-M3 "Mainsail"': Engine.create({
+    Engine.create({
+        name: 'RE-M3 "Mainsail"',
         cost: 13000,
         mass: 6.0,
-        size: new Set([Size.LARGE]),
+        size: new Set(["2"]),
         gimbal: 2,
         ispCurve: [[0, 310], [1, 285], [9, 0.001]],
         consumption: new Resources({LF: 44.407, Ox: 54.275, El: -12}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RE-M3_%22Mainsail%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
     }),
-    'RK-7 "Kodiak"': Engine.create({
+    Engine.create({
+        name: 'RK-7 "Kodiak"',
         cost: 1300,
         mass: 1.25,
-        size: new Set([Size.MEDIUM]),
+        size: new Set(["1.5"]),
         gimbal: 0,
         ispCurve: [[0, 305], [1, 265]],
         consumption: new Resources({LF: 7.222, Ox: 8.826, El: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RK-7_%22Kodiak%22_Liquid_Fueled_Engine",
         techTreeNode: TechTreeNode.HeavierRocketry,
     }),
-    'RT-10 "Hammer"': Engine.create({
+    Engine.create({
+        name: 'RT-10 "Hammer"',
         cost: 400,
         mass: 3.5625,
-        size: new Set([Size.SMALL, Size.RADIAL]),
+        size: new Set(["1", "R"]),
         gimbal: 0,
         ispCurve: [[0, 195], [1, 170], [7, 0.001]],
         consumption: new Resources({SF: 15.827}),
@@ -387,10 +411,11 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RT-10_%22Hammer%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.BasicRocketry,
     }),
-    'RT-5 "Flea"': Engine.create({
+    Engine.create({
+        name: 'RT-5 "Flea"',
         cost: 200,
         mass: 1.5,
-        size: new Set([Size.SMALL, Size.RADIAL]),
+        size: new Set(["1", "R"]),
         gimbal: 0,
         ispCurve: [[0, 165], [1, 140], [6, 0.001]],
         consumption: new Resources({SF: 15.821}),
@@ -399,20 +424,22 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RT-5_%22Flea%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.Start,
     }),
-    'RV-1 "Cub"': Engine.create({
+    Engine.create({
+        name: 'RV-1 "Cub"',
         cost: 1000,
         mass: 0.18,
-        size: new Set([Size.RADIAL]),
+        size: new Set(["R"]),
         gimbal: 22.5,
         ispCurve: [[0, 320], [1, 270]],
         consumption: new Resources({LF: 1.147, Ox: 1.402}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/RV-1_%22Cub%22_Vernier_Engine",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
     }),
-    'S1 SRB-KD25k "Kickback"': Engine.create({
+    Engine.create({
+        name: 'S1 SRB-KD25k "Kickback"',
         cost: 2700,
         mass: 24.0,
-        size: new Set([Size.SMALL, Size.RADIAL]),
+        size: new Set(["1", "R"]),
         gimbal: 0,
         ispCurve: [[0, 220], [1, 195], [7, 0.001]],
         consumption: new Resources({SF: 41.407}),
@@ -421,10 +448,11 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/S1_SRB-KD25k_%22Kickback%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.HeavyRocketry,
     }),
-    'S2-17 "Thoroughbred"': Engine.create({
+    Engine.create({
+        name: 'S2-17 "Thoroughbred"',
         cost: 9000,
         mass: 70.0,
-        size: new Set([Size.LARGE, Size.RADIAL]),
+        size: new Set(["2", "R"]),
         gimbal: 0,
         ispCurve: [[0, 230], [1, 205], [7, 0.001]],
         consumption: new Resources({SF: 100.494}),
@@ -433,10 +461,11 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/S2-17_%22Thoroughbred%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.HeavierRocketry,
     }),
-    'S2-33 "Clydesdale"': Engine.create({
+    Engine.create({
+        name: 'S2-33 "Clydesdale"',
         cost: 18500,
         mass: 144,
-        size: new Set([Size.LARGE, Size.RADIAL]),
+        size: new Set(["2", "R"]),
         gimbal: 1,
         ispCurve: [[0, 235], [1, 210], [7, 0.001]],
         consumption: new Resources({SF: 190.926}),
@@ -445,30 +474,33 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/S2-33_%22Clydesdale%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
     }),
-    'S3 KS-25 "Vector"': Engine.create({
+    Engine.create({
+        name: 'S3 KS-25 "Vector"',
         cost: 18000,
         mass: 4,
-        size: new Set([Size.SMALL, Size.RADIAL]),
+        size: new Set(["1", "R"]),
         gimbal: 10.5,
         ispCurve: [[0, 315], [1, 295], [12, 0.001]],
         consumption: new Resources({LF: 29.135, Ox: 35.609, El: -3}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/S3_KS-25_%22Vector%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
     }),
-    'S3 KS-25x4 "Mammoth"': Engine.create({
+    Engine.create({
+        name: 'S3 KS-25x4 "Mammoth"',
         cost: 39000,
         mass: 15,
-        size: new Set([Size.EXTRA_LARGE]),
+        size: new Set(["3"]),
         gimbal: 2,
         ispCurve: [[0, 315], [1, 295], [12, 0.001]],
         consumption: new Resources({LF: 116.539, Ox: 142.437, El: -12}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/S3_KS-25x4_%22Mammoth%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.VeryHeavyRocketry,
     }),
-    'Separatron I': Engine.create({
+    Engine.create({
+        name: 'Separatron I',
         cost: 75,
         mass: 0.0725,
-        size: new Set([Size.RADIAL]),
+        size: new Set(["R"]),
         gimbal: 0,
         ispCurve: [[0, 154], [1, 118], [6, 0.001]],
         consumption: new Resources({SF: 1.589}),
@@ -477,20 +509,22 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/Sepratron_I",
         techTreeNode: TechTreeNode.PrecisionPropulsion,
     }),
-    'T-1 Aerospike "Dart"': Engine.create({
+    Engine.create({
+        name: 'T-1 Aerospike "Dart"',
         cost: 3850,
         mass: 1.0,
-        size: new Set([Size.SMALL, Size.RADIAL]),
+        size: new Set(["1", "R"]),
         gimbal: 0,
         ispCurve: [[0, 340], [1, 290], [5, 230], [10, 170], [20, 0.001]],
         consumption: new Resources({LF: 4.859, Ox: 5.938, El: -5}),
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/T-1_Toroidal_Aerospike_%22Dart%22_Liquid_Fuel_Engine",
         techTreeNode: TechTreeNode.HypersonicFlight,
     }),
-    'THK "Pollux"': Engine.create({
+    Engine.create({
+        name: 'THK "Pollux"',
         cost: 6000,
         mass: 51.5,
-        size: new Set([Size.MEDIUM, Size.RADIAL]),
+        size: new Set(["1.5", "R"]),
         gimbal: 0,
         ispCurve: [[0, 225], [1, 200]],
         consumption: new Resources({SF: 78.556}),
@@ -499,4 +533,54 @@ export const engines = {
         wikiUrl: "https://wiki.kerbalspaceprogram.com/wiki/THK_%22Pollux%22_Solid_Fuel_Booster",
         techTreeNode: TechTreeNode.HeavyRocketry,
     }),
-};
+]
+
+const nearFuture = [
+    Engine.create({
+        name: "96-85 'Hummingbird'",
+        cost: 350,
+        mass: 0.15,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 230], [1, 220], [4, 140]],
+        consumption: new Resources({Mono: 13.301}),
+    }),
+    // TODO: others
+]
+
+const farFuture = [
+    Engine.create({
+        name: "A-134NG 'Casaba'",
+        cost: 355_000,
+        mass: 32.0,
+        size: new Set(["4"]),
+        gimbal: 2,
+        ispCurve: [[0, 13500], [1, 50], [12, 0.001]],
+        consumption: new Resources({Abl: 85, Anti: 0.00025, FIP: 72})
+            .scaled(420/20785.1950059744 /* Experimentally found to get thrust of 420kN */),
+        content: new Resources({Abl: 17000}),
+    }),
+    // TODO: others
+]
+
+function enginePartsWithMods_(activeMods: Set<string> = new Set()): Array<Engine> {
+    let parts: Array<Engine> = [...engineParts]
+    if(activeMods.has("NFT")) {
+        parts = combineWithOverride(parts, nearFuture)
+    }
+    if(activeMods.has("FFT")) {
+        parts = combineWithOverride(parts, farFuture)
+    }
+    return parts
+}
+
+let enginePartsCache: null | {activeMods: Set<string>, parts: Array<Engine>} = null
+export function enginePartsWithMods(activeMods: Set<string> = new Set()): Array<Engine> {
+    if(enginePartsCache == null || !setEq(enginePartsCache.activeMods, activeMods)) {
+        enginePartsCache = {
+            activeMods: new Set(activeMods),
+            parts: enginePartsWithMods_(activeMods),
+        }
+    }
+    return enginePartsCache.parts
+}

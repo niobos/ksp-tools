@@ -1,54 +1,46 @@
 import {Data} from "dataclass";
 import {objectMap} from "./utils";
 
-export type ResourceProperties = {
-    name: string
-    mod?: string
-    cost: number
-    mass: number
+export function resourceInfoWithMods(activeMods: Set<string> = new Set()) {
+    const resourceInfo = {
+        LF: {name: "Liquid Fuel", cost: 0.8, mass: 0.005},
+        Ox: {name: "Oxidizer", cost: 0.16, mass: 0.005},
+        SF: {name: "Solid Fuel", cost: 0.6, mass: 0.0075},
+        Mono: {name: "Monopropellant", cost: 1.2, mass: 0.004},
+        Xe: {name: "Xenon", cost: 4.0, mass: 0.0001},
+        El: {name: "Electric Charge", cost: 0, mass: 0},
+        Ore: {name: "Ore", cost: 0.02, mass: 0.010},
+        Air: {name: "Air", cost: 0, mass: 0},
+        Abl: {name: "Ablator", cost: 0.5, mass: 0.001},
+    }
+    if(activeMods.has("NFT")) {
+        resourceInfo["Ar"] = {name: "Argon", cost: (140620 - 33100) / 10240000, mass: 18.27 / 10240000}
+        resourceInfo["LH2"] = {name: "Liquid Hydrogen", cost: (199310.4 - 135806.4) / 1728000, mass: (146.915 - 24.486) / 1728000}
+        resourceInfo["LCH4"] = {name: "Liquid Methane", cost: (647294.4 - 128894.4) / 1152000, mass: (572.02 - 81.717) / 1152000}
+        resourceInfo["Li"] = {name: "Lithium", cost: (96205 - 74821) / 35200, mass: 18.80 / 35200}
+        resourceInfo["EnrU"] = {name: "Enriched Uranium", cost: 830400 / 960, mass: 10.53 / 960}
+        resourceInfo["DeplU"] = {name: "Depleted Uranium", cost: 830400 / 960, mass: 10.53 / 960}
+        resourceInfo["SC"] = {name: "Stored Charge", cost: 0, mass: 0}
+    }
+    if(activeMods.has("FFT")) {
+        resourceInfo["Anti"] = {name: "Antimatter", cost: 3000000/300000, mass: 3/300_000}
+        resourceInfo["NSW"] = {name: "Nuclear Salt Water", cost: 336000/84000, mass: 88.20/84000}
+        resourceInfo["NUK"] = {name: "Nuclear Pulse Units", cost: 980000/5600, mass: 280/5600}
+        resourceInfo["FIP"] = {name: "Fission Pellets", cost: 345600/28800, mass: 28.80/28800}
+        resourceInfo["Frag"] = {name: "Fissionable Particles", cost: (163200-131200)/640, mass: (1.382-0.461)/640}
+        resourceInfo["D"] = {name: "Deuterium", cost: (379500-187500)/750000, mass: (146.16-24.36)/750000}
+        resourceInfo["He3"] = {name: "Helium-3", cost: (4185000-60000)/750000, mass: (53.1-8.85)/750000}
+    }
+    return resourceInfo
 }
 
-type ResourceType = "LF" | "Ox" | "SF" | "Mono" | "Xe" | "El" | "Ore" | "Abl" | "Air" |
-    /* Near Future Tech */ "Ar" | "LH2" | "LCH4" | "Li" | "EnrU" | "DeplU" | "SC" |
-    /* Far Future Tech */ "Anti" | "NSW" | "NUK" | "FIP" | "Frag" | "D" | "He3"
-export const ResourceInfo: Record<ResourceType, Readonly<ResourceProperties>> = {
-    LF: {name: "Liquid Fuel", cost: 0.8, mass: 0.005},
-    Ox: {name: "Oxidizer", cost: 0.16, mass: 0.005},
-    SF: {name: "Solid Fuel", cost: 0.6, mass: 0.0075},
-    Mono: {name: "Monopropellant", cost: 1.2, mass: 0.004},
-    Xe: {name: "Xenon", cost: 4.0, mass: 0.0001},
-    El: {name: "Electric Charge", cost: 0, mass: 0},
-    Ore: {name: "Ore", cost: 0.02, mass: 0.010},
-    Air: {name: "Air", cost: 0, mass: 0},
-    Abl: {name: "Ablator", cost: null, mass: null},
-    // Near Future fuels:
-    Ar: {name: "Argon", mod: "NFT", cost: (140620-33100)/10240000, mass: 18.27/10240000},
-    LH2: {name: "Liquid Hydrogen", mod: "NFT", cost: (199310.4-135806.4)/1728000, mass: (146.915-24.486)/1728000},
-    LCH4: {name: "Liquid Methane", mod: "NFT", cost: (647294.4-128894.4)/1152000, mass: (572.02-81.717)/1152000},
-    Li: {name: "Lithium", mod: "NFT", cost: (96205-74821)/35200, mass: 18.80/35200},
-    EnrU: {name: "Enriched Uranium", mod: "NFT", cost: 830400/960, mass: 10.53/960},
-    DeplU: {name: "Depleted Uranium", mod: "NFT", cost: 830400/960, mass: 10.53/960},
-    SC: {name: "Stored Charge", mod: "NFT", cost: 0, mass: 0},
-    // Far Future fuels:
-    Anti: {name: "Antimatter", mod: "FFT", cost: 3000000/300000, mass: 3/300000},
-    NSW: {name: "Nuclear Salt Water", mod: "FFT", cost: 336000/84000, mass: 88.20/84000},
-    NUK: {name: "Nuclear Pulse Units", mod: "FFT", cost: 980000/5600, mass: 280/5600},
-    FIP: {name: "Fission Pellets", mod: "FFT", cost: 345600/28800, mass: 28.80/28800},
-    Frag: {name: "Fissionable Particles", mod: "FFT", cost: (163200-131200)/640, mass: (1.382-0.461)/640},
-    D: {name: "Deuterium", mod: "FFT", cost: (379500-187500)/750000, mass: (146.16-24.36)/750000},
-    He3: {name: "Helium-3", mod: "FFT", cost: (4185000-60000)/750000, mass: (53.1-8.85)/750000},
-} as const
-
 export class Resources {
-    readonly amount: {[r in ResourceType]: number}
+    readonly amount: Record<string, number>
 
-    constructor(amount: Partial<Record<ResourceType, number>> = {}) {
-        this.amount = {} as {[r in ResourceType]: number}
-        for(const r in ResourceInfo) {
-            this.amount[r] = amount[r] || 0
-        }
+    constructor(amount: Record<string, number> = {}) {
+        this.amount = Object.assign({}, amount)
     }
-    copy(changed_amount: Partial<Record<ResourceType, number>> = {}): Resources {
+    copy(changed_amount: Record<string, number> = {}): Resources {
         const changed = new Resources(this.amount)
         for (const [key, value] of Object.entries(changed_amount)) {
             changed.amount[key] = value
@@ -56,36 +48,42 @@ export class Resources {
         return changed
     }
 
-    get mass(): {[r in ResourceType]: number} {
+    mass(resourceInfo: Record<string, {mass: number}>): Record<string, number> {
         return objectMap(this.amount,
-            (amount, resource) => amount * ResourceInfo[resource].mass)
+            (amount, resource) => amount * resourceInfo[resource].mass)
     }
-    get cost(): {[r in ResourceType]: number} {
+    cost(resourceInfo: Record<string, {cost: number}>): Record<string, number> {
         return objectMap(this.amount,
-            (amount, resource) => amount * ResourceInfo[resource].cost)
+            (amount, resource) => amount * resourceInfo[resource].cost)
     }
-    get total_mass(): number {
-        return Object.values(this.mass)
+    total_mass(resourceInfo: Record<string, {mass: number}>): number {
+        return Object.values(this.mass(resourceInfo))
             .reduce((acc, mass) => acc + mass, 0)
     }
-    get total_cost(): number {
-        return Object.values(this.cost)
+    total_cost(resourceInfo: Record<string, {cost: number}>): number {
+        return Object.values(this.cost(resourceInfo))
             .reduce((acc, mass) => acc + mass, 0)
     }
 
-    selective_mass(filter: (resource: ResourceType, amount: number) => boolean): number {
-        const masses = this.mass
+    selective_mass(
+        resourceInfo: Record<string, {mass: number}>,
+        filter: (resource: string, amount: number) => boolean
+    ): number {
+        const masses = this.mass(resourceInfo)
         return Object.keys(masses).reduce((acc, resource) => {
             const amount = masses[resource]
-            if(filter(resource as ResourceType, amount)) return acc + amount
+            if(filter(resource, amount)) return acc + amount
             return acc
         }, 0)
     }
-    selective_cost(filter: (resource: ResourceType, amount: number) => boolean): number {
-        const costs = this.mass
+    selective_cost(
+        resourceInfo: Record<string, {cost: number}>,
+        filter: (resource: string, amount: number) => boolean
+    ): number {
+        const costs = this.cost(resourceInfo)
         return Object.keys(costs).reduce((acc, resource) => {
             const amount = costs[resource]
-            if(filter(resource as ResourceType, amount)) return acc + amount
+            if(filter(resource, amount)) return acc + amount
             return acc
         }, 0)
     }
@@ -249,17 +247,17 @@ export default class Part extends Data {
     name: string
     cost: number
     mass: number
-    size: Set<Size> | Set<string>
+    size: Set<string>
     content: Resources = new Resources()
     consumption: Resources = new Resources()
     wikiUrl: string = undefined
     techTreeNode?: TechTreeNode
 
-    emptied() {
+    emptied(resourceInfo: Record<string, {cost: number, mass: number}>) {
         // @ts-ignore
         return this.copy({
-            cost: this.cost - this.content.total_cost,
-            mass: this.mass - this.content.total_mass,
+            cost: this.cost - this.content.total_cost(resourceInfo),
+            mass: this.mass - this.content.total_mass(resourceInfo),
             content: new Resources(),
         });
     }

@@ -1,7 +1,6 @@
 import * as React from "react";
 import {useState} from "react";
 import {probeCores, reactionWheels} from "../utils/kspParts-other";
-import {engines} from "../utils/kspParts-engine";
 import {FloatInput} from "formattedInput"
 import {KerbalYdhmsInput} from "../components/formattedInput";
 import {arrayInsertElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
@@ -42,17 +41,7 @@ function generateDeviceMap() {
         }
         hierLabelMap['Reaction wheels'] = options;
     }
-    { // Dawn engine
-        const options = {};
-        const deviceName = 'IX-6315 \"Dawn\"';
-        const device = engines[deviceName];
-        const shortName = deviceName;
-        const label = `${deviceName}`;
-        options[label] = shortName;
-        valueMap[shortName] = device.consumption.amount.El;
-        labelMap[shortName] = label;
-        hierLabelMap['Engines'] = options;
-    }
+    // TODO: Engines requiring power
 
     return {hierLabelMap, valueMap, labelMap};
 }

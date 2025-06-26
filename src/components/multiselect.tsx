@@ -5,11 +5,13 @@ export interface MultiselectProps {
     items: Record<string, string> | Array<string>
     value: Set<string>
     onChange: (v: Set<string>) => void
+    sortCmp?: (a: string, b: string) => number
 }
 export default function Multiselect({
     items,
     value,
     onChange,
+    sortCmp = (a, b) => 0,
 }: MultiselectProps) {
     /* Renders a list of checkboxes.
      * Props:
@@ -25,7 +27,7 @@ export default function Multiselect({
     }
 
     const checkboxes: Array<ReactNode> = []
-    for(let v in items) {
+    for(let v of Object.keys(items).sort(sortCmp)) {
         const label = items[v]
         const checked = value.has(v)
 

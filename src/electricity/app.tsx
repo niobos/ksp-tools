@@ -7,7 +7,7 @@ import useFragmentState from 'useFragmentState'
 import Preset from "../components/preset"
 import SortableTable from "sortableTable"
 import FuelTank from "../components/fuelTank"
-import {fuelTanks} from "../utils/kspParts-fuelTanks"
+import {fuelTanksWithMods} from "../utils/kspParts-fuelTanks"
 import {Battery, Convertor, electricalPartsWithMods, RTG, SolarPanel} from "../utils/kspParts-electric"
 import {fromPreset, objectMap} from "../utils/utils"
 import {kspSystem, KspSystem} from "../utils/kspSystems"
@@ -34,7 +34,7 @@ import {
 } from "./shadeCalc"
 import KspModSelector from "../components/kspModSelector"
 import {KspFund} from "../components/kspIcon"
-import Part from "../utils/kspParts";
+import Part, {resourceInfoWithMods} from "../utils/kspParts";
 import CopyableNumber from "../components/copyableNumber";
 import knapsackMinimize, {Combo, ComboCost} from "../utils/knapsackMinimize";
 
@@ -202,6 +202,8 @@ export default function App() {
         },
         o => JSON.stringify([...o]),
     )
+    const resourceInfo = resourceInfoWithMods(activeMods)
+
     const [burstPowerConfig, setBurstPowerConfig] = useFragmentState('b', BurstPowerCalcFromString, BurstPowerCalcToString)
     const [burstPowerCalcOpen, setBurstPowerCalcOpen] = useState(false)
     const [continuousPower, setContinuousPower] = useFragmentState('c', ContinuousPowerCalcFromString, ContinuousPowerCalcToString)
@@ -224,10 +226,12 @@ export default function App() {
     const shadeEnergy = shadeValue.duration * continuousPowerValue
     const shadePower = shadeEnergy / (shadeValue.interval - shadeValue.duration)
 
+    const fuelTanks = fuelTanksWithMods(activeMods)
     const {value: fuelTankValue, preset: fuelTankPreset} = fromPreset(
-        fuelTank, objectMap(fuelTanks, (ft) => {
-            return {fullEmptyRatio: ft.mass / ft.emptied().mass, cost: ft.cost / ft.mass}
-        })
+        fuelTank, fuelTanks.reduce((acc, ft) => {
+            acc[ft.name] = {fullEmptyRatio: ft.mass / ft.emptied(resourceInfo).mass, cost: ft.cost / ft.mass}
+            return acc
+        }, {})
     )
 
     const netStorageNonSolar = Math.max(0, burstPowerTotal.energy - storageOtherParts)
@@ -310,9 +314,9 @@ export default function App() {
         let modulation = (totalPowerNeeded / numDevices / (-conv.consumption.amount.El) )
         modulation = Math.max(modulation, conv.minimumModulation)
         const fullLoadTime = missionDuration * modulation
-        const consumptionMassFlow = conv.consumption.selective_mass((r, m) => m > 0);
+        const consumptionMassFlow = conv.consumption.selective_mass(resourceInfo, (r, m) => m > 0);
         const neededFuelMass = fullLoadTime * consumptionMassFlow
-        const neededFuelMassInTanks = Math.max(0, neededFuelMass - conv.content.total_mass)
+        const neededFuelMassInTanks = Math.max(0, neededFuelMass - conv.content.total_mass(resourceInfo))
         /* fullTank = emptyTank + fuel
          * fullTank / emptyTank = WDR  => emptyTank = fullTank / WDR
          * fullTank = fullTank / WDR + fuel
@@ -321,7 +325,7 @@ export default function App() {
          */
         const neededTankMass = neededFuelMassInTanks / (1 - 1 / fuelTankValue.fullEmptyRatio)
 
-        const totalFuelMass = neededFuelMassInTanks + conv.content.total_mass
+        const totalFuelMass = neededFuelMassInTanks + conv.content.total_mass(resourceInfo)
 
         solutions.push({
             combo: [{n: numDevices, item: conv}],
