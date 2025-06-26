@@ -9,9 +9,9 @@ import {KspFund} from "../components/kspIcon"
 import SortableTable from "sortableTable"
 import {FuelTank, fuelTanksWithMods} from "../utils/kspParts-fuelTanks"
 import {Engine, enginePartsWithMods} from "../utils/kspParts-engine"
-import {fromPreset, objectFilter, objectMap} from "../utils/utils"
+import {fromPreset, objectMap} from "../utils/utils"
 import {dvForDm, massBeforeDv} from "../utils/rocket"
-import  {Body, kspSystem} from "../utils/kspSystems"
+import {Body, kspSystem} from "../utils/kspSystems"
 import {HierarchicalBodySelect} from "../components/kspSystemSelect"
 import './app.css'
 import KeyValueList from "./keyValueList";
@@ -23,7 +23,7 @@ function calcFuelTankMass(
     isp: number,
     payloadMass: number,
     tankWetDryRatio: number,
-    payloadMassDry: number,
+    payloadMassDry?: number,
 ): number {
     /* Calculate the mass of fuel tanks needed to get the desired ∆v
      * Returns either the mass of tanks (with the given wet:dry ratio) required.
@@ -99,11 +99,11 @@ function calcFuelTankInfo(
         for (let resource in engine.consumption.amount) {
             const cons = engine.consumption.amount[resource]
             if (cons <= 0) continue
-            n = n + cons
             const cost = fuelType[resource].cost;
             if (cost == null || isNaN(cost) || cost == Infinity) {
                 atLeastOneNotRefuelable = true
             } else {
+                n = n + cons
                 fuelTankWdr += fuelType[resource].wdr * cons
                 fuelTankCost += cost * cons
                 atLeastOneRefuelable = true
@@ -136,7 +136,125 @@ function fillInFuelTypeInfo(
             fuelType[resource].cost ??= cost.reduce((acc, i) => acc + i, 0) / cost.length
         }
     }
+    // Special cases
+    fuelType.Air = {wdr: null, cost: 0}
+    fuelType.El = {wdr: null, cost: 0}
     return fuelType as Record<string, {wdr: number, cost: number}>
+}
+
+function calcFuelTank(
+    payloadMass: number,
+    acceleration: number,
+    dv: number,
+    engine: Engine,
+    resourceInfo: Record<string, {mass: number, cost: number}>,
+    fuelType: Record<string, {wdr: number, cost: number}>,
+    pressureValue: number,
+): {
+    n: number,
+    dv: number,
+    fuelTankMass: number,
+    totalMass: number,
+    emptyMass: number,
+} {
+    const isp = engine.isp(pressureValue)
+    const engineThrust = engine.thrust(resourceInfo, pressureValue)
+    const engineMassEmpty = engine.emptied(resourceInfo).mass
+
+    const neededWetDryRatio = massBeforeDv(1, dv, isp)
+
+    let totalConsumption = 0
+    let fuelTankWdr = 0
+    const refuelable: Array<string> = []
+    const nonRefuelable: Array<string> = []
+    for (let resource in engine.consumption.amount) {
+        const cons = engine.consumption.amount[resource]
+        if (cons <= 0) continue
+        const cost = fuelType[resource].cost;
+        if (cost == null || isNaN(cost) || cost == Infinity) {
+            nonRefuelable.push(resource)
+        } else {
+            refuelable.push(resource)
+            if(fuelType[resource].wdr != null) {
+                // Don't account for Air/El
+                totalConsumption += cons
+                fuelTankWdr += fuelType[resource].wdr * cons
+            }
+        }
+    }
+    fuelTankWdr = fuelTankWdr / totalConsumption
+
+    let numEnginesDv = 0
+    if(nonRefuelable.length > 0) {  // We are limited by the amount of fuel in the engine
+        // TODO: is this still correct for partially refuelable engines?
+        const engineWdr = engine.mass / engineMassEmpty
+        if(engineWdr < neededWetDryRatio) {
+            return {
+                n: Infinity,
+                dv: dvForDm(engine.mass, engineMassEmpty, isp),
+                fuelTankMass: 0,
+                totalMass: Infinity,
+                emptyMass: Infinity,
+            }
+        } else {
+            /* wdr = (payload_mass + n * engine_mass_full) / (payload_mass + n * engine_mass_empty)
+             * => wdr * (payload_mass + n * engine_mass_empty) = payload_mass + n * engine_mass_full
+             * => wdr * payload_mass + n * wdr * engine_mass_empty = payload_mass + n * engine_mass_full
+             * => n * (wdr * engine_mass_empty - engine_mass_full) = payload_mass - wdr * payload_mass
+             * => n = (payload_mass - wdr * payload_mass) / (wdr * engine_mass_empty - engine_mass_full)
+             */
+            numEnginesDv = (payloadMass - neededWetDryRatio * payloadMass)
+                / (neededWetDryRatio * engineMassEmpty - engine.mass)
+            // We still may need additional fuel tanks for other fuels
+        }
+    }
+
+    /* The number of engines depends on the mass to attain the desired TWR
+     * But the mass depends on the number of engines and the resulting mass of fuel & tanks
+     * So we have an iterative problem
+     */
+    let totalMass = payloadMass + numEnginesDv * engineMassEmpty  // initial guess
+    while(true) {
+        const numEnginesTwr = totalMass * acceleration / engineThrust
+        const numEngines = Math.ceil(Math.max(numEnginesTwr, numEnginesDv))
+        let fuelTankMass = 0, fuelTankEmptyMass = 0
+        if(refuelable.length > 0) {
+            fuelTankMass = calcFuelTankMass(
+                dv, isp,
+                payloadMass + numEngines * engine.mass,
+                fuelTankWdr,
+                payloadMass + numEngines * engineMassEmpty,
+            )
+            fuelTankEmptyMass = fuelTankMass / fuelTankWdr
+            if (isNaN(fuelTankMass)) {  // Unobtainable
+                return {
+                    n: numEngines,
+                    dv: dvForDm(fuelTankWdr, 1, isp),
+                    fuelTankMass: Infinity,
+                    totalMass: Infinity,
+                    emptyMass: Infinity,
+                }
+            } // else
+        }
+        const actualDv = dvForDm(
+            payloadMass + numEngines * engine.mass + fuelTankMass,
+            payloadMass + numEngines * engineMassEmpty + fuelTankEmptyMass,
+            isp
+        )
+
+        totalMass = payloadMass + numEngines * engineMassEmpty + fuelTankMass
+        const newNumEnginesTwr = totalMass * acceleration / engineThrust
+        if(newNumEnginesTwr <= numEngines || newNumEnginesTwr > 50) {
+            return {
+                n: numEngines,
+                dv: actualDv,
+                fuelTankMass,
+                totalMass,
+                emptyMass: payloadMass + numEngines * engineMassEmpty + fuelTankEmptyMass,
+            }
+        }
+        // Else: loop around
+    }
 }
 
 function App() {
@@ -327,60 +445,13 @@ function App() {
         }
         if (skip) continue
 
-        let {refuelable, fuelTankWdr, fuelTankCost} = calcFuelTankInfo(engine, fuelType)
+        let {refuelable, fuelTankCost} = calcFuelTankInfo(engine, fuelType)
 
-        let numEngines: number
-        let fuelTankMass: number, totalMass: number, emptyMass: number, actualDv: number
-        if(engine.consumption.amount.SF > 0) {
-            // TODO: integrate this below, don't special case SF since other fuels are also not refuelable
-            // SRBs: we can't add fuel, fuel is always integrated with the engine
-            /* a = n * F / m = n * F / (m_payload + n*m_engine)
-             * => a * m_payload + a * n * m_engine = n * F
-             * => (F - a * m_engine) * n = a * m_payload
-             * => n = a * m_payload / (F - a*m_engine)
-             */
-            numEngines = Math.max(1, Math.ceil(mass * acceleration / (engine.thrust(resourceInfo, pressureValue) - acceleration * engine.mass)));
-            fuelTankMass = 0;
-            totalMass = mass + engine.mass * numEngines;
-            emptyMass = mass + engine.emptied(resourceInfo).mass * numEngines;
-            actualDv = dvForDm(totalMass, emptyMass, engine.isp(pressureValue))
+        const {
+            n: numEngines, fuelTankMass, dv: actualDv,
+            totalMass, emptyMass,
+        } = calcFuelTank(mass, acceleration, dv, engine, resourceInfo, fuelType, pressureValue)
 
-        } else {  // Normal rocket engine or jet engine
-            function calcNumEngines() {
-                let n = Math.ceil(totalMass * acceleration / engine.thrust(resourceInfo, pressureValue));
-                if(n === Infinity || isNaN(n) || n === 0) n = 1;
-                return n;
-            }
-            totalMass = mass; // initial guess
-            numEngines = calcNumEngines();
-
-            while(true) {
-                fuelTankMass = calcFuelTankMass(
-                    dv, engine.isp(pressureValue),
-                    mass + numEngines * engine.mass,
-                    fuelTankWdr,
-                    mass + numEngines * engine.emptied(resourceInfo).mass,
-                )
-                fuelTankMass = Math.max(0, fuelTankMass);  // cap to >=0 for engines with fuel
-
-                if (!isNaN(fuelTankMass)) {
-                    totalMass = mass + engine.mass * numEngines + fuelTankMass;
-                    emptyMass = mass + engine.emptied(resourceInfo).mass * numEngines + fuelTankMass / fuelTankWdr;
-                    actualDv = dvForDm(totalMass, emptyMass, engine.isp(pressureValue));
-                } else {
-                    // max attainable ∆v with infinite fuel tanks
-                    totalMass = mass + engine.mass * numEngines;
-                    emptyMass = mass + engine.emptied(resourceInfo).mass * numEngines;
-                    actualDv = dvForDm(fuelTankWdr, 1, engine.isp(pressureValue));
-                }
-
-                const newNumEngines = calcNumEngines();  // iterate
-                if(newNumEngines <= numEngines) break;  // prevent infinite loop
-                if(newNumEngines > 50) break;
-                // else: recalc with new number of engines
-                numEngines = newNumEngines;
-            }
-        }
         const accelerationFull = engine.thrust(resourceInfo, pressureValue) * numEngines / totalMass;
 
         if( (accelerationFull < acceleration * .99) ||
