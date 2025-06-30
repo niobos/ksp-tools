@@ -181,16 +181,16 @@ function calcBurn(
 ): Omit<BurnProps, "onChange" | "onMove"> {
     const {thrust, isp, fuelRatio} = combineEngines(burn.engines)
 
-    let totalFuelMass = fuelRemaining.total_mass
+    let totalFuelMass = fuelRemaining.totalMass
     const startMass = dryMass + totalFuelMass
     const endMass = massAfterDv(startMass, burn.dv, isp)
     const consumedFuelMass = startMass - endMass
-    fuelRemaining = fuelRemaining.sub(fuelRatio.scaled(consumedFuelMass / fuelRatio.total_mass))
+    fuelRemaining = fuelRemaining.sub(fuelRatio.scaled(consumedFuelMass / fuelRatio.totalMass))
 
     const minFuelRemaining = fuelRemaining.sub(fuelRatio.scaled(
         fuelRemaining.consumedAtRatio(fuelRatio)
     ))
-    const maxDv = dvForDm(startMass, dryMass + minFuelRemaining.total_mass, isp)
+    const maxDv = dvForDm(startMass, dryMass + minFuelRemaining.totalMass, isp)
 
     return {
         dv: burn.dv,
@@ -210,7 +210,7 @@ function calcFuelRequired(
 
     const startMass = massBeforeDv(endMass, burn.dv, isp)
     const fuelMass = startMass - endMass
-    return fuelRatio.scaled(fuelMass / fuelRatio.total_mass)
+    return fuelRatio.scaled(fuelMass / fuelRatio.totalMass)
 }
 
 function App(): JSX.Element {
@@ -266,7 +266,7 @@ function App(): JSX.Element {
         // Iterate last to first
         const extraFuel = calcFuelRequired(burns[idx], mass)
         fuelFromZero = fuelFromZero.add(extraFuel)
-        mass += extraFuel.total_mass
+        mass += extraFuel.totalMass
     }
 
     return <>

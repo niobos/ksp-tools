@@ -1,4 +1,4 @@
-import Part, {Resources, Size, TechTreeNode} from "./kspParts"
+import Part, {Resources, TechTreeNode} from "./kspParts"
 import Spline from 'cubic-spline'
 import {thrustFromIspMdot} from "./rocket"
 import {combineWithOverride, setEq} from "./utils";
@@ -23,7 +23,7 @@ export class Engine extends Part {
     }
 
     thrust(resourceInfo: Record<string, {mass: number}>, pressureAtm: number): number {
-        return thrustFromIspMdot(this.isp(pressureAtm), this.consumption.total_mass(resourceInfo))
+        return thrustFromIspMdot(this.isp(pressureAtm), this.consumption.totalMass(resourceInfo))
     }
 }
 

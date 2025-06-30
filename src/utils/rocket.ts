@@ -62,7 +62,7 @@ export function dvForDt(dt: number, startMass: number, thrust: number, isp: numb
 }
 
 export function thrustFromIspMdot(isp: number, mDot: number): number {
-    /* Calculate the engine thrust from the ISP and mass flow rate ṁ (dm/dt)
+    /* Calculate the engine thrust (in N) from the ISP (in s) and mass flow rate ṁ (dm/dt in kg/s)
      */
     return isp * g0 * mDot
 }

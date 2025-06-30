@@ -1,4 +1,4 @@
-import Part, {Resources, Size} from "./kspParts";
+import Part, {Resources} from "./kspParts";
 import {setEq} from "./utils";
 
 export class FuelTank extends Part {}

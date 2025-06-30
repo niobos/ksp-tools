@@ -10,49 +10,16 @@ import SortableTable from "sortableTable"
 import {FuelTank, fuelTanksWithMods} from "../utils/kspParts-fuelTanks"
 import {Engine, enginePartsWithMods} from "../utils/kspParts-engine"
 import {fromPreset, objectMap} from "../utils/utils"
-import {dvForDm, massBeforeDv} from "../utils/rocket"
 import {Body, kspSystem} from "../utils/kspSystems"
 import {HierarchicalBodySelect} from "../components/kspSystemSelect"
 import './app.css'
 import KeyValueList from "./keyValueList";
 import CopyableNumber from "../components/copyableNumber";
 import KspModSelector from "../components/kspModSelector";
-
-function calcFuelTankMass(
-    dv: number,
-    isp: number,
-    payloadMass: number,
-    tankWetDryRatio: number,
-    payloadMassDry?: number,
-): number {
-    /* Calculate the mass of fuel tanks needed to get the desired ∆v
-     * Returns either the mass of tanks (with the given wet:dry ratio) required.
-     * or NaN, if no amount of fuel would achieve the requested ∆v
-     */
-    if(payloadMassDry === undefined) payloadMassDry = payloadMass
-
-    const wetDryRatio = massBeforeDv(1, dv, isp)  // needed wet-to-dry ratio
-    if(wetDryRatio >= tankWetDryRatio) return NaN;
-
-    /* m_wet     m_payload_w + m_empty_tanks + m_fuel
-     * -----  =  ------------------------------------
-     * m_dry     m_payload_d + m_empty_tanks
-     *
-     * m_tanks = m_empty_tanks + m_fuel
-     * m_tanks / m_empty_tanks = tankWetDryRatio
-     *
-     *                  m_payload_w + m_tanks
-     * => wetDryRatio = ---------------------------------------
-     *                  m_payload_d + m_tanks / tankWetDryRatio
-     *
-     * => wetDryRatio * (m_payload_d + m_tanks / tankWetDryRatio) = m_payload_w + m_tanks
-     * => wetDryRatio * m_payload_d + wetDryRatio / tankWetDryRatio * m_tanks = m_payload_w + m_tanks
-     * => wetDryRatio / tankWetDryRatio * m_tanks - m_tanks = m_payload_w - wetDryRatio * m_payload_d
-     * => (wetDryRatio / tankWetDryRatio - 1) * m_tanks = m_payload_w - wetDryRatio * m_payload_d
-     * => m_tanks = (m_payload_w - wetDryRatio * m_payload_d) / (wetDryRatio / tankWetDryRatio - 1)
-     */
-    return (payloadMass - wetDryRatio * payloadMassDry) / (wetDryRatio / tankWetDryRatio - 1);
-}
+import {calcFuelTank} from "./calc";
+import {dvForDm} from "../utils/rocket";
+import {Simulate} from "react-dom/test-utils";
+import error = Simulate.error;
 
 function jsonParseWithDefault(defaultValue: any): (value: string) => any {
     return (valueFromHash) => {
@@ -131,129 +98,105 @@ function fillInFuelTypeInfo(
                 ft => ft.content.amount[resource] > 0
             )
             const wdr = fuelTanksHoldingResource.map(ft => ft.mass / ft.emptied(resourceInfo).mass)
-            const cost = fuelTanksHoldingResource.map(ft => ft.cost / ft.content.total_mass(resourceInfo))
+            const cost = fuelTanksHoldingResource.map(ft => ft.cost / ft.content.totalMass(resourceInfo))
             fuelType[resource].wdr ??= wdr.reduce((acc, i) => acc + i, 0) / wdr.length
             fuelType[resource].cost ??= cost.reduce((acc, i) => acc + i, 0) / cost.length
         }
     }
     // Special cases
-    fuelType.Air = {wdr: null, cost: 0}
-    fuelType.El = {wdr: null, cost: 0}
+    if(fuelType.Air != null) fuelType.Air = {wdr: null, cost: 0}
+    if(fuelType.El != null) fuelType.El = {wdr: null, cost: 0}
     return fuelType as Record<string, {wdr: number, cost: number}>
 }
 
-function calcFuelTank(
-    payloadMass: number,
-    acceleration: number,
-    dv: number,
+function calcEngine(
     engine: Engine,
+    techLevel: number,
     resourceInfo: Record<string, {mass: number, cost: number}>,
     fuelType: Record<string, {wdr: number, cost: number}>,
-    pressureValue: number,
-): {
-    n: number,
+    filterSizes: Set<string>,
+    mass: number,
+    acceleration: number,
     dv: number,
-    fuelTankMass: number,
-    totalMass: number,
-    emptyMass: number,
-} {
-    const isp = engine.isp(pressureValue)
-    const engineThrust = engine.thrust(resourceInfo, pressureValue)
-    const engineMassEmpty = engine.emptied(resourceInfo).mass
+    pressureValue: number,
+    showAll: boolean,
+    availableSizes: Record<string, string>
+) {
+    // Correct tech level?
+    if ((engine.techTreeNode?.level ?? 0) > techLevel) return null
 
-    const neededWetDryRatio = massBeforeDv(1, dv, isp)
-
-    let totalConsumption = 0
-    let fuelTankWdr = 0
-    const refuelable: Array<string> = []
-    const nonRefuelable: Array<string> = []
-    for (let resource in engine.consumption.amount) {
-        const cons = engine.consumption.amount[resource]
-        if (cons <= 0) continue
-        const cost = fuelType[resource].cost;
-        if (cost == null || isNaN(cost) || cost == Infinity) {
-            nonRefuelable.push(resource)
-        } else {
-            refuelable.push(resource)
-            if(fuelType[resource].wdr != null) {
-                // Don't account for Air/El
-                totalConsumption += cons
-                fuelTankWdr += fuelType[resource].wdr * cons
-            }
-        }
-    }
-    fuelTankWdr = fuelTankWdr / totalConsumption
-
-    let numEnginesDv = 0
-    if(nonRefuelable.length > 0) {  // We are limited by the amount of fuel in the engine
-        // TODO: is this still correct for partially refuelable engines?
-        const engineWdr = engine.mass / engineMassEmpty
-        if(engineWdr < neededWetDryRatio) {
-            return {
-                n: Infinity,
-                dv: dvForDm(engine.mass, engineMassEmpty, isp),
-                fuelTankMass: 0,
-                totalMass: Infinity,
-                emptyMass: Infinity,
-            }
-        } else {
-            /* wdr = (payload_mass + n * engine_mass_full) / (payload_mass + n * engine_mass_empty)
-             * => wdr * (payload_mass + n * engine_mass_empty) = payload_mass + n * engine_mass_full
-             * => wdr * payload_mass + n * wdr * engine_mass_empty = payload_mass + n * engine_mass_full
-             * => n * (wdr * engine_mass_empty - engine_mass_full) = payload_mass - wdr * payload_mass
-             * => n = (payload_mass - wdr * payload_mass) / (wdr * engine_mass_empty - engine_mass_full)
-             */
-            numEnginesDv = (payloadMass - neededWetDryRatio * payloadMass)
-                / (neededWetDryRatio * engineMassEmpty - engine.mass)
-            // We still may need additional fuel tanks for other fuels
+    // Correct fuel type?
+    for (let fuel of Object.keys(resourceInfo)) {
+        if (engine.consumption.amount[fuel] > 0 && !(fuel in fuelType)) {
+            return null
         }
     }
 
-    /* The number of engines depends on the mass to attain the desired TWR
-     * But the mass depends on the number of engines and the resulting mass of fuel & tanks
-     * So we have an iterative problem
-     */
-    let totalMass = payloadMass + numEnginesDv * engineMassEmpty  // initial guess
-    while(true) {
-        const numEnginesTwr = totalMass * acceleration / engineThrust
-        const numEngines = Math.ceil(Math.max(numEnginesTwr, numEnginesDv))
-        let fuelTankMass = 0, fuelTankEmptyMass = 0
-        if(refuelable.length > 0) {
-            fuelTankMass = calcFuelTankMass(
-                dv, isp,
-                payloadMass + numEngines * engine.mass,
-                fuelTankWdr,
-                payloadMass + numEngines * engineMassEmpty,
-            )
-            fuelTankEmptyMass = fuelTankMass / fuelTankWdr
-            if (isNaN(fuelTankMass)) {  // Unobtainable
-                return {
-                    n: numEngines,
-                    dv: dvForDm(fuelTankWdr, 1, isp),
-                    fuelTankMass: Infinity,
-                    totalMass: Infinity,
-                    emptyMass: Infinity,
-                }
-            } // else
+    // Correct size?
+    let found = false
+    for (let size of engine.size) {
+        if (filterSizes.has(size)) {  // matching size found
+            found = true
+            break
         }
-        const actualDv = dvForDm(
-            payloadMass + numEngines * engine.mass + fuelTankMass,
-            payloadMass + numEngines * engineMassEmpty + fuelTankEmptyMass,
-            isp
-        )
+    }
+    if(!found) return null
 
-        totalMass = payloadMass + numEngines * engineMassEmpty + fuelTankMass
-        const newNumEnginesTwr = totalMass * acceleration / engineThrust
-        if(newNumEnginesTwr <= numEngines || newNumEnginesTwr > 50) {
-            return {
-                n: numEngines,
-                dv: actualDv,
-                fuelTankMass,
-                totalMass,
-                emptyMass: payloadMass + numEngines * engineMassEmpty + fuelTankEmptyMass,
-            }
-        }
-        // Else: loop around
+    let {refuelable, fuelTankCost} = calcFuelTankInfo(engine, fuelType)
+
+    const solution = calcFuelTank(mass, acceleration, dv, engine, resourceInfo, fuelType, pressureValue)
+    let accelerationFull = engine.thrust(resourceInfo, pressureValue) * solution.numEngines / solution._wetMass
+    const isp = engine.isp(pressureValue);
+    let actualDv = dvForDm(solution._wetMass, solution._dryMass, isp)
+
+    if ((accelerationFull < acceleration * .99) ||
+        (actualDv < dv * .99) || isNaN(actualDv)) {
+        // out of spec
+        if (!showAll) return null
+    }
+    if (solution.numEngines == null) {
+        accelerationFull = solution.maxAcceleration
+        actualDv = solution.maxAcceleration
+    }
+
+    let name: string | ReactElement = engine.name;
+    if (engine.wikiUrl !== undefined) {
+        name = <a href={engine.wikiUrl}>{name}</a>
+    }
+    const engineMass = engine.emptied(resourceInfo).mass * solution.numEngines;
+    let cost = Infinity
+    let fuelTankMass = Infinity
+    if (solution.numEngines != null) {
+        cost = solution.numEngines * engine.emptied(resourceInfo).cost
+            + Object.values(objectMap(solution.fuelInEngines.mass(resourceInfo),
+                (m, k) => m * resourceInfo[k].cost))
+                .reduce((acc, c) => acc + c, 0)
+            + Object.values(objectMap(solution.fuelInTanks.mass(resourceInfo),
+                (m, k) => m * resourceInfo[k].cost))
+                .reduce((acc, c) => acc + c, 0)
+
+        fuelTankMass = Object.values(solution.fuelInEngines.mass(resourceInfo))
+                .reduce((acc, m) => acc + m, 0)
+            + Object.values(solution.fuelInTanks.mass(resourceInfo))
+                .reduce((acc, m) => acc + m, 0)
+    }
+
+    return {
+        name,
+        n: solution.numEngines,
+        refuelable,
+        thrustPerEngine: engine.thrust(resourceInfo, pressureValue),
+        isp: isp,
+        cost,
+        engineMass,
+        fuelTankMass,
+        totalMass: engineMass + fuelTankMass,
+        dv: actualDv,
+        accelerationFull: accelerationFull,
+        accelerationEmpty: engine.thrust(resourceInfo, pressureValue) * solution.numEngines / solution._dryMass,
+        size: [...engine.size].map(s => availableSizes[s]).join(', '),
+        gimbal: engine.gimbal,
+        alternator: Math.max(0, -(engine.consumption.scaled(solution.numEngines).amount.El ?? 0)),
     }
 }
 
@@ -357,7 +300,7 @@ function App() {
         {title: <span>Number</span>, classList: 'number', value: (i: EngineConfig) => i.n},
         {title: <span>Cost<br/>[<KspFund/>]</span>,
             value: (i: EngineConfig) => i.cost.toFixed(0),
-            classList: (i: EngineConfig) => isNaN(i.cost) ? ['number', 'zero'] : ['number'],
+            classList: (i: EngineConfig) => (isNaN(i.cost) || i.cost == Infinity) ? ['number', 'zero'] : ['number'],
             cmp: (a: EngineConfig, b: EngineConfig) => a.cost - b.cost,
         },
         {title: <span>Mass [t]</span>, children: [
@@ -422,65 +365,12 @@ function App() {
     const kspEngines = enginePartsWithMods(activeMods)
     const engineOptions: Array<EngineConfig> = []
     for(let engine of kspEngines) {
-        // Correct tech level?
-        if((engine.techTreeNode?.level ?? 0) > techLevel) continue;
-
-        // Correct fuel type?
-        let skip = false;
-        for (let fuel of Object.keys(resourceInfo)) {
-            if (engine.consumption.amount[fuel] > 0 && !(fuel in fuelType)) {
-                skip = true;
-                break;
-            }
+        try {
+            const out = calcEngine(engine, techLevel, resourceInfo, fuelType, filterSizes, mass, acceleration, dv, pressureValue, showAll, availableSizes)
+            if(out != null) engineOptions.push(out)
+        } catch (e) {
+            console.error(`Skipping engine ${engine.name} due to error`)
         }
-        if (skip) continue;
-
-        // Correct size?
-        skip = true;
-        for (let size of engine.size) {
-            if (filterSizes.has(size)) {  // matching size found
-                skip = false;
-                break;
-            }
-        }
-        if (skip) continue
-
-        let {refuelable, fuelTankCost} = calcFuelTankInfo(engine, fuelType)
-
-        const {
-            n: numEngines, fuelTankMass, dv: actualDv,
-            totalMass, emptyMass,
-        } = calcFuelTank(mass, acceleration, dv, engine, resourceInfo, fuelType, pressureValue)
-
-        const accelerationFull = engine.thrust(resourceInfo, pressureValue) * numEngines / totalMass;
-
-        if( (accelerationFull < acceleration * .99) ||
-            (actualDv < dv * .99) || isNaN(actualDv)) {
-            // out of spec
-            if(!showAll) continue;
-        }
-        let name: string | ReactElement = engine.name;
-        if(engine.wikiUrl !== undefined) {
-            name = <a href={engine.wikiUrl}>{name}</a>
-        }
-        engineOptions.push({
-            name,
-            n: numEngines,
-            refuelable,
-            thrustPerEngine: engine.thrust(resourceInfo, pressureValue),
-            isp: engine.isp(pressureValue),
-            cost: engine.cost * numEngines
-                + (fuelTankMass == 0 ? 0 : fuelTankMass * fuelTankCost),  // catch 0 * NaN to be 0
-            engineMass: engine.mass * numEngines,
-            fuelTankMass,
-            totalMass: totalMass,
-            dv: actualDv,
-            accelerationFull: accelerationFull,
-            accelerationEmpty: engine.thrust(resourceInfo, pressureValue) * numEngines / emptyMass,
-            size: [...engine.size].map(s => availableSizes[s]).join(', '),
-            gimbal: engine.gimbal,
-            alternator: Math.max(0, -(engine.consumption.scaled(numEngines).amount.El ?? 0)),
-        });
     }
 
     const techLevelJsx = [];

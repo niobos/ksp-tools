@@ -1,4 +1,4 @@
-import {Data} from "dataclass";
+import {Data} from "./data/data";
 import {objectMap} from "./utils";
 
 export function resourceInfoWithMods(activeMods: Set<string> = new Set()) {
@@ -48,6 +48,16 @@ export class Resources {
         return changed
     }
 
+    static FromMass(mass: Record<string, number>, resourceInfo: Record<string, {mass: number}>): Resources {
+        return new Resources(objectMap(mass,
+            (m, res) => {
+                const resourceMass = resourceInfo[res].mass;
+                if(resourceMass == 0) return 0
+                return m / resourceMass
+            }
+        ))
+    }
+
     mass(resourceInfo: Record<string, {mass: number}>): Record<string, number> {
         return objectMap(this.amount,
             (amount, resource) => amount * resourceInfo[resource].mass)
@@ -56,16 +66,16 @@ export class Resources {
         return objectMap(this.amount,
             (amount, resource) => amount * resourceInfo[resource].cost)
     }
-    total_mass(resourceInfo: Record<string, {mass: number}>): number {
+    totalMass(resourceInfo: Record<string, {mass: number}>): number {
         return Object.values(this.mass(resourceInfo))
             .reduce((acc, mass) => acc + mass, 0)
     }
-    total_cost(resourceInfo: Record<string, {cost: number}>): number {
+    totalCost(resourceInfo: Record<string, {cost: number}>): number {
         return Object.values(this.cost(resourceInfo))
             .reduce((acc, mass) => acc + mass, 0)
     }
 
-    selective_mass(
+    selectiveMass(
         resourceInfo: Record<string, {mass: number}>,
         filter: (resource: string, amount: number) => boolean
     ): number {
@@ -76,7 +86,7 @@ export class Resources {
             return acc
         }, 0)
     }
-    selective_cost(
+    selectiveCost(
         resourceInfo: Record<string, {cost: number}>,
         filter: (resource: string, amount: number) => boolean
     ): number {
@@ -155,6 +165,9 @@ export function sizesWithMods(activeMods: Set<string>): Record<string, string> {
         sizes["1.5"] = "1.875m"
         sizes["4"] = "5m"
         sizes["5"] = "7.5m"
+    }
+    if(activeMods.has("FFT")) {
+        sizes["4"] = "5m"
     }
     return sizes
 }
@@ -249,15 +262,20 @@ export default class Part extends Data {
     mass: number
     size: Set<string>
     content: Resources = new Resources()
+    capacity: Resources = null
     consumption: Resources = new Resources()
     wikiUrl: string = undefined
     techTreeNode?: TechTreeNode
 
+    _postCreate() {
+        if(this.capacity == null) this.capacity = this.content.copy()
+    }
+
     emptied(resourceInfo: Record<string, {cost: number, mass: number}>) {
         // @ts-ignore
         return this.copy({
-            cost: this.cost - this.content.total_cost(resourceInfo),
-            mass: this.mass - this.content.total_mass(resourceInfo),
+            cost: this.cost - this.content.totalCost(resourceInfo),
+            mass: this.mass - this.content.totalMass(resourceInfo),
             content: new Resources(),
         });
     }

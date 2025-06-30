@@ -314,9 +314,9 @@ export default function App() {
         let modulation = (totalPowerNeeded / numDevices / (-conv.consumption.amount.El) )
         modulation = Math.max(modulation, conv.minimumModulation)
         const fullLoadTime = missionDuration * modulation
-        const consumptionMassFlow = conv.consumption.selective_mass(resourceInfo, (r, m) => m > 0);
+        const consumptionMassFlow = conv.consumption.selectiveMass(resourceInfo, (_r, m) => m > 0);
         const neededFuelMass = fullLoadTime * consumptionMassFlow
-        const neededFuelMassInTanks = Math.max(0, neededFuelMass - conv.content.total_mass(resourceInfo))
+        const neededFuelMassInTanks = Math.max(0, neededFuelMass - conv.content.totalMass(resourceInfo))
         /* fullTank = emptyTank + fuel
          * fullTank / emptyTank = WDR  => emptyTank = fullTank / WDR
          * fullTank = fullTank / WDR + fuel
@@ -325,7 +325,7 @@ export default function App() {
          */
         const neededTankMass = neededFuelMassInTanks / (1 - 1 / fuelTankValue.fullEmptyRatio)
 
-        const totalFuelMass = neededFuelMassInTanks + conv.content.total_mass(resourceInfo)
+        const totalFuelMass = neededFuelMassInTanks + conv.content.totalMass(resourceInfo)
 
         solutions.push({
             combo: [{n: numDevices, item: conv}],
