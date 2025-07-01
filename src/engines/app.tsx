@@ -12,14 +12,12 @@ import {Engine, enginePartsWithMods} from "../utils/kspParts-engine"
 import {fromPreset, objectMap} from "../utils/utils"
 import {Body, kspSystem} from "../utils/kspSystems"
 import {HierarchicalBodySelect} from "../components/kspSystemSelect"
-import './app.css'
 import KeyValueList from "./keyValueList";
 import CopyableNumber from "../components/copyableNumber";
 import KspModSelector from "../components/kspModSelector";
 import {calcFuelTank} from "./calc";
 import {dvForDm} from "../utils/rocket";
-import {Simulate} from "react-dom/test-utils";
-import error = Simulate.error;
+import './app.css'
 
 function jsonParseWithDefault(defaultValue: any): (value: string) => any {
     return (valueFromHash) => {
@@ -115,7 +113,7 @@ function calcEngine(
     resourceInfo: Record<string, {mass: number, cost: number}>,
     fuelType: Record<string, {wdr: number, cost: number}>,
     filterSizes: Set<string>,
-    mass: number,
+    payloadMass: number,
     acceleration: number,
     dv: number,
     pressureValue: number,
@@ -144,7 +142,7 @@ function calcEngine(
 
     let {refuelable, fuelTankCost} = calcFuelTankInfo(engine, fuelType)
 
-    const solution = calcFuelTank(mass, acceleration, dv, engine, resourceInfo, fuelType, pressureValue)
+    const solution = calcFuelTank(payloadMass, acceleration, dv, engine, resourceInfo, fuelType, pressureValue)
     let accelerationFull = engine.thrust(resourceInfo, pressureValue) * solution.numEngines / solution._wetMass
     const isp = engine.isp(pressureValue);
     let actualDv = dvForDm(solution._wetMass, solution._dryMass, isp)
@@ -172,12 +170,14 @@ function calcEngine(
                 (m, k) => m * resourceInfo[k].cost))
                 .reduce((acc, c) => acc + c, 0)
             + Object.values(objectMap(solution.fuelInTanks.mass(resourceInfo),
-                (m, k) => m * resourceInfo[k].cost))
+                (m, k) => m * fuelTankCost))
                 .reduce((acc, c) => acc + c, 0)
 
         fuelTankMass = Object.values(solution.fuelInEngines.mass(resourceInfo))
                 .reduce((acc, m) => acc + m, 0)
             + Object.values(solution.fuelInTanks.mass(resourceInfo))
+                .reduce((acc, m) => acc + m, 0)
+            + Object.values(solution.fuelTankEmptyMass)
                 .reduce((acc, m) => acc + m, 0)
     }
 
@@ -190,7 +190,7 @@ function calcEngine(
         cost,
         engineMass,
         fuelTankMass,
-        totalMass: engineMass + fuelTankMass,
+        totalMass: payloadMass + engineMass + fuelTankMass,
         dv: actualDv,
         accelerationFull: accelerationFull,
         accelerationEmpty: engine.thrust(resourceInfo, pressureValue) * solution.numEngines / solution._dryMass,
@@ -253,7 +253,7 @@ function App() {
 
     const fuelTable = []
     for(let resource of Object.keys(resourceInfo).sort()) {
-        fuelTable.push(<tr><td>
+        fuelTable.push(<tr key={resource}><td>
             <label>
                 <input type="checkbox" checked={resource in fuelType}
                        onChange={e => {
@@ -369,7 +369,7 @@ function App() {
             const out = calcEngine(engine, techLevel, resourceInfo, fuelType, filterSizes, mass, acceleration, dv, pressureValue, showAll, availableSizes)
             if(out != null) engineOptions.push(out)
         } catch (e) {
-            console.error(`Skipping engine ${engine.name} due to error`)
+            console.error(`Skipping engine ${engine.name} due to error: `, e)
         }
     }
 

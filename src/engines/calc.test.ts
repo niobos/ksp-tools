@@ -502,7 +502,7 @@ describe('LF+Ox + alternator', () => {
 })
 
 describe('previous bugs', () => {
-    test('one', () => {
+    test('1', () => {
         const testEngine = Engine.create({
             name: 'S2-33 "Clydesdale"',
             mass: 144,
@@ -522,6 +522,30 @@ describe('previous bugs', () => {
             resourceInfoWithMods(), testTankInfo,
             0,
         )
-        expect(res.numEngines).toBe(1)  // TODO: find actual number, or null; but not NaN as it is now
+        expect(res.numEngines).toBe(1)
+    })
+
+    test('2', () => {
+        const testEngine = Engine.create({
+            name: 'LV-1 "Ant"',
+            cost: 110,
+            mass: 0.02,
+            ispCurve: [[0, 315], [1, 80], [3, 0.001]],
+            consumption: new Resources({LF: 0.058, Ox: 0.071}),
+        })
+        const testTankInfo = {
+            "LF": {"wdr": 8.601203585172813, "cost": 267.6609257640508},
+            "Ox": {"wdr": 8.68999200865544, "cost": 233.49700317569634},
+        }
+
+        const res = calcFuelTank(
+            1.5,
+            14.71,
+            1000,
+            testEngine,
+            resourceInfoWithMods(), testTankInfo,
+            0,
+        )
+        expect(res.numEngines).toBe(21)  // TODO: find actual number, or null; but not NaN as it is now
     })
 })

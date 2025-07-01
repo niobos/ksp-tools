@@ -9,9 +9,12 @@ import {KerbalYdhmsInput} from "../components/formattedInput";
 import {arrayInsertElement, arrayMoveElement, arrayRemoveElement, arrayReplaceElement} from "../utils/list";
 import {dtForDv, dvForDm, dvForDt, massAfterDv, massBeforeDv} from "../utils/rocket";
 
+const kspEngines = enginePartsWithMods()
+const resourceInfo = resourceInfoWithMods()
+
 const FUEL_TYPES = ['LF', 'Ox', 'Mono', 'Xe']
 // Don't list air, electricity, solid fuel or ore
-const DEFAULT_ENGINE_NAME = Object.keys(kspEngines)[0]
+const DEFAULT_ENGINE_NAME = kspEngines[0].name
 
 type EngineParams = {
     name?: string
@@ -22,12 +25,12 @@ type EngineParams = {
 
 function resolveEngine(engineType: string | EngineParams): EngineParams {
     if(typeof engineType === "string") {
-        const engineSpec = kspEngines[engineType]
+        const engineSpec = kspEngines.filter(e => e.name == engineType)[0]
         engineType = {
             name: engineType,
             isp: engineSpec.isp(0),  // vacuum ISP
             consumption: engineSpec.consumption,
-            thrust: engineSpec.thrust(0),  // vacuum thrust
+            thrust: engineSpec.thrust(resourceInfo, 0),  // vacuum thrust
         }
     }
     return engineType
@@ -39,14 +42,13 @@ interface SelectEngineProps {
 }
 function SelectEngine(props: SelectEngineProps): JSX.Element {
     const optionsJsx = []
-    for(let engineName in kspEngines) {
-        const engine = kspEngines[engineName]
+    for(let engine of kspEngines) {
         if(!engine.throttleControl) continue
         optionsJsx.push(<option
-            key={engineName}
-            value={engineName}
-            selected={props.value == engineName}
-        >{engineName}</option>)
+            key={engine.name}
+            value={engine.name}
+            selected={props.value == engine.name}
+        >{engine.name}</option>)
     }
     return <select
         onChange={e => props.onChange(e.target.value)}
@@ -153,8 +155,8 @@ function Burn(props: BurnProps): JSX.Element {
                     : props.fuelRemaining.amount[fuelType] < 0 ? "error" : ""
             }
         >
-            {props.fuelRemaining.amount[fuelType].toFixed(1)} units{" = "}
-            {props.fuelRemaining.mass[fuelType].toFixed(3)}t {fuelType}
+            {(props.fuelRemaining.amount[fuelType]??0).toFixed(1)} units{" = "}
+            {(props.fuelRemaining.mass(resourceInfo)[fuelType]??0).toFixed(3)}t {fuelType}
         </li>)}</ul>
         End mass: {props.endMass.toFixed(3)}t<br/>
     </li>
@@ -181,16 +183,16 @@ function calcBurn(
 ): Omit<BurnProps, "onChange" | "onMove"> {
     const {thrust, isp, fuelRatio} = combineEngines(burn.engines)
 
-    let totalFuelMass = fuelRemaining.totalMass
+    let totalFuelMass = fuelRemaining.totalMass(resourceInfo)
     const startMass = dryMass + totalFuelMass
     const endMass = massAfterDv(startMass, burn.dv, isp)
     const consumedFuelMass = startMass - endMass
-    fuelRemaining = fuelRemaining.sub(fuelRatio.scaled(consumedFuelMass / fuelRatio.totalMass))
+    fuelRemaining = fuelRemaining.sub(fuelRatio.scaled(consumedFuelMass / fuelRatio.totalMass(resourceInfo)))
 
     const minFuelRemaining = fuelRemaining.sub(fuelRatio.scaled(
         fuelRemaining.consumedAtRatio(fuelRatio)
     ))
-    const maxDv = dvForDm(startMass, dryMass + minFuelRemaining.totalMass, isp)
+    const maxDv = dvForDm(startMass, dryMass + minFuelRemaining.totalMass(resourceInfo), isp)
 
     return {
         dv: burn.dv,
@@ -210,7 +212,7 @@ function calcFuelRequired(
 
     const startMass = massBeforeDv(endMass, burn.dv, isp)
     const fuelMass = startMass - endMass
-    return fuelRatio.scaled(fuelMass / fuelRatio.totalMass)
+    return fuelRatio.scaled(fuelMass / fuelRatio.totalMass(resourceInfo))
 }
 
 function App(): JSX.Element {
@@ -266,7 +268,7 @@ function App(): JSX.Element {
         // Iterate last to first
         const extraFuel = calcFuelRequired(burns[idx], mass)
         fuelFromZero = fuelFromZero.add(extraFuel)
-        mass += extraFuel.totalMass
+        mass += extraFuel.totalMass(resourceInfo)
     }
 
     return <>
@@ -283,12 +285,12 @@ function App(): JSX.Element {
             <ul>{FUEL_TYPES.map((fuelType, idx) => <li key={idx}>
                 <FloatInput
                     decimals={1}
-                    value={fuel.amount[fuelType]}
+                    value={fuel.amount[fuelType] ?? 0}
                     onChange={v => setFuel(fuel.copy({ [fuelType]: v}))}
                 /> units = <FloatInput
                     decimals={3}
-                    value={fuel.mass[fuelType]}
-                    onChange={v => setFuel(fuel.copy({ [fuelType]: v / ResourceInfo[fuelType].mass}))}
+                    value={fuel.mass(resourceInfo)[fuelType] ?? 0}
+                    onChange={v => setFuel(fuel.copy({ [fuelType]: v / resourceInfo[fuelType].mass}))}
                 />t {fuelType}
             </li>)}</ul>
             <input type="button" value="Calculate to end up emtpy"

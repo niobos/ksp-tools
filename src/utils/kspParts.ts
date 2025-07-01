@@ -104,14 +104,20 @@ export class Resources {
         )
     }
     add(other: Resources): Resources {
-        return new Resources(
-            objectMap(this.amount, (v, k) => v + other.amount[k])
-        )
+        const allKeys = new Set([...Object.keys(this.amount), ...Object.keys(other.amount)])
+        const out = {}
+        for(const key of allKeys) {
+            out[key] = (this.amount[key] ?? 0) + (other.amount[key] ?? 0)
+        }
+        return new Resources(out)
     }
     sub(other: Resources): Resources {
-        return new Resources(
-            objectMap(this.amount, (v, k) => v - other.amount[k])
-        )
+        const allKeys = new Set([...Object.keys(this.amount), ...Object.keys(other.amount)])
+        const out = {}
+        for(const key of allKeys) {
+            out[key] = (this.amount[key] ?? 0) - (other.amount[key] ?? 0)
+        }
+        return new Resources(out)
     }
     consumedAtRatio(rate: Resources): number {
         /* Consume `this` resources at `rate`.
@@ -120,7 +126,7 @@ export class Resources {
          */
         return Object.keys(this.amount).reduce(
             (acc, key) => {
-                if( rate.amount[key] == 0) return acc
+                if( (rate.amount[key] ?? 0) <= 0) return acc
                 return Math.min(acc, this.amount[key] / rate.amount[key])
             },
             Infinity,
