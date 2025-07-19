@@ -126,23 +126,37 @@ export function calcFuelTank(
     let minNumEnginesForAcceleration = Math.ceil(payloadMass * acceleration / engineThrust)
 
     const wdrForFuel = (f: number, minNumEngines: number) => {
-        const numEngines = Math.max(minNumEngines, numEnginesPerFuelMass * f)
-        /* Note that we're *NOT* doing Math.ceil here
-         * this way, this function is continuous so we can do Regula Falsi root finding
-         */
         const fuelMass = proRata(f, engineFuelMassFlow)
 
         // W_i = (t_i + f_i) / t_i  =>  t_i = f_i / (W_i - 1)
-        const bothTanks = Object.keys(internalOrExternalFuel.amount).reduce(
+        const externalTanks = Object.keys(externalOnlyFuel.amount).reduce(
             (acc, i) => {
-                const fuel = Math.max(0, Math.abs(fuelMass[i]) - numEngines * engineCapacityMass[i])
+                const fuel = Math.abs(fuelMass[i])
                 const tank = fuel / (fuelTankInfo[i].wdr - 1)
                 return acc + tank
             },
             0)
-        const externalTanks = Object.keys(externalOnlyFuel.amount).reduce(
+
+        /* For the desired accelerationA
+         * n * F = (m + n*m_e) * a
+         * => n*F = m * a + n*m_e * a
+         * => n*f -n*m_e*a = m*a
+         * => n ( F - m_e*a ) = m*a
+         * => n = m * a / (f - m_e*a)
+         */
+        const numEngines = Math.max(
+            minNumEngines,
+            numEnginesPerFuelMass * f,
+            (payloadMass + f + externalTanks) * acceleration / (engineThrust - engineMassEmpty * acceleration),
+            // TODO BUG: Note that we should also add the bothTanks mass, but that is circular
+        )
+        /* Note that we're *NOT* doing Math.ceil here
+         * this way, this function is continuous so we can do Regula Falsi root finding
+         */
+
+        const bothTanks = Object.keys(internalOrExternalFuel.amount).reduce(
             (acc, i) => {
-                const fuel = Math.abs(fuelMass[i])
+                const fuel = Math.max(0, Math.abs(fuelMass[i]) - numEngines * engineCapacityMass[i])
                 const tank = fuel / (fuelTankInfo[i].wdr - 1)
                 return acc + tank
             },
@@ -188,14 +202,12 @@ export function calcFuelTank(
     const neededWdr = massBeforeDv(1, dv, isp)
     const fuelMass = findZeroRegulaFalsi(
         (f) => wdrForFuel(f, minNumEnginesForAcceleration).wetDryRatio - neededWdr,
-        0, 1,
+        payloadMass, 2*payloadMass,
     )
 
     // Now Math.ceil() the number of engines and recalculate needed thrust
     const fullResult = wdrForFuel(fuelMass, minNumEnginesForAcceleration)
     let numEngines = Math.ceil(fullResult.numEngines)
-    minNumEnginesForAcceleration = Math.ceil(fullResult.wetMass * acceleration / engineThrust)
-    numEngines = Math.max(numEngines, minNumEnginesForAcceleration)
 
     // Run the optimizer again, with this many engines
     const fuelMassIntegerEngines = findZeroRegulaFalsi(

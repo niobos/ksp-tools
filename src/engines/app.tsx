@@ -37,10 +37,11 @@ type EngineConfig = {
     n: number,
     thrustPerEngine: number,
     isp: number,
-    refuelable: boolean | "partial",
+    refuelable: Record<string, boolean>,
     cost: number,
     engineMass: number
-    fuelTankMass: number,
+    fuelMass: number,
+    tankMass: number,
     totalMass: number,
     dv: number,
     accelerationFull: number,
@@ -54,33 +55,27 @@ function calcFuelTankInfo(
     engine: Engine,
     fuelType: Record<string, {wdr: number, cost: number}>
 ) {
-    let refuelable: boolean | "partial"
+    const refuelable: Record<string, boolean> = {}
     let fuelTankWdr: number = 0
     let fuelTankCost: number = 0
-    {
-        let n = 0
-        let atLeastOneRefuelable = false
-        let atLeastOneNotRefuelable = false
-        for (let resource in engine.consumption.amount) {
-            const cons = engine.consumption.amount[resource]
-            if (cons <= 0) continue
-            const cost = fuelType[resource].cost;
-            if (cost == null || isNaN(cost) || cost == Infinity) {
-                atLeastOneNotRefuelable = true
-            } else {
-                n = n + cons
-                fuelTankWdr += fuelType[resource].wdr * cons
-                fuelTankCost += cost * cons
-                atLeastOneRefuelable = true
-            }
+
+    let n = 0
+    for (let resource in engine.consumption.amount) {
+        const cons = engine.consumption.amount[resource]
+        if (cons <= 0) continue
+        const cost = fuelType[resource].cost;
+        if (cost == null || isNaN(cost) || cost == Infinity) {
+            refuelable[resource] = false
+        } else {
+            n = n + cons
+            fuelTankWdr += fuelType[resource].wdr * cons
+            fuelTankCost += cost * cons
+            refuelable[resource] = true
         }
-        if (atLeastOneRefuelable && !atLeastOneNotRefuelable) refuelable = true
-        else if (atLeastOneNotRefuelable && !atLeastOneRefuelable) refuelable = false
-        else if (atLeastOneRefuelable && atLeastOneNotRefuelable) refuelable = "partial"
-        else console.log("Engine without any fuel? ", engine)
-        fuelTankWdr = fuelTankWdr / n
-        fuelTankCost = fuelTankCost / n
     }
+    fuelTankWdr = fuelTankWdr / n
+    fuelTankCost = fuelTankCost / n
+
     return {refuelable, fuelTankWdr, fuelTankCost};
 }
 
@@ -109,20 +104,16 @@ function fillInFuelTypeInfo(
 
 function calcEngine(
     engine: Engine,
-    techLevel: number,
-    resourceInfo: Record<string, {mass: number, cost: number}>,
-    fuelType: Record<string, {wdr: number, cost: number}>,
+    resourceInfo: Record<string, { mass: number; cost: number }>,
+    fuelType: Record<string, { wdr: number; cost: number }>,
     filterSizes: Set<string>,
     payloadMass: number,
     acceleration: number,
+    minGimbal: number,
     dv: number,
     pressureValue: number,
-    showAll: boolean,
-    availableSizes: Record<string, string>
-) {
-    // Correct tech level?
-    if ((engine.techTreeNode?.level ?? 0) > techLevel) return null
-
+    showAll: boolean
+    , availableSizes: Record<string, string>) {
     // Correct fuel type?
     for (let fuel of Object.keys(resourceInfo)) {
         if (engine.consumption.amount[fuel] > 0 && !(fuel in fuelType)) {
@@ -139,6 +130,8 @@ function calcEngine(
         }
     }
     if(!found) return null
+
+    if(engine.gimbal < minGimbal) return null
 
     let {refuelable, fuelTankCost} = calcFuelTankInfo(engine, fuelType)
 
@@ -163,21 +156,22 @@ function calcEngine(
     }
     const engineMass = engine.emptied(resourceInfo).mass * solution.numEngines;
     let cost = Infinity
-    let fuelTankMass = Infinity
+    let fuelMass = Infinity
+    let tankMass = Infinity
     if (solution.numEngines != null) {
         cost = solution.numEngines * engine.emptied(resourceInfo).cost
             + Object.values(objectMap(solution.fuelInEngines.mass(resourceInfo),
                 (m, k) => m * resourceInfo[k].cost))
                 .reduce((acc, c) => acc + c, 0)
             + Object.values(objectMap(solution.fuelInTanks.mass(resourceInfo),
-                (m, k) => m * fuelTankCost))
+                m => m * fuelTankCost))
                 .reduce((acc, c) => acc + c, 0)
 
-        fuelTankMass = Object.values(solution.fuelInEngines.mass(resourceInfo))
+        fuelMass = Object.values(solution.fuelInEngines.mass(resourceInfo))
                 .reduce((acc, m) => acc + m, 0)
             + Object.values(solution.fuelInTanks.mass(resourceInfo))
                 .reduce((acc, m) => acc + m, 0)
-            + Object.values(solution.fuelTankEmptyMass)
+        tankMass = Object.values(solution.fuelTankEmptyMass)
                 .reduce((acc, m) => acc + m, 0)
     }
 
@@ -189,8 +183,9 @@ function calcEngine(
         isp: isp,
         cost,
         engineMass,
-        fuelTankMass,
-        totalMass: payloadMass + engineMass + fuelTankMass,
+        fuelMass,
+        tankMass,
+        totalMass: payloadMass + engineMass + fuelMass + tankMass,
         dv: actualDv,
         accelerationFull: accelerationFull,
         accelerationEmpty: engine.thrust(resourceInfo, pressureValue) * solution.numEngines / solution._dryMass,
@@ -211,31 +206,25 @@ function App() {
     const availableSizes = sizesWithMods(activeMods)
     const resourceInfo = resourceInfoWithMods(activeMods)
 
-    const [dv, setDv] = useFragmentState('dv', 1000);
-    const [massComponents, setMassComponents] = useFragmentState<number | Array<[string, number]>>('m', 1.5);
-    const [acceleration, setAcceleration] = useFragmentState('a', 14.715);
-    const [gravity, setGravity] = useState('Kerbin' as string | number);  // not stored in fragment
-    const [pressure, setPressure] = useFragmentState<number|string>('p', 0);
+    const [dv, setDv] = useFragmentState('dv', 1000)
+    const [massComponents, setMassComponents] = useFragmentState<number | Array<[string, number]>>('m', 1.5)
+    const [acceleration, setAcceleration] = useFragmentState('a', 14.715)
+    const [minGimbal, setMinGimbal] = useFragmentState('g', 0)
+    const [gravity, setGravity] = useState('Kerbin' as string | number)  // not stored in fragment
+    const [pressure, setPressure] = useFragmentState<number|string>('p', 0)
     const [filterSizes, setFilterSizes] = useFragmentState<Set<string>>('s',
         s => {
             const v: string[] = jsonParseWithDefault(Object.keys(availableSizes))(s);
             return new Set(v);
         },
         o => JSON.stringify([...o]),
-    );
-    const [techLevel, setTechLevel] = useFragmentState<number>('tl',
-        s => {
-            if(s == null || s === '') return 9;  // default
-            return parseInt(s);
-        },
-        i => '' + i,
-    );
+    )
     const [fuelType_, setFuelType] = useFragmentState<Record<string, {wdr?: number, cost?: number}>>('f',
         s => jsonParseWithDefault(
                 objectMap(resourceInfo, () => ({}))
             )(s),
         o => JSON.stringify(o),
-        );
+        )
     const [showAll, setShowAll] = useState<boolean>(false)
     const [payloadOpen, setPayloadOpen] = useState<boolean>(false)
 
@@ -313,20 +302,19 @@ function App() {
                     cmp: (a: EngineConfig, b: EngineConfig) => a.engineMass - b.engineMass,
                 },
                 {title: <span>Fuel+tank</span>,
-                    value: (i: EngineConfig) => <CopyableNumber value={i.fuelTankMass} displayDecimals={2}/>,
-                    classList: (i: EngineConfig) => (i.fuelTankMass === 0 || isNaN(i.fuelTankMass)) ? ['number', 'zero'] : ['number'],
-                    cmp: (a: EngineConfig, b: EngineConfig) => a.fuelTankMass - b.fuelTankMass,
+                    value: (i: EngineConfig) => <>{i.fuelMass.toFixed(2)} + {i.tankMass.toFixed(2)}</>,
+                    classList: (i: EngineConfig) => (i.fuelMass === 0 || isNaN(i.fuelMass)) ? ['number', 'zero'] : ['number'],
+                    cmp: (a: EngineConfig, b: EngineConfig) => (a.fuelMass+a.tankMass) - (b.fuelMass+b.tankMass),
                 },
             ]},
-        {title: <span>Refuelable</span>, value: (i: EngineConfig) => {switch(i.refuelable) {
-                case true:
-                    return "✅"
-                case false:
-                    return "❌"
-                case "partial":
-                    return <span title="partial">✅❌</span>
-            }}},
-        {title: <span>Size</span>, value: (i: EngineConfig) => i.size},
+        {title: <span>Fuels</span>, value: (i: EngineConfig) =>
+                <>{Object.keys(i.refuelable).map(
+                    res => i.refuelable[res]
+                        ? <><span className="refuelable">{res}</span> </>
+                        : <><span className="nonrefuelable">{res}</span> </>
+                )}</>
+            },
+        //{title: <span>Size</span>, value: (i: EngineConfig) => i.size},
         {title: <span>Thrust/engine<br/>({pressureValue.toFixed(1)}atm) [kN]</span>, classList: 'number',
             value: (i: EngineConfig) => <CopyableNumber value={i.thrustPerEngine} displayDecimals={1}/>,
             cmp: (a: EngineConfig, b: EngineConfig) => a.thrustPerEngine - b.thrustPerEngine,
@@ -366,21 +354,11 @@ function App() {
     const engineOptions: Array<EngineConfig> = []
     for(let engine of kspEngines) {
         try {
-            const out = calcEngine(engine, techLevel, resourceInfo, fuelType, filterSizes, mass, acceleration, dv, pressureValue, showAll, availableSizes)
+            const out = calcEngine(engine, resourceInfo, fuelType, filterSizes, mass, acceleration, minGimbal, dv, pressureValue, showAll, availableSizes)
             if(out != null) engineOptions.push(out)
         } catch (e) {
             console.error(`Skipping engine ${engine.name} due to error: `, e)
         }
-    }
-
-    const techLevelJsx = [];
-    for(let tl = 1; tl <= 9; tl++) {
-        techLevelJsx.push(<label key={tl}>
-            <input type="radio"
-                   checked={techLevel === tl}
-                   onChange={() => setTechLevel(tl)}
-            />{tl}
-        </label>);
     }
 
     return <div>
@@ -428,6 +406,10 @@ function App() {
                                     onChange={setGravity}
             />)
         </td></tr>
+        <tr><td>Min gimbal</td><td>
+            <FloatInput value={minGimbal} decimals={0}
+                        onChange={setMinGimbal}/>º
+        </td></tr>
         <tr><td>Pressure</td><td>
             <FloatInput value={pressureValue} decimals={1}
                         onChange={(v) => setPressure(v)}
@@ -437,7 +419,6 @@ function App() {
                                     onChange={setPressure}
             />
         </td></tr>
-        <tr><td>Tech level</td><td>{techLevelJsx}</td></tr>
         <tr><td>Sizes</td><td>
             <Multiselect
                 items={Object.assign({}, [...filterSizes].reduce((acc, s) => {acc[s] = s; return acc}, {}), availableSizes)}

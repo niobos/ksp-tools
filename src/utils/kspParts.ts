@@ -1,37 +1,52 @@
 import {Data} from "./data/data";
-import {objectMap} from "./utils";
+import {objectFilter, objectMap} from "./utils";
 
-export function resourceInfoWithMods(activeMods: Set<string> = new Set()) {
-    const resourceInfo = {
-        LF: {name: "Liquid Fuel", cost: 0.8, mass: 0.005},
-        Ox: {name: "Oxidizer", cost: 0.16, mass: 0.005},
-        SF: {name: "Solid Fuel", cost: 0.6, mass: 0.0075},
-        Mono: {name: "Monopropellant", cost: 1.2, mass: 0.004},
-        Xe: {name: "Xenon", cost: 4.0, mass: 0.0001},
-        El: {name: "Electric Charge", cost: 0, mass: 0},
-        Ore: {name: "Ore", cost: 0.02, mass: 0.010},
-        Air: {name: "Air", cost: 0, mass: 0},
-        Abl: {name: "Ablator", cost: 0.5, mass: 0.001},
+export const resourceInfo: Record<string, {name: string, cost: number, mass: number}> = {
+    LF: {name: "Liquid Fuel", cost: 0.8, mass: 0.005},
+    Ox: {name: "Oxidizer", cost: 0.16, mass: 0.005},
+    SF: {name: "Solid Fuel", cost: 0.6, mass: 0.0075},
+    Mono: {name: "Monopropellant", cost: 1.2, mass: 0.004},
+    Xe: {name: "Xenon", cost: 4.0, mass: 0.0001},
+    El: {name: "Electric Charge", cost: 0, mass: 0},
+    Ore: {name: "Ore", cost: 0.02, mass: 0.010},
+    Air: {name: "Air", cost: 0, mass: 0},
+    Abl: {name: "Ablator", cost: 0.5, mass: 0.001},
+
+    Ar: {name: "Argon", cost: (140620 - 33100) / 10240000, mass: 18.27 / 10240000},
+    LH2: {name: "Liquid Hydrogen", cost: (199310.4 - 135806.4) / 1728000, mass: (146.915 - 24.486) / 1728000},
+    LCH4: {name: "Liquid Methane", cost: (647294.4 - 128894.4) / 1152000, mass: (572.02 - 81.717) / 1152000},
+    Li: {name: "Lithium", cost: (96205 - 74821) / 35200, mass: 18.80 / 35200},
+    EnrU: {name: "Enriched Uranium", cost: 830400 / 960, mass: 10.53 / 960},
+    DeplU: {name: "Depleted Uranium", cost: 830400 / 960, mass: 10.53 / 960},
+    SC: {name: "Stored Charge", cost: 0, mass: 0},
+
+    Anti: {name: "Antimatter", cost: 3000000/300000, mass: 3/300_000},
+    NSW: {name: "Nuclear Salt Water", cost: 336000/84000, mass: 88.20/84000},
+    NUK: {name: "Nuclear Pulse Units", cost: 980000/5600, mass: 280/5600},
+    FIP: {name: "Fission Pellets", cost: 345600/28800, mass: 28.80/28800},
+    Frag: {name: "Fissionable Particles", cost: (163200-131200)/640, mass: (1.382-0.461)/640},
+    D: {name: "Deuterium", cost: (379500-187500)/750000, mass: (146.16-24.36)/750000},
+    He3: {name: "Helium-3", cost: (4185000-60000)/750000, mass: (53.1-8.85)/750000},
+}
+
+export function resourceInfoWithMods(
+    activeMods: Set<string> | 'ALL' = new Set()
+): Record<string, {name: string, cost: number, mass: number}> {
+    /* Note: this assumes that mods do not *change* a resource, but only add resources */
+    const mods: Record<string, Array<keyof typeof resourceInfo>> = {
+        stock: ['LF', 'Ox', 'SF', 'Mono', 'Xe', 'El', 'Ore', 'Air', 'Abl'],
+        NFT: ['Ar', 'LH2', 'LCH4', 'Li', 'EnrU', 'DeplU', 'SC'],
+        FFT: ['EnrU', 'Anti', 'NSW', 'NUK', 'FIP', 'Frag', 'D', 'He3'],
     }
-    if(activeMods.has("NFT")) {
-        resourceInfo["Ar"] = {name: "Argon", cost: (140620 - 33100) / 10240000, mass: 18.27 / 10240000}
-        resourceInfo["LH2"] = {name: "Liquid Hydrogen", cost: (199310.4 - 135806.4) / 1728000, mass: (146.915 - 24.486) / 1728000}
-        resourceInfo["LCH4"] = {name: "Liquid Methane", cost: (647294.4 - 128894.4) / 1152000, mass: (572.02 - 81.717) / 1152000}
-        resourceInfo["Li"] = {name: "Lithium", cost: (96205 - 74821) / 35200, mass: 18.80 / 35200}
-        resourceInfo["EnrU"] = {name: "Enriched Uranium", cost: 830400 / 960, mass: 10.53 / 960}
-        resourceInfo["DeplU"] = {name: "Depleted Uranium", cost: 830400 / 960, mass: 10.53 / 960}
-        resourceInfo["SC"] = {name: "Stored Charge", cost: 0, mass: 0}
-    }
-    if(activeMods.has("FFT")) {
-        resourceInfo["Anti"] = {name: "Antimatter", cost: 3000000/300000, mass: 3/300_000}
-        resourceInfo["NSW"] = {name: "Nuclear Salt Water", cost: 336000/84000, mass: 88.20/84000}
-        resourceInfo["NUK"] = {name: "Nuclear Pulse Units", cost: 980000/5600, mass: 280/5600}
-        resourceInfo["FIP"] = {name: "Fission Pellets", cost: 345600/28800, mass: 28.80/28800}
-        resourceInfo["Frag"] = {name: "Fissionable Particles", cost: (163200-131200)/640, mass: (1.382-0.461)/640}
-        resourceInfo["D"] = {name: "Deuterium", cost: (379500-187500)/750000, mass: (146.16-24.36)/750000}
-        resourceInfo["He3"] = {name: "Helium-3", cost: (4185000-60000)/750000, mass: (53.1-8.85)/750000}
-    }
-    return resourceInfo
+    return objectFilter(resourceInfo,
+        resName => {
+            if(activeMods == 'ALL') return true
+            if(mods['stock'].indexOf(resName) > -1) return true
+            for(let modName in mods) {
+                if(activeMods.has(modName) && mods[modName].indexOf(resName) > -1) return true
+            }
+            return false
+        })
 }
 
 export class Resources {
@@ -153,29 +168,35 @@ export class Size {
     ) {}
 }
 
-export function sizesWithMods(activeMods: Set<string>): Record<string, string> {
-    const sizes = {
-        "0": "0.625m",
-        "1": "1.25m/Mk1",
-        "2": "2.5m",
-        "3": "3.75m",
-        "Mk2": "Mk2",
-        "Mk3": "Mk3",
-        "R": "Radial",
+export const sizes = {
+    "0": "0.625m",
+    "1": "1.25m/Mk1",
+    "1.5": "1.875m",
+    "2": "2.5m",
+    "3": "3.75m",
+    "4": "5m",
+    "5": "7.5m",
+    "Mk2": "Mk2",
+    "Mk3": "Mk3",
+    "R": "Radial",
+}
+export function sizesWithMods(activeMods: 'ALL' | Set<string>): Record<string, string> {
+    /* Note: this assumes that mods do not *change* a resource, but only add resources */
+    const mods: Record<string, Array<keyof typeof sizes>> = {
+        stock: ["0", "1", "2", "3", "Mk2", "Mk3", "R"],
+        MH: ["1.5", "4"],
+        NFT: ["1.5", "4", "5"],
+        FFT: ["4", "5"],
     }
-    if(activeMods.has("MH")) {
-        sizes["1.5"] = "1.875m"
-        sizes["4"] = "5m"
-    }
-    if(activeMods.has("NFT")) {
-        sizes["1.5"] = "1.875m"
-        sizes["4"] = "5m"
-        sizes["5"] = "7.5m"
-    }
-    if(activeMods.has("FFT")) {
-        sizes["4"] = "5m"
-    }
-    return sizes
+    return objectFilter(sizes,
+        sizeName => {
+            if(activeMods == 'ALL') return true
+            if(mods['stock'].indexOf(sizeName) > -1) return true
+            for(let modName in mods) {
+                if(activeMods.has(modName) && mods[modName].indexOf(sizeName) > -1) return true
+            }
+            return false
+        })
 }
 
 export class AllDependencies {

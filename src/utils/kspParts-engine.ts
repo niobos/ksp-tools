@@ -1,12 +1,23 @@
-import Part, {Resources, TechTreeNode} from "./kspParts"
+import Part, {resourceInfo, Resources, TechTreeNode} from "./kspParts"
 import Spline from 'cubic-spline'
 import {thrustFromIspMdot} from "./rocket"
 import {combineWithOverride, setEq} from "./utils";
 
 export class Engine extends Part {
-    gimbal: number = 0;  // degrees
-    ispCurve: Array<[number, number]>;  // [[pressure, isp], ...] cubic spline control points, sorted!
-    throttleControl: boolean = true;
+    gimbal: number = 0  // degrees
+    ispCurve: Array<[number, number]>  // [[pressure, isp], ...] cubic spline control points, sorted!
+    throttleControl: boolean = true
+    _maxThrust?: number
+
+    _postCreate() {
+        super._postCreate()
+        if(this._maxThrust != null) {
+            /* If maxThrust is defined, scale this.consumption to get this maxThrust */
+            const currentThrust = this.thrust(resourceInfo, 0)
+            this.consumption = this.consumption.scaled(this._maxThrust / currentThrust)
+            delete this._maxThrust
+        }
+    }
 
     isp(pressureAtm: number): number {
         /* https://forum.kerbalspaceprogram.com/topic/110443-how-does-ksp-calculate-isp-for-engines/?do=findComment&comment=1958890
@@ -545,10 +556,537 @@ const nearFuture = [
         ispCurve: [[0, 230], [1, 220], [4, 140]],
         consumption: new Resources({Mono: 13.301}),
     }),
-    // TODO: others
+    Engine.create({
+        name: "KR-1 'Boar'",
+        cost: 7000,
+        mass: 3.5,
+        size: new Set(["2"]),
+        gimbal: 3,
+        ispCurve: [[0, 300], [1, 280]],
+        consumption: new Resources({LF: 30.591, Ox: 37.39, El: -3}),
+    }),
+    Engine.create({
+        name: "KR-10A 'Corgl'",
+        cost: 4250,
+        mass: 5.25,
+        size: new Set(["3"]),
+        gimbal: 4,
+        ispCurve: [[0, 355], [1, 95]],
+        consumption: new Resources({LF: 19.389, Ox: 23.698, El: -3}),
+    }),
+    Engine.create({
+        name: "KR-1E-V 'Argora'",
+        cost: 500,
+        mass: 0.12,
+        size: new Set(["0"]),
+        gimbal: 4,
+        ispCurve: [[0, 320], [1, 250]],
+        consumption: new Resources({LF: 0.516, Ox: 0.613}),
+    }),
+    Engine.create({
+        name: "KR-701 'Cougar'",
+        cost: 52_500,
+        mass: 8.5,
+        size: new Set(["3"]),
+        gimbal: 6,
+        ispCurve: [[0, 345], [1, 295]],
+        consumption: new Resources({LF: 57.193, Ox: 69.902, El: -3}),
+    }),
+    Engine.create({
+        name: "KR-74 'Lyx'",
+        cost: 21_000,
+        mass: 4.5,
+        size: new Set(["1.5"]),
+        gimbal: 6,
+        ispCurve: [[0, 345], [1, 298]],
+        consumption: new Resources({LF: 27.931, Ox: 34.138, El: -3}),
+    }),
+    Engine.create({
+        name: "KR-84 'Ocelot'",
+        cost: 32_500,
+        mass: 5.5,
+        size: new Set(["2"]),
+        gimbal: 2,
+        ispCurve: [[0, 340], [1, 300]],
+        consumption: new Resources({LF: 37.789, Ox: 46.187, El: -3}),
+    }),
+    Engine.create({
+        name: "KS-107 'Porpoise'",
+        cost: 9_000,
+        mass: 4.8,
+        size: new Set(["1.5"]),
+        gimbal: 2,
+        ispCurve: [[0, 320], [1, 288]],
+        consumption: new Resources({LF: 37.283, Ox: 45.569, El: -3}),
+    }),
+    Engine.create({
+        name: "KS-10AJ 'Walrus'",
+        cost: 10_500,
+        mass: 2.4,
+        size: new Set(["1"]),
+        gimbal: 2,
+        ispCurve: [[0, 315], [1, 285]],
+        consumption: new Resources({LF: 21.851, Ox: 26.707, El: -3}),
+    }),
+    Engine.create({
+        name: "KS-160 'Orca'",
+        cost: 19_000,
+        mass: 6.25,
+        size: new Set(["2"]),
+        gimbal: 4,
+        ispCurve: [[0, 318], [1, 290]],
+        consumption: new Resources({LF: 49.062, Ox: 59.964, El: -3}),
+    }),
+    Engine.create({
+        name: "KS-1E 'Goldfish'",
+        cost: 200,
+        mass: 0.1,
+        size: new Set(["0"]),
+        gimbal: 4,
+        ispCurve: [[0, 280], [1, 270]],
+        consumption: new Resources({LF: 0.656, Ox: 0.801}),
+    }),
+    Engine.create({
+        name: "KS-600AJ 'Manatee'",
+        cost: 41_000,
+        mass: 13.9,
+        size: new Set(["3"]),
+        gimbal: 2,
+        ispCurve: [[0, 315], [1, 285]],
+        consumption: new Resources({LF: 131.106, Ox: 160.241, El: -3}),
+    }),
+    Engine.create({
+        name: "LV-303 'Pug'",
+        cost: 300,
+        mass: 0.4,
+        size: new Set(["1"]),
+        gimbal: 0,
+        ispCurve: [[0, 330], [1, 150]],
+        consumption: new Resources({LF: 0.695, Ox: 0.85}),
+        content: new Resources({LF: 18, Ox: 22}),
+    }),
+    Engine.create({
+        name: "LV-T15 'Vallant'",
+        cost: 500,
+        mass: 0.75,
+        size: new Set(["1"]),
+        gimbal: 5,
+        ispCurve: [[0, 270], [1, 240]],
+        consumption: new Resources({LF: 3.399, Ox: 4.154, El: -6}),
+    }),
+    Engine.create({
+        name: "Mk-1H 'Torch'",
+        cost: 280,
+        mass: 0.29,
+        size: new Set(["0"]),
+        gimbal: 1,
+        ispCurve: [[0, 295], [1, 275]],
+        consumption: new Resources({LF: 1.711, Ox: 2.091, El: -1}),
+    }),
+    Engine.create({
+        name: "LV-N410 'Cherenkov'",
+        cost: 40_000,
+        mass: 12.0,
+        size: new Set(["2"]),
+        gimbal: 5,
+        ispCurve: [[0, 820], [1, 200]],
+        consumption: new Resources({LF: 7.461, El: -4.5}),
+    }),
+    Engine.create({
+        name: "X-7 'Asimov' [Frag]",
+        cost: 275_000,
+        mass: 18.0,
+        size: new Set(["3"]),
+        gimbal: 1,
+        ispCurve: [[0, 450_000], [1, 10]],
+        consumption: new Resources({Frag: 0.005, El: -150}),
+    }),
+    Engine.create({
+        name: "X-7 'Asimov' [Frag+LH2]",
+        cost: 275_000,
+        mass: 18.0,
+        size: new Set(["3"]),
+        gimbal: 1,
+        ispCurve: [[0, 45_000], [1, 10]],
+        consumption: new Resources({Frag: 0.002, LH2: 9.556, El: -150}),
+    }),
+    Engine.create({
+        name: "FI-1123 'HI-SNAP'",
+        cost: 6_560,
+        mass: 0.25,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 9650], [1, 96.5]],
+        consumption: new Resources({El: 199.999, Xe: 0.454}),
+    }),
+    Engine.create({
+        name: "FI-2154 'Jewel-4'",
+        cost: 9_486,
+        mass: 0.25,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 19200], [1, 192]],
+        consumption: new Resources({El: 399.999, Xe: 0.204}),
+    }),
+    Engine.create({
+        name: "GW0101 'Gyro-1'",
+        cost: 1_950,
+        mass: 0.1,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 2200], [1, 22]],
+        consumption: new Resources({El: 9.999, Xe: 0.695}),
+    }),
+    Engine.create({
+        name: "GW3 'Triplet'",
+        cost: 8_120,
+        mass: 0.3,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 3300], [1, 33]],
+        consumption: new Resources({El: 99.999, Xe: 2.596}),
+    }),
+    Engine.create({
+        name: "GW7201 'Gyro-2'",
+        cost: 4_200,
+        mass: 0.15,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 2700], [1, 27]],
+        consumption: new Resources({El: 29.999, Xe: 1.265}),
+    }),
+    Engine.create({
+        name: "IX-8219 'AFTER'",
+        cost: 3_910,
+        mass: 0.2,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 6380], [1, 63.8]],
+        consumption: new Resources({El: 59.999, Xe: 0.336}),
+    }),
+    Engine.create({
+        name: "KP-01 'Scintillator' [HiISP]",
+        cost: 7_002,
+        mass: 0.25,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 5970], [1, 59.7]],
+        consumption: new Resources({El: 399.99, Ar: 241.701}),
+    }),
+    Engine.create({
+        name: "KP-01 'Scintillator' [LoISP]",
+        cost: 7_002,
+        mass: 0.25,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 3500], [1, 35]],
+        consumption: new Resources({El: 199.99, Ar: 241.701}),
+    }),
+    Engine.create({
+        name: "LF-1 'Charon'",
+        cost: 9_230,
+        mass: 0.33,
+        size: new Set(["0"]),
+        gimbal: 1,
+        ispCurve: [[0, 2600], [1, 26]],
+        consumption: new Resources({El: 399.99, Ar: 3.474}),
+    }),
+    ...[
+        {name: 'HiF', isp: 4500, t: 4.85},
+        {name: 'HiISP', isp: 7500, t: 2.50},
+    ].map(({name, isp, t}) =>
+        Engine.create({
+            name: `VX-100 'Helicon' [Ar, ${name}]`,
+            cost: 8_190,
+            mass: 0.35,
+            size: new Set(["0"]),
+            gimbal: 2,
+            ispCurve: [[0, isp], [1, isp/100], [2, 0.001]],
+            consumption: new Resources({El: 2.860187, Ar: 1}),
+            _maxThrust: t,
+        })
+    ),
+    ...[
+        {name: 'HiF', isp: 3000, t: 8.26},
+        {name: 'HiISP', isp: 5000, t: 4.23},
+    ].map(({name, isp, t}) =>
+        Engine.create({
+            name: `VX-100 'Helicon' [Xe, ${name}]`,
+            cost: 8_190,
+            mass: 0.35,
+            size: new Set(["0"]),
+            gimbal: 2,
+            ispCurve: [[0, isp], [1, isp/100], [2, 0.001]],
+            consumption: new Resources({El: 63.064466, Xe: 1}),
+            _maxThrust: t,
+        })
+    ),
+    ...[
+        {name: 'LowISP', isp: 4500, el: 499.99},
+        {name: 'HiISP', isp: 7670, el: 999.99},
+    ].map(({name, isp, el}) =>
+        Engine.create({
+            name: `KP-XL 'Inductor' [${name}]`,
+            cost: 14_140,
+            mass: 0.75,
+            size: new Set(["1"]),
+            gimbal: 0,
+            ispCurve: [[0, isp], [1, isp/100], [4, 0.001]],
+            consumption: new Resources({El: el, Ar: 339.143}),
+            _maxThrust: 26.7,
+        })
+    ),
+    Engine.create({
+        name: "LF-2 'Pyrios'",
+        cost: 16_614,
+        mass: 0.9,
+        size: new Set(["1"]),
+        gimbal: 1,
+        ispCurve: [[0, 3000], [1, 30]],
+        consumption: new Resources({El: 999.999, Li: 6.136}),
+    }),
+    ...[
+        {name: 'HiF', isp: 4000, t: 22.65},
+        {name: 'HiISP', isp: 8000, t: 9.18},
+    ].map(({name, isp, t}) =>
+        Engine.create({
+            name: `VW-200 'Magnotron' [Ar, ${name}]`,
+            cost: 17_040,
+            mass: 1.0,
+            size: new Set(["1"]),
+            gimbal: 2,
+            ispCurve: [[0, isp], [1, isp/100], [2, 0.001]],
+            consumption: new Resources({El: 2.856265, Ar: 1}),
+            _maxThrust: t,
+        })
+    ),
+    ...[
+        {name: 'HiF', isp: 2500, t: 41.70},
+        {name: 'HiISP', isp: 5500, t: 14.95},
+    ].map(({name, isp, t}) =>
+        Engine.create({
+            name: `VW-200 'Magnotron' [Xe, ${name}]`,
+            cost: 17_040,
+            mass: 1.0,
+            size: new Set(["1"]),
+            gimbal: 2,
+            ispCurve: [[0, isp], [1, isp/100], [2, 0.001]],
+            consumption: new Resources({El: 63.013014, Xe: 1}),
+            _maxThrust: t,
+        })
+    ),
+    ...[
+        {name: 'LowISP', isp: 5500, el: 999.99},
+        {name: 'HiISP', isp: 9380, el: 1999.99},
+    ].map(({name, isp, el}) =>
+        Engine.create({
+            name: "KX-XK 'Repulsor'",
+            cost: 24_525,
+            mass: 2.0,
+            size: new Set(["2"]),
+            gimbal: 0,
+            ispCurve: [[0, isp], [1, isp/100], [2, 0.001]],
+            consumption: new Resources({El: el, Ar: 427.134}),
+        })
+    ),
+    Engine.create({
+        name: "LF-9 'Colossus'",
+        cost: 37_920,
+        mass: 2.5,
+        size: new Set(["2"]),
+        gimbal: 1,
+        ispCurve: [[0, 3400], [1, 34]],
+        consumption: new Resources({El: 2999.99, Li: 13.603}),
+    }),
+    ...[
+        {name: 'HiF', isp: 3500, t: 134.60},
+        {name: 'HiISP', isp: 8500, t: 42.50},
+    ].map(({name, isp, t}) =>
+        Engine.create({
+            name: `VW-10K 'Cyclotron' [Ar, ${name}]`,
+            cost: 38_800,
+            mass: 2.8,
+            size: new Set(["2"]),
+            gimbal: 2,
+            ispCurve: [[0, isp], [1, isp/100], [2, 0.001]],
+            consumption: new Resources({El: 2.856194, Ar: 1}),
+            _maxThrust: t,
+        })
+    ),
+    ...[
+        {name: 'HiF', isp: 2000, t: 279.00},
+        {name: 'HiISP', isp: 6000, t: 66.80},
+    ].map(({name, isp, t}) =>
+        Engine.create({
+            name: `VW-10K 'Cyclotron' [Xe, ${name}]`,
+            cost: 38_800,
+            mass: 2.8,
+            size: new Set(["2"]),
+            gimbal: 2,
+            ispCurve: [[0, isp], [1, isp/100], [2, 0.001]],
+            consumption: new Resources({El: 63.036787, Xe: 1}),
+            _maxThrust: t,
+        })
+    ),
 ]
 
 const farFuture = [
+    Engine.create({
+        name: "X-12 'Hamilton'",
+        cost: 195_000,
+        mass: 56.0,
+        size: new Set(["4"]),
+        gimbal: 2,
+        ispCurve: [[0, 2900], [1, 2900]],
+        consumption: new Resources({NUK: 3.516}),
+    }),
+    Engine.create({
+        name: "X-2 'Heinlein'",
+        cost: 115_000,
+        mass: 12.0,
+        size: new Set(["2"]),
+        gimbal: 3,
+        ispCurve: [[0, 3850], [1, 3100]],
+        consumption: new Resources({El: 25.009, NSW: 45.405})
+    }),
+    Engine.create({
+        name: "X-20 'Verne'",
+        cost: 355_000,
+        mass: 18.0,
+        size: new Set(["4"]),
+        gimbal: 2,
+        ispCurve: [[0, 9500], [1, 50]],
+        consumption: new Resources({FIP: 6.87}),
+    }),
+    Engine.create({
+        name: "X-42 'Niven'",
+        cost: 115_000,
+        mass: 28.0,
+        size: new Set(["4"]),
+        gimbal: 2,
+        ispCurve: [[0, 120_000], [1, 60_000]],
+        consumption: new Resources({El: 90.833, NSW: 3.075}),
+    }),
+    Engine.create({
+        name: "X-6 'Clarke'",
+        cost: 195_000,
+        mass: 10.8228,
+        size: new Set(["2"]),
+        gimbal: 1,
+        ispCurve: [[0, 350_000], [1, 10], [4, 2]],
+        consumption: new Resources({EnrU: 1}),
+        _maxThrust: 12,
+        content: new Resources({EnrU: 75}),
+    }),
+    Engine.create({
+        name: "JP-10 'Impulse' [D]",
+        cost: 96_000,
+        mass: 11.0,
+        size: new Set(["2"]),
+        gimbal: 2,
+        ispCurve: [[0, 5000], [1, 50]],
+        consumption: new Resources({Li: 2.787, D: 0.253, El: 5.559}),
+    }),
+    Engine.create({
+        name: "JP-10 'Impulse' [D-He3]",
+        cost: 96_000,
+        mass: 11.0,
+        size: new Set(["2"]),
+        gimbal: 2,
+        ispCurve: [[0, 7500], [1, 50]],
+        consumption: new Resources({Li: 2.512, D: 0.046, He3: 0.183, El: 41.669}),
+    }),
+    Engine.create({
+        name: "JR-20A 'Ouroboros'",
+        cost: 670_000,
+        mass: 11.0,
+        size: new Set(["2"]),
+        gimbal: 2,
+        ispCurve: [[0, 1900], [1, 1800]],
+        consumption: new Resources({LH2: 1128.328, D: 1.41, He3: 5.642}),
+    }),
+    Engine.create({
+        name: "JR-15 'Discovery' [HiISP]",
+        cost: 235_000,
+        mass: 20.0,
+        size: new Set(["3"]),
+        gimbal: 2,
+        ispCurve: [[0, 17900], [1, 190]],
+        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 15.641}),
+    }),
+    Engine.create({
+        name: "JR-15 'Discovery' [HiF]",
+        cost: 235_000,
+        mass: 20.0,
+        size: new Set(["3"]),
+        gimbal: 2,
+        ispCurve: [[0, 8000], [1, 190]],
+        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 70.965}),
+    }),
+    Engine.create({
+        name: "JR-45 'Fresnel' [HiISP]",
+        cost: 285_000,
+        mass: 26.0,
+        size: new Set(["3"]),
+        gimbal: 1,
+        ispCurve: [[0, 63200], [1, 190]],
+        consumption: new Resources({D: 0.304, He3: 1.215}),
+    }),
+    Engine.create({
+        name: "JR-45 'Fresnel' [HiF]",
+        cost: 285_000,
+        mass: 26.0,
+        size: new Set(["3"]),
+        gimbal: 1,
+        ispCurve: [[0, 14000], [1, 190]],
+        consumption: new Resources({D: 0.304, He3: 1.215, LH2: 37.497}),
+    }),
+    Engine.create({
+        name: "JX-200 'Cascade' [HiISP]",
+        cost: 235_000,
+        mass: 32.0,
+        size: new Set(["3"]),
+        gimbal: 2,
+        ispCurve: [[0, 365000], [1, 190]],
+        consumption: new Resources({D: 0.771, He3: 3.085}),
+    }),
+    Engine.create({
+        name: "JX-200 'Cascade' [HiF]",
+        cost: 235_000,
+        mass: 32.0,
+        size: new Set(["3"]),
+        gimbal: 2,
+        ispCurve: [[0, 85000], [1, 190]],
+        consumption: new Resources({D: 0.213, He3: 0.992, LH2: 46.114}),
+    }),
+    Engine.create({
+        name: "K-80 'Hammertong' [HiISP]",
+        cost: 730_000,
+        mass: 45.0,
+        size: new Set(["4"]),
+        gimbal: 2,
+        ispCurve: [[0, 520_000], [1, 50]],
+        consumption: new Resources({D: 0.02, He3: 0.079}),
+    }),
+    Engine.create({
+        name: "K-80 'Hammertong' [HiF]",
+        cost: 730_000,
+        mass: 45.0,
+        size: new Set(["4"]),
+        gimbal: 2,
+        ispCurve: [[0, 260_000], [1, 50]],
+        consumption: new Resources({D: 0.164, He3: 0.082}),
+    }),
+    Engine.create({
+        name: "A-7007 'Dirac'",
+        cost: 670_000,
+        mass: 10.0,
+        size: new Set(["2"]),
+        gimbal: 2,
+        ispCurve: [[0, 115_000], [1, 5]],
+        consumption: new Resources({Anti: 0.000028, D: 1, He3: 4}),
+        _maxThrust: 45,
+    }),
     Engine.create({
         name: "A-134NG 'Casaba'",
         cost: 355_000,
@@ -556,11 +1094,19 @@ const farFuture = [
         size: new Set(["4"]),
         gimbal: 2,
         ispCurve: [[0, 13500], [1, 50], [12, 0.001]],
-        consumption: new Resources({Abl: 85, Anti: 0.00025, FIP: 72})
-            .scaled(420/20785.1950059744 /* Experimentally found to get thrust of 420kN */),
+        consumption: new Resources({Abl: 85, Anti: 0.00025, FIP: 72}),
+        _maxThrust: 420,
         content: new Resources({Abl: 17000}),
     }),
-    // TODO: others
+    Engine.create({
+        name: "A-834M 'Frisbee'",
+        cost: 57_500,
+        mass: 32.0,
+        size: new Set(["4"]),
+        gimbal: 2,
+        ispCurve: [[0, 2_500_000], [1, 50_000]],
+        consumption: new Resources({Anti: 2.018, LH2: 2.018}),
+    }),
 ]
 
 function enginePartsWithMods_(activeMods: Set<string> = new Set()): Array<Engine> {

@@ -11,6 +11,11 @@ export function objectMap<K extends PropertyKey, Vin, Vout>(
     }, {} as {[k in K]: Vout})
 }
 
+/* TODO: fix type signatures above so that optional keys in the input `obj` remain optional in the output
+ * const foo: {a: number, b?: number} = {a: 1}
+ * objectMap(foo, (v) => '' + v)
+ */
+
 export function objectFilter<K extends PropertyKey, V>(
     obj: {[k in K]: V},
     filterFn: (k: K, v: V) => boolean,

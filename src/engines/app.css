@@ -18,3 +18,10 @@ input[type="text"] {
 table.sortableTable, table.sortableTable th, table.sortableTable td {
     border: 1px solid var(--foreground-color);
 }
+
+span.refuelable {
+    color: green;
+}
+span.nonrefuelable {
+    color: red;
+}

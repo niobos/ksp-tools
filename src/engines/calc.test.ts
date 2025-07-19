@@ -111,6 +111,9 @@ describe('external fuel only', () => {
     })
 
     test('multi massless engine', () => {
+        // Tank: full: 1.25; empty: 1.25/10 = 0.125
+        // Start: 1+0+1.25 = 2.25; end: 1+0+0.125 = 1.125 = 2.25/2
+        // 980kN / 2.25t = 435m/s^2
         const dv = isp * g0 * Math.log(2)
         const res = calcFuelTank(
             1,
@@ -120,9 +123,7 @@ describe('external fuel only', () => {
             testResInfo, testTankInfo,
             0,
         )
-        // Tank: full: 1.25; empty: 1.25/10 = 0.125
-        // Start: 1+1.25 = 2.25; end: 1+0.125 = 1.125 = 2.25/2
-        expect(res.numEngines).toBe(2)  // 980kN for 2.25t => 435
+        expect(res.numEngines).toBe(2)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBe(0)
         expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
         expect(res.fuelTankEmptyMass.E).toBeCloseTo(0.125)
@@ -210,19 +211,19 @@ describe('internal fuel only', () => {
     })
 
     test('multi for thrust', () => {
-        // start: 1 + 3*(0.5+2.5/3) = 5t; end: 1 + 3*0.5 = 2.5t
-        // Single engine peaks (just before empty) at 980kN for 1.5t = 653m/s^2 => 2nd needed
+        // start: 1 + (0.5+1.5) = 3t; end: 1 + 0.5 = 1.5t ; 980kN/3t = 326m/s^2
+        // start: 1 + 2*(0.5+1) = 4t; end: 1 + 2*0.5 = 2t ; 2*980kN/4t = 490m/s^2
         const dv = isp * g0 * Math.log(2)
         const res = calcFuelTank(
             1,
-            653+10,
+            400,
             dv,
             testEngine,
             testResInfo, testTankInfo,
             0
         )
-        expect(res.numEngines).toBe(3)
-        expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(2.5)
+        expect(res.numEngines).toBe(2)
+        expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(2)
         expect(res.fuelTankEmptyMass).toMatchObject({})
         expect(res.fuelInTanks.totalMass(testResInfo)).toBe(0)
         expect(calcDv(1, testEngine, isp, res)).toBeCloseTo(dv)
@@ -502,6 +503,8 @@ describe('LF+Ox + alternator', () => {
 })
 
 describe('previous bugs', () => {
+    const resourceInfo = resourceInfoWithMods()
+
     test('1', () => {
         const testEngine = Engine.create({
             name: 'S2-33 "Clydesdale"',
@@ -519,7 +522,7 @@ describe('previous bugs', () => {
             14.71,
             4000,
             testEngine,
-            resourceInfoWithMods(), testTankInfo,
+            resourceInfo, testTankInfo,
             0,
         )
         expect(res.numEngines).toBe(1)
@@ -538,14 +541,16 @@ describe('previous bugs', () => {
             "Ox": {"wdr": 8.68999200865544, "cost": 233.49700317569634},
         }
 
+        const acceleration = 14.71
+        const pressure = 0
         const res = calcFuelTank(
             1.5,
-            14.71,
+            acceleration,
             1000,
             testEngine,
-            resourceInfoWithMods(), testTankInfo,
-            0,
+            resourceInfo, testTankInfo,
+            pressure,
         )
-        expect(res.numEngines).toBe(21)  // TODO: find actual number, or null; but not NaN as it is now
+        expect(res.numEngines).toBe(Math.ceil(res._wetMass * acceleration / testEngine.thrust(resourceInfo, pressure)))
     })
 })

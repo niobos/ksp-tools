@@ -1,9 +1,9 @@
 import Part, {Resources} from "./kspParts";
-import {setEq} from "./utils";
+import {combineWithOverride, setEq} from "./utils";
 
 export class FuelTank extends Part {}
 
-const fuelTanks = [
+export const _fuelTanks = [
     FuelTank.create({
         name: '2.5m to Mk2 Adapter',
         cost: 800,
@@ -475,15 +475,469 @@ const fuelTanks = [
     }),
 ]
 
+export const _nearFuture = [
+    FuelTank.create({
+        name: 'PB-XR9 Xenon Tank',
+        cost: 33_863,
+        mass: 1.0,
+        size: new Set(["R"]),
+        content: new Resources({Xe: 7500}),
+    }),
+    FuelTank.create({
+        name: 'PB-XA06 Xenon Tank',
+        cost: 25_714,
+        mass: 0.8,
+        size: new Set(["1"]),
+        content: new Resources({Xe: 6000}),
+    }),
+    FuelTank.create({
+        name: 'PB-XA12 Xenon Tank',
+        cost: 51_429,
+        mass: 1.6,
+        size: new Set(["1"]),
+        content: new Resources({Xe: 12_000}),
+    }),
+    FuelTank.create({
+        name: 'PB-XA24 Xenon Tank',
+        cost: 102_857,
+        mass: 3.2,
+        size: new Set(["1"]),
+        content: new Resources({Xe: 24_000}),
+    }),
+    FuelTank.create({
+        name: 'PB-Z02 Xenon Tank',
+        cost: 205_714,
+        mass: 6.4,
+        size: new Set(["2"]),
+        content: new Resources({Xe: 48_000}),
+    }),
+    FuelTank.create({
+        name: 'PB-Z04 Xenon Tank',
+        cost: 411_429,
+        mass: 12.8,
+        size: new Set(["2"]),
+        content: new Resources({Xe: 96_000}),
+    }),
+    FuelTank.create({
+        name: 'PB-Z08 Xenon Tank',
+        cost: 822_857,
+        mass: 25.6,
+        size: new Set(["2"]),
+        content: new Resources({Xe: 192_000}),
+    }),
+    FuelTank.create({
+        name: 'A101 Argon Tank',
+        cost: 199,
+        mass: 0.0343,
+        size: new Set(["R"]),
+        content: new Resources({Ar: 14_400}),
+    }),
+    FuelTank.create({
+        name: 'A102 Argon Tank',
+        cost: 882,
+        mass: 0.1522,
+        size: new Set(["R"]),
+        content: new Resources({Ar: 64_000}),
+    }),
+    FuelTank.create({
+        name: 'ARK-MI-112 Argon Tank',
+        cost: 1456,
+        mass: 0.2684,
+        size: new Set(["0"]),
+        content: new Resources({Ar: 112_000}),
+    }),
+    FuelTank.create({
+        name: 'ARK-MI-28 Argon Tank',
+        cost: 364,
+        mass: 0.0666,
+        size: new Set(["0"]),
+        content: new Resources({Ar: 28_000}),
+    }),
+    FuelTank.create({
+        name: 'ARK-MI-56 Argon Tank',
+        cost: 728,
+        mass: 0.1332,
+        size: new Set(["0"]),
+        content: new Resources({Ar: 56_000}),
+    }),
+    FuelTank.create({
+        name: 'ARH-025M Argon Tank',
+        cost: 4160,
+        mass: 0.7612,
+        size: new Set(["1"]),
+        content: new Resources({Ar: 320_000}),
+    }),
+    FuelTank.create({
+        name: 'ARH-05M Argon Tank',
+        cost: 8320,
+        mass: 1.5223,
+        size: new Set(["1"]),
+        content: new Resources({Ar: 640_000}),
+    }),
+    FuelTank.create({
+        name: 'ARH-1M Argon Tank',
+        cost: 16_640,
+        mass: 3.0447,
+        size: new Set(["1"]),
+        content: new Resources({Ar: 1_280_000}),
+    }),
+    FuelTank.create({
+        name: 'ARG-10M Argon Tank',
+        cost: 133_120,
+        mass: 24.3576,
+        size: new Set(["2"]),
+        content: new Resources({Ar: 10_240_000}),
+    }),
+    FuelTank.create({
+        name: 'ARG-2M Argon Tank',
+        cost: 33_280,
+        mass: 6.0894,
+        size: new Set(["2"]),
+        content: new Resources({Ar: 2_560_000}),
+    }),
+    FuelTank.create({
+        name: 'ARG-5M Argon Tank',
+        cost: 66_560,
+        mass: 12.1788,
+        size: new Set(["2"]),
+        content: new Resources({Ar: 5_120_000}),
+    }),
+    FuelTank.create({
+        name: 'LFR-01 Lithium Tank',
+        cost: 232,
+        mass: 0.0655,
+        size: new Set(["R"]),
+        content: new Resources({Li: 92}),
+    }),
+    FuelTank.create({
+        name: 'LFR-08 Lithium Tank',
+        cost: 2_218,
+        mass: 0.6266,
+        size: new Set(["R"]),
+        content: new Resources({Li: 880}),
+    }),
+    FuelTank.create({
+        name: 'LFT-C01 Lithium Tank',
+        cost: 243,
+        mass: 0.0684,
+        size: new Set(["0"]),
+        content: new Resources({Li: 96}),
+    }),
+    FuelTank.create({
+        name: 'LFT-C02 Lithium Tank',
+        cost: 485,
+        mass: 0.1368,
+        size: new Set(["0"]),
+        content: new Resources({Li: 192}),
+    }),
+    FuelTank.create({
+        name: 'LFT-C03 Lithium Tank',
+        cost: 970,
+        mass: 0.2741,
+        size: new Set(["0"]),
+        content: new Resources({Li: 385}),
+    }),
+    FuelTank.create({
+        name: 'LFT-B1 Lithium Tank',
+        cost: 2_772,
+        mass: 0.7832,
+        size: new Set(["1"]),
+        content: new Resources({Li: 1100}),
+    }),
+    FuelTank.create({
+        name: 'LFT-B2 Lithium Tank',
+        cost: 5544,
+        mass: 1.5664,
+        size: new Set(["1"]),
+        content: new Resources({Li: 2200}),
+    }),
+    FuelTank.create({
+        name: 'LFT-B4 Lithium Tank',
+        cost: 11_088,
+        mass: 3.1328,
+        size: new Set(["1"]),
+        content: new Resources({Li: 4400}),
+    }),
+    FuelTank.create({
+        name: 'LFT-A10 Lithium Tank',
+        cost: 22_176,
+        mass: 6.2656,
+        size: new Set(["2"]),
+        content: new Resources({Li: 8800}),
+    }),
+    FuelTank.create({
+        name: 'LFT-A20 Lithium Tank',
+        cost: 44_352,
+        mass: 12.5312,
+        size: new Set(["2"]),
+        content: new Resources({Li: 17_600}),
+    }),
+    FuelTank.create({
+        name: 'LFT-A40 Lithium Tank',
+        cost: 88_705,
+        mass: 25.0624,
+        size: new Set(["2"]),
+        content: new Resources({Li: 35_200}),
+    }),
+    FuelTank.create({
+        name: 'H250-16 Cryogenic Tank [LH2]',
+        cost: 2476,
+        mass: 1.02,
+        size: new Set(["2"]),
+        content: new Resources({LH2: 12_000}),
+    }),
+    FuelTank.create({
+        name: 'H250-16 Cryogenic Tank [LCH4]',
+        cost: 5507,
+        mass: 3.972,
+        size: new Set(["2"]),
+        content: new Resources({LCH4: 8000}),
+    }),
+
+    // TODO: others
+]
+
+export const _farFuture = [
+    FuelTank.create({
+        name: 'A-CY1-25 Antimatter storage container',
+        cost: 187_500,
+        mass: 0.5,
+        size: new Set(["2"]),
+        content: new Resources({Anti: 12_500}),
+    }),
+    FuelTank.create({
+        name: 'A-CY1-25XL Antimatter storage container',
+        cost: 375_000,
+        mass: 1.0,
+        size: new Set(["2"]),
+        content: new Resources({Anti: 25_000}),
+    }),
+    FuelTank.create({
+        name: 'A-CY1-5A Antimatter storage container',
+        cost: 562_500,
+        mass: 1.125,
+        size: new Set(["4"]),
+        content: new Resources({Anti: 37_500}),
+    }),
+    FuelTank.create({
+        name: 'A-CY1-5B Antimatter storage container',
+        cost: 1_125_000,
+        mass: 2.25,
+        size: new Set(["4"]),
+        content: new Resources({Anti: 75_000}),
+    }),
+    FuelTank.create({
+        name: 'A-CY1-5C Antimatter storage container',
+        cost: 2_250_000,
+        mass: 4.5,
+        size: new Set(["4"]),
+        content: new Resources({Anti: 150_000}),
+    }),
+    FuelTank.create({
+        name: 'A-CY1-5D Antimatter storage container',
+        cost: 4_500_000,
+        mass: 9.0,
+        size: new Set(["4"]),
+        content: new Resources({Anti: 300_000}),
+    }),
+    FuelTank.create({
+        name: 'A-R7NG Antiproton Storage ring',
+        cost: 25_000,
+        mass: 2.0,
+        size: new Set(["5"]),
+        content: new Resources({Anti: 0.1}),
+    }),
+    FuelTank.create({
+        name: 'NTR-001 Radial Fissionables Tank [NSW]',
+        cost: 76_000,
+        mass: 12.6,
+        size: new Set(["R"]),
+        content: new Resources({NSW: 8000}),
+    }),
+    FuelTank.create({
+        name: 'NTR-001 Radial Fissionables Tank [Frag]',
+        cost: 40_800,
+        mass: 0.346,
+        size: new Set(["R"]),
+        content: new Resources({Frag: 160}),
+    }),
+    FuelTank.create({
+        name: 'NTR-002 Radial Fissionables Tank [NSW]',
+        cost: 38_000,
+        mass: 6.3,
+        size: new Set(["R"]),
+        content: new Resources({NSW: 4000}),
+    }),
+    FuelTank.create({
+        name: 'NTR-002 Radial Fissionables Tank [Frag]',
+        cost: 20_400,
+        mass: 0.173,
+        size: new Set(["R"]),
+        content: new Resources({Frag: 80}),
+    }),
+    FuelTank.create({
+        name: 'NTR-003 Radial Fissionables Tank [NSW]',
+        cost: 19_000,
+        mass: 3.15,
+        size: new Set(["R"]),
+        content: new Resources({NSW: 2000}),
+    }),
+    FuelTank.create({
+        name: 'NTR-003 Radial Fissionables Tank [Frag]',
+        cost: 10_200,
+        mass: 0.086,
+        size: new Set(["R"]),
+        content: new Resources({Frag: 40}),
+    }),
+    FuelTank.create({
+        name: 'NTS-001 Fissionables Tank [NSW]',
+        cost: 304_000,
+        mass: 50.4,
+        size: new Set(["2"]),
+        content: new Resources({NSW: 32_000}),
+    }),
+    FuelTank.create({
+        name: 'NTS-001 Fissionables Tank [Frag]',
+        cost: 163_200,
+        mass: 1.382,
+        size: new Set(["2"]),
+        content: new Resources({Frag: 640}),
+    }),
+    FuelTank.create({
+        name: 'NTS-002 Fissionables Tank [NSW]',
+        cost: 152_000,
+        mass: 25.2,
+        size: new Set(["2"]),
+        content: new Resources({NSW: 16_000}),
+    }),
+    FuelTank.create({
+        name: 'NTS-002 Fissionables Tank [Frag]',
+        cost: 81_600,
+        mass: 0.691,
+        size: new Set(["2"]),
+        content: new Resources({Frag: 320}),
+    }),
+    FuelTank.create({
+        name: 'NTS-003 Fissionables Tank [NSW]',
+        cost: 76_000,
+        mass: 12.6,
+        size: new Set(["2"]),
+        content: new Resources({NSW: 8000}),
+    }),
+    FuelTank.create({
+        name: 'NTS-003 Fissionables Tank [Frag]',
+        cost: 40_800,
+        mass: 0.346,
+        size: new Set(["2"]),
+        content: new Resources({Frag: 160}),
+    }),
+    FuelTank.create({
+        name: 'NTS-501 Fissionables Tank',
+        cost: 798_000,
+        mass: 132.300,
+        size: new Set(["4"]),
+        content: new Resources({NSW: 84_000}),
+    }),
+    FuelTank.create({
+        name: 'NTS-502 Fissionables Tank',
+        cost: 399_000,
+        mass: 66.150,
+        size: new Set(["4"]),
+        content: new Resources({NSW: 42_000}),
+    }),
+    /* DO NOT include the MF-0, MF-1 and MF-2
+     * These can only be transferred manually, so we don't want to take these
+     * into account when calculating burns
+     */
+    FuelTank.create({
+        name: 'OP 6x2 Nuclear Pulse Unit Tank',
+        cost: 247_450,
+        mass: 84.0,
+        size: new Set(["4"]),
+        content: new Resources({NUK: 1400}),
+    }),
+    FuelTank.create({
+        name: 'OP 6x4 Nuclear Pulse Unit Tank',
+        cost: 494_900,
+        mass: 168.0,
+        size: new Set(["4"]),
+        content: new Resources({NUK: 2800}),
+    }),
+    FuelTank.create({
+        name: 'OP 6x8 Nuclear Pulse Unit Tank',
+        cost: 989_800,
+        mass: 336.0,
+        size: new Set(["4"]),
+        content: new Resources({NUK: 5600}),
+    }),
+    FuelTank.create({
+        name: 'PW x4 Nuclear Pellet Storage Container',
+        cost: 201_600,
+        mass: 19.2,
+        size: new Set(["4"]),
+        content: new Resources({FIP: 14_400}),
+    }),
+    FuelTank.create({
+        name: 'PW x8 Nuclear Pellet Storage Container',
+        cost: 403_200,
+        mass: 33.5,
+        size: new Set(["4"]),
+        content: new Resources({FIP: 28_800}),
+    }),
+    FuelTank.create({
+        name: 'ST-412 Fusion Fuel Tank [D]',
+        cost: 607.20,
+        mass: 0.234,
+        size: new Set(["2"]),
+        content: new Resources({D: 1200}),
+    }),
+    FuelTank.create({
+        name: 'ST-412 Fusion Fuel Tank [He3]',
+        cost: 6696,
+        mass: 0.085,
+        size: new Set(["2"]),
+        content: new Resources({He3: 1200}),
+    }),
+    FuelTank.create({
+        name: 'ST-824 Fusion Fuel Tank [D]',
+        cost: 5692.5,
+        mass: 2.355,
+        size: new Set(["2"]),
+        content: new Resources({D: 11_250}),
+    }),
+    FuelTank.create({
+        name: 'ST-824 Fusion Fuel Tank [He3]',
+        cost: 62_755,
+        mass: 0.797,
+        size: new Set(["2"]),
+        content: new Resources({He3: 11_250}),
+    }),
+    FuelTank.create({
+        name: 'ST-4L3 Fusion Fuel Tank [D]',
+        cost: 1012,
+        mass: 0.39,
+        size: new Set(["3"]),
+        content: new Resources({D: 2000}),
+    }),
+    FuelTank.create({
+        name: 'ST-4L3 Fusion Fuel Tank [He3]',
+        cost: 11_160,
+        mass: 0.142,
+        size: new Set(["3"]),
+        content: new Resources({He3: 2000}),
+    }),
+    // TODO: others
+]
+
 
 function fuelTanksWithMods_(activeMods: Set<string> = new Set()): Array<FuelTank> {
-    let parts: Array<FuelTank> = [...fuelTanks]
-    // if(activeMods.has("NFT")) {
-    //     parts = combineWithOverride(parts, nearFuture)
-    // }
-    // if(activeMods.has("FFT")) {
-    //     parts = combineWithOverride(parts, farFuture)
-    // }
+    let parts: Array<FuelTank> = [..._fuelTanks]
+    if(activeMods.has("NFT")) {
+        parts = combineWithOverride(parts, _nearFuture)
+    }
+    if(activeMods.has("FFT")) {
+        parts = combineWithOverride(parts, _farFuture)
+    }
     return parts
 }
 
