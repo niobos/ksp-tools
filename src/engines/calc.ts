@@ -137,7 +137,7 @@ export function calcFuelTank(
             },
             0)
 
-        /* For the desired accelerationA
+        /* For the desired acceleration
          * n * F = (m + n*m_e) * a
          * => n*F = m * a + n*m_e * a
          * => n*f -n*m_e*a = m*a
@@ -223,7 +223,7 @@ export function calcFuelTank(
         fuelInEngines: Resources.FromMass(fullResultIntEngines.fuelInEngines, resourceInfo),
         fuelInTanks: Resources.FromMass(fullResultIntEngines.fuelInTanks, resourceInfo),
         fuelTankEmptyMass: fullResultIntEngines.fuelTankEmptyMass,
-        burnTime: fuelMassIntegerEngines,
+        burnTime: fuelMassIntegerEngines / numEngines / engineTotalFuelMassFlow,
         _wetMass: fullResultIntEngines.wetMass,
         _dryMass: fullResultIntEngines.dryMass,
     }

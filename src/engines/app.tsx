@@ -44,6 +44,7 @@ type EngineConfig = {
     fuelMass: number,
     tankMass: number,
     totalMass: number,
+    burnTime: number,
     dv: number,
     accelerationFull: number,
     accelerationEmpty: number,
@@ -188,6 +189,7 @@ function calcEngine(
         fuelMass,
         tankMass,
         totalMass: payloadMass + engineMass + fuelMass + tankMass,
+        burnTime: solution.burnTime,
         dv: actualDv,
         accelerationFull: accelerationFull,
         accelerationEmpty: engine.thrust(resourceInfo, pressureValue) * solution.numEngines / solution._dryMass,
@@ -311,10 +313,11 @@ function App() {
             ]},
         {title: <span>Fuels</span>, value: (i: EngineConfig) => {
                 const cons = i.engine.consumption.scaled(i.n)
+                const consTotal = cons.scaled(i.burnTime)
                 return <>{Object.keys(i.refuelable).map(
                     res => <><span
                         className={i.refuelable[res] ? "refuelable" : "nonrefuelable"}
-                        title={`${cons.amount[res].toFixed(1)} /s`}
+                        title={`${cons.amount[res].toFixed(1)} /s, ${consTotal.amount[res].toFixed(1)} total`}
                     >{res}</span> </>
                 )}</>
             }},
@@ -352,6 +355,7 @@ function App() {
             classList: (i: EngineConfig) => (i.dv < dv*.99 || isNaN(i.dv)) ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
             cmp: (a: EngineConfig, b: EngineConfig) => a.dv - b.dv,
         },
+        {title: <span>Burn time<br/>[s]</span>, value: (i: EngineConfig) => i.burnTime.toFixed(1)},
     ];
 
     const kspEngines = enginePartsWithMods(activeMods)

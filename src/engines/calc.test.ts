@@ -90,6 +90,7 @@ describe('external fuel only', () => {
         expect(res.fuelTankEmptyMass.E).toBeCloseTo(0.125)
         expect(res.fuelInTanks.totalMass(testResInfo)).toBeCloseTo(1.25 - 0.125)
         expect(calcDv(1, testEngine, isp, res)).toBeCloseTo(dv)
+        expect(res.burnTime).toBeCloseTo(1.125)
     })
 
     test('unobtainable', () => {
