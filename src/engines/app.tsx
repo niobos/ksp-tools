@@ -35,6 +35,7 @@ function jsonParseWithDefault(defaultValue: any): (value: string) => any {
 type EngineConfig = {
     name: string | ReactElement,
     n: number,
+    engine: Engine,
     thrustPerEngine: number,
     isp: number,
     refuelable: Record<string, boolean>,
@@ -113,7 +114,7 @@ function calcEngine(
     dv: number,
     pressureValue: number,
     showAll: boolean
-    , availableSizes: Record<string, string>) {
+    , availableSizes: Record<string, string>): EngineConfig {
     // Correct fuel type?
     for (let fuel of Object.keys(resourceInfo)) {
         if (engine.consumption.amount[fuel] > 0 && !(fuel in fuelType)) {
@@ -178,6 +179,7 @@ function calcEngine(
     return {
         name,
         n: solution.numEngines,
+        engine,
         refuelable,
         thrustPerEngine: engine.thrust(resourceInfo, pressureValue),
         isp: isp,
@@ -307,13 +309,15 @@ function App() {
                     cmp: (a: EngineConfig, b: EngineConfig) => (a.fuelMass+a.tankMass) - (b.fuelMass+b.tankMass),
                 },
             ]},
-        {title: <span>Fuels</span>, value: (i: EngineConfig) =>
-                <>{Object.keys(i.refuelable).map(
-                    res => i.refuelable[res]
-                        ? <><span className="refuelable">{res}</span> </>
-                        : <><span className="nonrefuelable">{res}</span> </>
+        {title: <span>Fuels</span>, value: (i: EngineConfig) => {
+                const cons = i.engine.consumption.scaled(i.n)
+                return <>{Object.keys(i.refuelable).map(
+                    res => <><span
+                        className={i.refuelable[res] ? "refuelable" : "nonrefuelable"}
+                        title={`${cons.amount[res].toFixed(1)} /s`}
+                    >{res}</span> </>
                 )}</>
-            },
+            }},
         //{title: <span>Size</span>, value: (i: EngineConfig) => i.size},
         {title: <span>Thrust/engine<br/>({pressureValue.toFixed(1)}atm) [kN]</span>, classList: 'number',
             value: (i: EngineConfig) => <CopyableNumber value={i.thrustPerEngine} displayDecimals={1}/>,
