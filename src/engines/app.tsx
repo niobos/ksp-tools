@@ -3,7 +3,7 @@ import {ReactElement, useState} from 'react'
 import ReactDOM from 'react-dom'
 import useFragmentState from 'useFragmentState'
 import {resourceInfoWithMods, sizesWithMods} from "../utils/kspParts"
-import {FloatInput} from "formattedInput"
+import {FloatInput, formatValueSi} from "formattedInput"
 import Multiselect from "../components/multiselect"
 import {KspFund} from "../components/kspIcon"
 import SortableTable from "sortableTable"
@@ -317,7 +317,8 @@ function App() {
                 return <>{Object.keys(i.refuelable).map(
                     res => <><span
                         className={i.refuelable[res] ? "refuelable" : "nonrefuelable"}
-                        title={`${cons.amount[res].toFixed(1)} /s, ${consTotal.amount[res].toFixed(1)} total`}
+                        title={`${cons.amount[res].toFixed(1)} /s, ` +
+                            `${formatValueSi(consTotal.amount[res])} total`}
                     >{res}</span> </>
                 )}</>
             }},

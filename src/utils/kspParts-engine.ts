@@ -7,7 +7,8 @@ export class Engine extends Part {
     gimbal: number = 0  // degrees
     ispCurve: Array<[number, number]>  // [[pressure, isp], ...] cubic spline control points, sorted!
     throttleControl: boolean = true
-    _maxThrust?: number
+    _maxThrust?: number  // Scale consumption so that the resulting thrust is _maxThrust
+    _ElAfterThrustScaling?: number  // Re-assign Electrical consumption after _maxThrust scaling
 
     _postCreate() {
         super._postCreate()
@@ -16,6 +17,12 @@ export class Engine extends Part {
             const currentThrust = this.thrust(resourceInfo, 0)
             this.consumption = this.consumption.scaled(this._maxThrust / currentThrust)
             delete this._maxThrust
+        }
+        if(this._ElAfterThrustScaling != null) {
+            this.consumption = new Resources(Object.assign({},
+                this.consumption.amount,
+                {El: this._ElAfterThrustScaling},
+                ))
         }
     }
 
@@ -771,7 +778,9 @@ const nearFuture = [
         size: new Set(["0"]),
         gimbal: 0,
         ispCurve: [[0, 5970], [1, 59.7]],
-        consumption: new Resources({El: 399.99, Ar: 241.701}),
+        consumption: new Resources({El: 199.99, Ar: 241.701}),
+        _maxThrust: 14.8,
+        _ElAfterThrustScaling: 399.99,
     }),
     Engine.create({
         name: "KP-01 'Scintillator' [LoISP]",
@@ -880,7 +889,7 @@ const nearFuture = [
         {name: 'HiISP', isp: 9380, el: 1999.99},
     ].map(({name, isp, el}) =>
         Engine.create({
-            name: "KX-XK 'Repulsor'",
+            name: `KX-XK 'Repulsor' [${name}]`,
             cost: 24_525,
             mass: 2.0,
             size: new Set(["2"]),
