@@ -5,6 +5,14 @@ import {Resources} from "../utils/kspParts";
 import {findZeroRegulaFalsi} from "../utils/optimize";
 import {findFurthestAwayLocation} from "../commnet-line-of-sight/findFurthestAwayLocation";
 
+export type ElectricalExtraMass = {
+    batteries: boolean,
+    batteryDensity: number,
+    batteryDuration: number,
+    generator: boolean,
+    generatorDensity: number,
+}
+
 function proRata(amount: number, ratio: Record<string, number>): Record<string, number> {
     const total = Object.values(ratio).reduce((acc, i) => acc + i, 0)
     return objectMap(ratio, v => v / total * amount)
@@ -62,9 +70,10 @@ export function calcFuelTank(
     acceleration: number,
     dv: number,
     engine: Engine,
-    resourceInfo: Record<string, { mass: number, cost: number }>,
-    fuelTankInfo: Record<string, { wdr: number, cost: number }>,
+    resourceInfo: Record<string, { mass: number; cost: number }>,
+    fuelTankInfo: Record<string, { wdr: number; cost: number }>,
     pressureValue: number,
+    electricalExtraMassConfig: ElectricalExtraMass,
 ): {
     numEngines: number,
     fuelInEngines: Resources,
@@ -73,7 +82,8 @@ export function calcFuelTank(
     maxDv: number,
     maxAcceleration: number,
     burnTime: number,
-    _wetMass: number, _dryMass: number,
+    _wetMass: number,
+    _dryMass: number,
 } {
     const isp = engine.isp(pressureValue)
     const engineThrust = engine.thrust(resourceInfo, pressureValue)
@@ -122,6 +132,11 @@ export function calcFuelTank(
             ? 0
             : fractionFuelMassFlow[criticalInternalOnlyFuel.k] / engineCapacityMass[criticalInternalOnlyFuel.k]
 
+    const electricalExtraMassPerEngine =
+        (engine.consumption.amount.El ?? 0) *
+        ((electricalExtraMassConfig.batteries ? (electricalExtraMassConfig.batteryDensity * electricalExtraMassConfig.batteryDuration) : 0)
+        + (electricalExtraMassConfig.generator ? electricalExtraMassConfig.generatorDensity : 0))
+
     // F = m*a => n * F_{single engine} = m * a
     let minNumEnginesForAcceleration = Math.ceil(payloadMass * acceleration / engineThrust)
 
@@ -147,7 +162,8 @@ export function calcFuelTank(
         const numEngines = Math.max(
             minNumEngines,
             numEnginesPerFuelMass * f,
-            (payloadMass + f + externalTanks) * acceleration / (engineThrust - engineMassEmpty * acceleration),
+            (payloadMass + f + externalTanks) * acceleration
+            / (engineThrust - (engineMassEmpty + electricalExtraMassPerEngine) * acceleration),
             // TODO BUG: Note that we should also add the bothTanks mass, but that is circular
         )
         /* Note that we're *NOT* doing Math.ceil here
@@ -166,9 +182,10 @@ export function calcFuelTank(
          */
         const negativeMass = Object.values(fuelMass)
             .reduce((acc, m) => acc + Math.max(-m, 0),0)
+
         const dryMass =
             payloadMass
-            + numEngines * engineMassEmpty
+            + numEngines * (engineMassEmpty + electricalExtraMassPerEngine)
             + bothTanks + externalTanks
             + negativeMass
         const wetMass =
@@ -188,6 +205,7 @@ export function calcFuelTank(
         const fuelTankEmptyMass = objectMap(fuelInTanks,
             (fuel, i) => fuel / (fuelTankInfo[i].wdr - 1)
         )
+        fuelTankEmptyMass.El = numEngines * electricalExtraMassPerEngine
         //console.log(`${numEngines} × ${engine.name} with ${f} fuel: ${wetMass}/${dryMass} = ${wetMass/dryMass}`)
         return {
             wetMass, dryMass,

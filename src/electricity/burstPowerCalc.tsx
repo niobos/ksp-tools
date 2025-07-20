@@ -89,7 +89,10 @@ export function calcBurstPowerFromDevices(devices: ValueType) {
         energy += deviceEnergy;
         chargePower += deviceChargePower;
     }
-    return {energy, interval: energy / chargePower};
+    return {
+        energy,
+        interval: energy != 0 ? energy / chargePower : 1,
+    }
 }
 
 export function fromEnergyInterval(energy: number, interval: number): ValueType {

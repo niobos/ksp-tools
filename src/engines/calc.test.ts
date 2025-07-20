@@ -76,14 +76,7 @@ describe('external fuel only', () => {
         // => fuel tank of 0.125 + 1.125 = 1.25; WDR=10/1
         // 980kN for 2.25 => 435m/s^2
         const dv = isp * g0 * Math.log(2)
-        const res = calcFuelTank(
-            1,
-            1,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0,
-        )
+        const res = calcFuelTank(1, 1, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBe(0)
         expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
@@ -97,14 +90,7 @@ describe('external fuel only', () => {
         // Tank WDR: 10/1
         // 980kN for 2.25 => 435m/s^2
         const dv = isp * g0 * Math.log(11)
-        const res = calcFuelTank(
-            1,
-            1,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0,
-        )
+        const res = calcFuelTank(1, 1, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.fuelInEngines).toBe(null)
         expect(res.fuelTankEmptyMass).toBe(null)
         expect(res.fuelInTanks).toBe(null)
@@ -116,14 +102,7 @@ describe('external fuel only', () => {
         // Start: 1+0+1.25 = 2.25; end: 1+0+0.125 = 1.125 = 2.25/2
         // 980kN / 2.25t = 435m/s^2
         const dv = isp * g0 * Math.log(2)
-        const res = calcFuelTank(
-            1,
-            435+5,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0,
-        )
+        const res = calcFuelTank(1, 435 + 5, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(2)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBe(0)
         expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
@@ -141,14 +120,7 @@ describe('external fuel only', () => {
 
     test('heavy', () => {
         const dv = isp * g0 * Math.log(2)
-        const res = calcFuelTank(
-            1,
-            1,
-            dv,
-            heavyEngine,
-            testResInfo, testTankInfo,
-            0,
-        )
+        const res = calcFuelTank(1, 1, dv, heavyEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         // Tank: full: 2.5; empty: 2.5/10 = 0.25
         // Start: 1+1+2.5 = 4.5; end: 1+1+0.25 = 2.25 = 4.5/2
         expect(res.numEngines).toBe(1)  // 980kN for 4.5t => 217
@@ -177,14 +149,7 @@ describe('internal fuel only', () => {
 
     test('single, fully needed', () => {
         const dv = isp * g0 * Math.log(6/1.5)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         // start: 1+5 = 6t; end: 1+0.5 = 1.5t  => 6/1.5
         expect(res.numEngines).toBe(1)  // 980kN for 6t = 163m/s^2
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(4.5)
@@ -195,14 +160,7 @@ describe('internal fuel only', () => {
 
     test('single, partially needed', () => {
         const dv = isp * g0 * Math.log(3/1.5)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         // start: 1+2 = 3t; end: 1+0.5 = 1.5t  => 3/1.5
         expect(res.numEngines).toBe(1)  // 980kN for 6t = 163m/s^2
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(1.5)
@@ -215,14 +173,7 @@ describe('internal fuel only', () => {
         // start: 1 + (0.5+1.5) = 3t; end: 1 + 0.5 = 1.5t ; 980kN/3t = 326m/s^2
         // start: 1 + 2*(0.5+1) = 4t; end: 1 + 2*0.5 = 2t ; 2*980kN/4t = 490m/s^2
         const dv = isp * g0 * Math.log(2)
-        const res = calcFuelTank(
-            1,
-            400,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 400, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(2)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(2)
         expect(res.fuelTankEmptyMass).toMatchObject({})
@@ -235,14 +186,7 @@ describe('internal fuel only', () => {
         // start: 1 + 2*5 = 11t; end: 1 + 2*0.5 = 2t => WDR=5.5
         // 980kN for 1+2*5=11t => 89m/s^2
         const dv = isp * g0 * Math.log(5.5)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(2)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(2*5 - 2*0.5)
         expect(res.fuelTankEmptyMass).toMatchObject({})
@@ -252,14 +196,7 @@ describe('internal fuel only', () => {
 
     test('unobtainable', () => {
         const dv = isp * g0 * Math.log(11)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.fuelInEngines).toBe(null)
         expect(res.fuelTankEmptyMass).toBe(null)
         expect(res.fuelInTanks).toBe(null)
@@ -286,14 +223,7 @@ describe('internal & external fuel, same type', () => {
         // start: 1 + 5 = 6t; end: 1 + 0.5 = 1.5t
         // 980kN for 1+5=6t => 163m/s^2
         const dv = isp * g0 * Math.log(6/1.5)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(5 - 0.5)
         expect(res.fuelTankEmptyMass).toMatchObject({})
@@ -305,14 +235,7 @@ describe('internal & external fuel, same type', () => {
         // start: 1 + 5 + 5 = 11t; end: 1 + 0.5 + 0.5 = 2t
         // 980kN for 1+5+5=11t => 89m/s^2
         const dv = isp * g0 * Math.log(11/2)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(5 - 0.5)
         expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
@@ -325,14 +248,7 @@ describe('internal & external fuel, same type', () => {
         // start: 1 + 1 = 2t; end: 1 + 0.5 = 1.5t
         // 980kN for 1+1=2t => 490m/s^2
         const dv = isp * g0 * Math.log(2/1.5)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(1 - 0.5)
         expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
@@ -343,14 +259,7 @@ describe('internal & external fuel, same type', () => {
 
     test('unobtainable', () => {
         const dv = isp * g0 * Math.log(11)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.fuelInEngines).toBe(null)
         expect(res.fuelTankEmptyMass).toBe(null)
         expect(res.fuelInTanks).toBe(null)
@@ -377,14 +286,7 @@ describe('internal & external fuel, different type', () => {
         // start: 1 + 5 + 5 = 11t; end: 1 + 0.5 + 0.5 = 2t
         // 980kN for 11t = 89m/s^2
         const dv = isp * g0 * Math.log(11/2)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(5 - 0.5)
         expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
@@ -397,14 +299,7 @@ describe('internal & external fuel, different type', () => {
         // start: 1 + (0.5+0.9) + (0.1+0.9) = 3.4t; end: 1 + 0.5 + 0.1 = 1.6t
         // 980kN for 3.4t = 288m/s^2
         const dv = isp * g0 * Math.log(3.4/1.6)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(0.9)
         expect(res.fuelInTanks.totalMass(testResInfo)).toBeCloseTo(0.9)
@@ -415,14 +310,7 @@ describe('internal & external fuel, different type', () => {
 
     test('unobtainable ∆v', () => {
         const dv = isp * g0 * Math.log(11)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.fuelInEngines).toBe(null)
         expect(res.fuelTankEmptyMass).toBe(null)
         expect(res.fuelInTanks).toBe(null)
@@ -450,14 +338,7 @@ describe('internal fuel with negative consumption + external fuel', () => {
         // start: 1 + 5 + 5 = 11t; end: 1 + 5 + 0.5 = 6.5t
         // 980/11t = 89m/s^2
         const dv = isp * g0 * Math.log(11/6.5)
-        const res = calcFuelTank(
-            1,
-            10,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0
-        )
+        const res = calcFuelTank(1, 10, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBeCloseTo(4.5)
         expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
@@ -486,14 +367,7 @@ describe('LF+Ox + alternator', () => {
         // => fuel tank of 0.125 + 1.125 = 1.25; WDR=10/1
         // 980kN for 2.25 => 435m/s^2
         const dv = isp * g0 * Math.log(2)
-        const res = calcFuelTank(
-            1,
-            1,
-            dv,
-            testEngine,
-            testResInfo, testTankInfo,
-            0,
-        )
+        const res = calcFuelTank(1, 1, dv, testEngine, testResInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBe(0)
         expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E", "El"])
@@ -518,14 +392,7 @@ describe('previous bugs', () => {
             "SF": {"wdr": null, "cost": null},
         }
 
-        const res = calcFuelTank(
-            1.5,
-            14.71,
-            4000,
-            testEngine,
-            resourceInfo, testTankInfo,
-            0,
-        )
+        const res = calcFuelTank(1.5, 14.71, 4000, testEngine, resourceInfo, testTankInfo, 0, electricalExtraMass)
         expect(res.numEngines).toBe(1)
     })
 
@@ -544,14 +411,7 @@ describe('previous bugs', () => {
 
         const acceleration = 14.71
         const pressure = 0
-        const res = calcFuelTank(
-            1.5,
-            acceleration,
-            1000,
-            testEngine,
-            resourceInfo, testTankInfo,
-            pressure,
-        )
+        const res = calcFuelTank(1.5, acceleration, 1000, testEngine, resourceInfo, testTankInfo, pressure, electricalExtraMass)
         expect(res.numEngines).toBe(Math.ceil(res._wetMass * acceleration / testEngine.thrust(resourceInfo, pressure)))
     })
 })

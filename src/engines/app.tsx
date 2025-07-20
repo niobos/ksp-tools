@@ -15,9 +15,10 @@ import {HierarchicalBodySelect} from "../components/kspSystemSelect"
 import KeyValueList from "./keyValueList";
 import CopyableNumber from "../components/copyableNumber";
 import KspModSelector from "../components/kspModSelector";
-import {calcFuelTank} from "./calc";
+import {calcFuelTank, ElectricalExtraMass} from "./calc";
 import {dvForDm} from "../utils/rocket";
 import './app.css'
+import {KerbalYdhmsInput} from "../components/formattedInput";
 
 function jsonParseWithDefault(defaultValue: any): (value: string) => any {
     return (valueFromHash) => {
@@ -114,8 +115,8 @@ function calcEngine(
     minGimbal: number,
     dv: number,
     pressureValue: number,
-    showAll: boolean
-    , availableSizes: Record<string, string>): EngineConfig {
+    electricalExtraMass: ElectricalExtraMass,
+    showAll: boolean, availableSizes: Record<string, string>): EngineConfig {
     // Correct fuel type?
     for (let fuel of Object.keys(resourceInfo)) {
         if (engine.consumption.amount[fuel] > 0 && !(fuel in fuelType)) {
@@ -137,7 +138,7 @@ function calcEngine(
 
     let {refuelable, fuelTankCost} = calcFuelTankInfo(engine, fuelType)
 
-    const solution = calcFuelTank(payloadMass, acceleration, dv, engine, resourceInfo, fuelType, pressureValue)
+    const solution = calcFuelTank(payloadMass, acceleration, dv, engine, resourceInfo, fuelType, pressureValue, electricalExtraMass)
     let accelerationFull = engine.thrust(resourceInfo, pressureValue) * solution.numEngines / solution._wetMass
     const isp = engine.isp(pressureValue);
     let actualDv = dvForDm(solution._wetMass, solution._dryMass, isp)
@@ -229,6 +230,13 @@ function App() {
             )(s),
         o => JSON.stringify(o),
         )
+    const [electricalExtraMass, setElectricalExtraMass] = useFragmentState<ElectricalExtraMass>('elm', {
+        batteries: false,
+        batteryDensity: 1.1/24000,  // B-12K battery
+        batteryDuration: 20,
+        generator: false,
+        generatorDensity: 1.8/400,  // typical nuclear reactor
+    })
     const [showAll, setShowAll] = useState<boolean>(false)
     const [payloadOpen, setPayloadOpen] = useState<boolean>(false)
 
@@ -356,14 +364,17 @@ function App() {
             classList: (i: EngineConfig) => (i.dv < dv*.99 || isNaN(i.dv)) ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
             cmp: (a: EngineConfig, b: EngineConfig) => a.dv - b.dv,
         },
-        {title: <span>Burn time<br/>[s]</span>, value: (i: EngineConfig) => i.burnTime.toFixed(1)},
+        {title: <span>Burn time<br/>[s]</span>, value: (i: EngineConfig) => {
+            if(i.burnTime == null) return ""
+            return i.burnTime.toFixed(1)
+        }},
     ];
 
     const kspEngines = enginePartsWithMods(activeMods)
     const engineOptions: Array<EngineConfig> = []
     for(let engine of kspEngines) {
         try {
-            const out = calcEngine(engine, resourceInfo, fuelType, filterSizes, mass, acceleration, minGimbal, dv, pressureValue, showAll, availableSizes)
+            const out = calcEngine(engine, resourceInfo, fuelType, filterSizes, mass, acceleration, minGimbal, dv, pressureValue, electricalExtraMass, showAll, availableSizes)
             if(out != null) engineOptions.push(out)
         } catch (e) {
             console.error(`Skipping engine ${engine.name} due to error: `, e)
@@ -449,6 +460,39 @@ function App() {
                 <tbody>{fuelTable}</tbody>
             </table>
         </td></tr>
+        <tr><td>Electrical<br/>propulsion</td><td>
+            <label><input
+                type="checkbox"
+                checked={electricalExtraMass.batteries}
+                onChange={e => setElectricalExtraMass(
+                    Object.assign({}, electricalExtraMass, {batteries: e.target.checked}))}
+            />Account for battery mass
+                (at <FloatInput
+                    value={electricalExtraMass.batteryDensity}
+                    decimals={5}
+                    onChange={v => setElectricalExtraMass(
+                        Object.assign({}, electricalExtraMass, {batteryDensity: v}))}
+                /> t/⚡)
+                to support <KerbalYdhmsInput
+                    value={electricalExtraMass.batteryDuration}
+                    onChange={v => setElectricalExtraMass(
+                        Object.assign({}, electricalExtraMass, {batteryDuration: v}))}
+                /> burns
+            </label><br/>
+            <label><input
+                type="checkbox"
+                checked={electricalExtraMass.generator}
+                onChange={e => setElectricalExtraMass(
+                    Object.assign({}, electricalExtraMass, {generator: e.target.checked}))}
+            />Account for power generation mass
+                (at <FloatInput
+                    value={electricalExtraMass.generatorDensity}
+                    decimals={5}
+                    onChange={v => setElectricalExtraMass(
+                        Object.assign({}, electricalExtraMass, {generatorDensity: v}))}
+                /> t / (⚡/s))
+            </label>
+        </td></tr>
         </tbody></table>
         <h2>Engine options</h2>
         <label><input type="checkbox" checked={showAll}
@@ -463,3 +507,6 @@ if(typeof window === 'object') { // @ts-ignore
         ReactDOM.render(React.createElement(App), document.querySelector(selector));
     };
 }
+
+
+// TODO: somehow account for battery / capacitor weight
