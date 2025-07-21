@@ -19,6 +19,7 @@ import {calcFuelTank, ElectricalExtraMass} from "./calc";
 import {dvForDm} from "../utils/rocket";
 import './app.css'
 import {KerbalYdhmsInput} from "../components/formattedInput";
+import Tooltip from "../components/tooltip";
 
 function jsonParseWithDefault(defaultValue: any): (value: string) => any {
     return (valueFromHash) => {
@@ -44,6 +45,7 @@ type EngineConfig = {
     engineMass: number
     fuelMass: number,
     tankMass: number,
+    resourceMass: Record<string, {net: number, tare: number}>,
     totalMass: number,
     burnTime: number,
     dv: number,
@@ -161,6 +163,7 @@ function calcEngine(
     let cost = Infinity
     let fuelMass = Infinity
     let tankMass = Infinity
+    let resourceMass: Record<string, {net: number, tare: number}> = {}
     if (solution.numEngines != null) {
         cost = solution.numEngines * engine.emptied(resourceInfo).cost
             + Object.values(objectMap(solution.fuelInEngines.mass(resourceInfo),
@@ -176,6 +179,18 @@ function calcEngine(
                 .reduce((acc, m) => acc + m, 0)
         tankMass = Object.values(solution.fuelTankEmptyMass)
                 .reduce((acc, m) => acc + m, 0)
+
+        resourceMass = Object.keys(solution.fuelTankEmptyMass)
+            .map(res => ({
+                res,
+                net: solution.fuelInTanks.mass(resourceInfo)[res],
+                tare: solution.fuelTankEmptyMass[res],
+            }))
+            .filter(e => e.net != null && e.tare != null)
+            .reduce((acc, e) => {
+                acc[e.res] = {net: e.net, tare: e.tare}
+                return acc
+            }, {})
     }
 
     return {
@@ -189,6 +204,7 @@ function calcEngine(
         engineMass,
         fuelMass,
         tankMass,
+        resourceMass,
         totalMass: payloadMass + engineMass + fuelMass + tankMass,
         burnTime: solution.burnTime,
         dv: actualDv,
@@ -314,7 +330,25 @@ function App() {
                     cmp: (a: EngineConfig, b: EngineConfig) => a.engineMass - b.engineMass,
                 },
                 {title: <span>Fuel+tank</span>,
-                    value: (i: EngineConfig) => <>{i.fuelMass.toFixed(2)} + {i.tankMass.toFixed(2)}</>,
+                    value: (i: EngineConfig) => {
+                        const resRows = Object.keys(i.resourceMass).map(res => <tr>
+                            <td>{res}</td>
+                            <td>{i.resourceMass[res].net.toFixed(2)}</td>
+                            <td>{i.resourceMass[res].tare.toFixed(2)}</td>
+                        </tr>)
+                        return <Tooltip
+                            tooltip={<table>
+                                <thead><tr>
+                                    <th>Resource</th>
+                                    <th>Net</th>
+                                    <th>Tare</th>
+                                </tr></thead>
+                                <tbody>{resRows}</tbody>
+                            </table>}
+                        >
+                            {(i.fuelMass + i.tankMass).toFixed(2)}
+                        </Tooltip>
+                    },
                     classList: (i: EngineConfig) => (i.fuelMass === 0 || isNaN(i.fuelMass)) ? ['number', 'zero'] : ['number'],
                     cmp: (a: EngineConfig, b: EngineConfig) => (a.fuelMass+a.tankMass) - (b.fuelMass+b.tankMass),
                 },

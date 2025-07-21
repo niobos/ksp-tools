@@ -1,0 +1,17 @@
+span.tooltip {
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    position: relative;
+}
+
+span.tooltip div {
+    border: solid 1px black;
+    position: absolute;
+    background-color: #ffffffe0;
+    z-index: 1;
+    left: 0;
+    top: 100%;
+    padding: 0.5em;
+    margin: 0.5em;
+    width: max-content;
+}

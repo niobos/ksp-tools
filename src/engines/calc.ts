@@ -73,7 +73,7 @@ export function calcFuelTank(
     resourceInfo: Record<string, { mass: number; cost: number }>,
     fuelTankInfo: Record<string, { wdr: number; cost: number }>,
     pressureValue: number,
-    electricalExtraMassConfig: ElectricalExtraMass,
+    electricalExtraMassConfig: ElectricalExtraMass = {batteries: false, generator: false, batteryDensity: 1, batteryDuration: 1, generatorDensity: 1},
 ): {
     numEngines: number,
     fuelInEngines: Resources,
@@ -205,7 +205,9 @@ export function calcFuelTank(
         const fuelTankEmptyMass = objectMap(fuelInTanks,
             (fuel, i) => fuel / (fuelTankInfo[i].wdr - 1)
         )
-        fuelTankEmptyMass.El = numEngines * electricalExtraMassPerEngine
+        if(electricalExtraMassPerEngine != 0) {
+            fuelTankEmptyMass.El = numEngines * electricalExtraMassPerEngine
+        }
         //console.log(`${numEngines} × ${engine.name} with ${f} fuel: ${wetMass}/${dryMass} = ${wetMass/dryMass}`)
         return {
             wetMass, dryMass,
