@@ -1,20 +1,19 @@
-export function objectMap<K extends PropertyKey, Vin, Vout>(
-    obj: {[k in K]: Vin},
-    mapFn: (v: Vin, k: K) => Vout,
-): {[k in K]: Vout} {
+// From https://type-level-typescript.com/articles/how-to-get-optional-keys-from-object-types
+//type IsOptional<Obj, Key extends PropertyKey> = Omit<Obj, Key> extends Obj ? true : false
+//type IsRequired<Obj, Key extends PropertyKey> = Omit<Obj, Key> extends Obj ? false : true
+
+export function objectMap<Obj extends object, Vout>(
+    obj: Obj,
+    mapFn: (v: Obj[keyof Obj], k: string) => Vout,
+): {[k in keyof Obj]: Vout} {
     /* returns a new object with the values at each key mapped using mapFn(value, key)
      */
     return Object.keys(obj).reduce((result, key) => {
-        const key_ = key as K
-        result[key_] = mapFn(obj[key_], key as K)
+        const key_ = key as keyof Obj
+        result[key_] = mapFn(obj[key_], key)
         return result
-    }, {} as {[k in K]: Vout})
+    }, {} as {[k in keyof Obj]: Vout})
 }
-
-/* TODO: fix type signatures above so that optional keys in the input `obj` remain optional in the output
- * const foo: {a: number, b?: number} = {a: 1}
- * objectMap(foo, (v) => '' + v)
- */
 
 export function objectFilter<K extends PropertyKey, V>(
     obj: {[k in K]: V},
