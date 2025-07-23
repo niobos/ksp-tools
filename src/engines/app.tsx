@@ -121,7 +121,7 @@ function calcEngine(
     electricalExtraMass: ElectricalExtraMass,
     showAll: boolean, availableSizes: Record<string, string>): EngineConfig {
     // Correct fuel type?
-    for (let fuel of Object.keys(resourceInfo)) {
+    for (let fuel in engine.consumption.amount) {
         if (engine.consumption.amount[fuel] > 0 && !(fuel in fuelType)) {
             return null
         }
@@ -265,6 +265,7 @@ function App() {
     })
     const [showAll, setShowAll] = useState<boolean>(false)
     const [payloadOpen, setPayloadOpen] = useState<boolean>(false)
+    const [electricalStoragePreset, setElectricalStoragePreset] = useState<string>("bat")
 
     const system = kspSystem(activeMods)
     const {value: gravityValue, preset: gravityPreset} = fromPreset(
@@ -401,7 +402,7 @@ function App() {
                     cmp: (a: EngineConfig, b: EngineConfig) => a.accelerationEmpty - b.accelerationEmpty,
                 },
             ]},
-        {title: <span>Gimbal [º]</span>,
+        {title: <span>Gimbal<br/>[º]</span>,
             value: (i: EngineConfig) => i.gimbal,
             classList: (i: EngineConfig) => i.gimbal === 0 ? ['number', 'zero'] : ['number'],
         },
@@ -537,14 +538,43 @@ function App() {
                 /> burns. Storage specific mass: <FloatInput
                 value={electricalExtraMass.batteryDensity}
                 decimals={5}
-                onChange={v => setElectricalExtraMass(
-                    Object.assign({}, electricalExtraMass, {batteryDensity: v}))}
+                onChange={v => {
+                    setElectricalStoragePreset("")
+                    setElectricalExtraMass(
+                        Object.assign({}, electricalExtraMass, {batteryDensity: v}))
+                }}
                 /> t/⚡ , price: <FloatInput
                     decimals={0}
                     value={electricalExtraMass.batteryPrice}
-                    onChange={v => setElectricalExtraMass(
-                        Object.assign({}, electricalExtraMass, {batteryPrice: v}))}
-                /> <KspFund/>/t
+                    onChange={v => {
+                        setElectricalStoragePreset("")
+                        setElectricalExtraMass(
+                            Object.assign({}, electricalExtraMass, {batteryPrice: v}))
+                    }}
+                /> <KspFund/>/t <select
+                    value={electricalStoragePreset}
+                    onChange={e => {
+                        setElectricalStoragePreset(e.target.value)
+                        setElectricalExtraMass(Object.assign({}, electricalExtraMass,
+                            {
+                                "bat": {
+                                    batteryDensity: 0.6/12000,  // B-12K battery
+                                    // 0.05/8000 CAR-8K
+                                    batteryPrice: 13_500 / 0.6, // B-12K
+                                    // 4_500/0.05 CAR-8K
+                                },
+                                "cap": {
+                                    batteryDensity: 0.05/8000, // CAR-8K
+                                    batteryPrice: 4_500/0.05, // CAR-8K
+                                },
+                            }[e.target.value]
+                            ))
+                    }}
+                >
+                    <option value="" disabled>custom</option>
+                    <option value="bat">Battery</option>
+                    {activeMods.has('NFT') ? <option value="cap">Capacitor</option> : ""}
+                </select>
             </label><br/>
             <label><input
                 type="radio"
