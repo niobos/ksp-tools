@@ -370,11 +370,32 @@ describe('LF+Ox + alternator', () => {
         const res = calcFuelTank(1, 1, dv, testEngine, testResInfo, testTankInfo, 0)
         expect(res.numEngines).toBe(1)
         expect(res.fuelInEngines.totalMass(testResInfo)).toBe(0)
-        expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E", "El"])
+        expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
         expect(res.fuelTankEmptyMass.E).toBeCloseTo(0.125)
         expect(res.fuelInTanks.totalMass(testResInfo)).toBeCloseTo(1.25 - 0.125)
         expect(calcDv(1, testEngine, isp, res)).toBeCloseTo(dv)
     })
+
+    test('allow alternator when El is disallowed', () => {
+        const tankInfo = {
+            E: {wdr: 10, cost: 234},
+            I: {wdr: null, cost: Infinity},
+            I2: {wdr: null, cost: Infinity},
+            // no El
+        }
+        // Start: 1+1.25 = 2.25; end: 1+0.125 = 1.125 = 2.25/2
+        // => fuel tank of 0.125 + 1.125 = 1.25; WDR=10/1
+        // 980kN for 2.25 => 435m/s^2
+        const dv = isp * g0 * Math.log(2)
+        const res = calcFuelTank(1, 1, dv, testEngine, testResInfo, tankInfo, 0)
+        expect(res.numEngines).toBe(1)
+        expect(res.fuelInEngines.totalMass(testResInfo)).toBe(0)
+        expect(Object.keys(res.fuelTankEmptyMass)).toEqual(["E"])
+        expect(res.fuelTankEmptyMass.E).toBeCloseTo(0.125)
+        expect(res.fuelInTanks.totalMass(testResInfo)).toBeCloseTo(1.25 - 0.125)
+        expect(calcDv(1, testEngine, isp, res)).toBeCloseTo(dv)
+    })
+
 })
 
 describe('previous bugs', () => {

@@ -6,11 +6,12 @@ import {findZeroRegulaFalsi} from "../utils/optimize";
 import {findFurthestAwayLocation} from "../commnet-line-of-sight/findFurthestAwayLocation";
 
 export type ElectricalExtraMass = {
-    batteries: boolean,
+    type: "battery" | "generator",
     batteryDensity: number,
     batteryDuration: number,
-    generator: boolean,
+    batteryPrice: number,
     generatorDensity: number,
+    generatorPrice: number,
 }
 
 function proRata(amount: number, ratio: Record<string, number>): Record<string, number> {
@@ -30,6 +31,7 @@ function splitFuel(
     const external: Record<string, number> = {}
     const both: Record<string, number> = {}
     for (let resource in engine.consumption.amount) {
+        if(engine.consumption.amount[resource] <= 0) continue
         const cost = fuelTankInfo[resource].cost
         const amount = engine.consumption.amount[resource]
 
@@ -73,7 +75,7 @@ export function calcFuelTank(
     resourceInfo: Record<string, { mass: number; cost: number }>,
     fuelTankInfo: Record<string, { wdr: number; cost: number }>,
     pressureValue: number,
-    electricalExtraMassConfig: ElectricalExtraMass = {batteries: false, generator: false, batteryDensity: 1, batteryDuration: 1, generatorDensity: 1},
+    electricalExtraMassConfig: ElectricalExtraMass = {type: "battery", batteryDensity: 1, batteryDuration: 1, batteryPrice: 1, generatorDensity: 1, generatorPrice: 1},
 ): {
     numEngines: number,
     fuelInEngines: Resources,
@@ -133,9 +135,9 @@ export function calcFuelTank(
             : fractionFuelMassFlow[criticalInternalOnlyFuel.k] / engineCapacityMass[criticalInternalOnlyFuel.k]
 
     const electricalExtraMassPerEngine =
-        (engine.consumption.amount.El ?? 0) *
-        ((electricalExtraMassConfig.batteries ? (electricalExtraMassConfig.batteryDensity * electricalExtraMassConfig.batteryDuration) : 0)
-        + (electricalExtraMassConfig.generator ? electricalExtraMassConfig.generatorDensity : 0))
+        Math.max(0, engine.consumption.amount.El ?? 0) *
+        ((electricalExtraMassConfig.type == "battery" ? (electricalExtraMassConfig.batteryDensity * electricalExtraMassConfig.batteryDuration) : 0)
+        + (electricalExtraMassConfig.type == "generator" ? electricalExtraMassConfig.generatorDensity : 0))
 
     // F = m*a => n * F_{single engine} = m * a
     let minNumEnginesForAcceleration = Math.ceil(payloadMass * acceleration / engineThrust)

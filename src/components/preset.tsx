@@ -9,47 +9,50 @@ interface PresetProps {
     customValue?: string  // value for the "custom" option, should be unique
 }
 
-export default function Preset(props: PresetProps) {
-    props = Object.assign({}, {  // default values
-        onChange: (value: string, optionName: string) => null,
-        customName: "custom",
-        customValue: "",
-    }, props);
-
+export default function Preset(
+    {
+        option,
+        value,
+        onChange = () => null,
+        options,
+        customName = "custom",
+        customValue = "",
+    }: PresetProps
+) {
     const option_els = [];
     const flattened_options = {};
-    for(const option in props.options) {
-        if(typeof props.options[option] === "object") {
+    for(const opt in options) {
+        if(typeof options[opt] === "object") {
             const suboptions = [];
-            for(const suboption in props.options[option]) {
-                suboptions.push(<option key={suboption} value={props.options[option][suboption]}>{suboption}</option>)
-                flattened_options[suboption] = props.options[option][suboption];
+            for(const suboption in options[opt]) {
+                suboptions.push(<option key={suboption} value={options[opt][suboption]}>{suboption}</option>)
+                flattened_options[suboption] = options[opt][suboption];
             }
-            option_els.push(<optgroup key={option} label={option}>{suboptions}</optgroup>)
+            option_els.push(<optgroup key={opt} label={opt}>{suboptions}</optgroup>)
         } else {
-            flattened_options[option] = props.options[option];
-            option_els.push(<option key={option} value={props.options[option]}>{option}</option>)
+            flattened_options[opt] = options[opt];
+            option_els.push(<option key={opt} value={options[opt]}>{opt}</option>)
         }
     }
 
-    let defaultValue = props.customValue;
-    if(props.option !== undefined) {
-        if(props.option in flattened_options) {
-            defaultValue = flattened_options[props.option];
+    let defaultValue = customValue;
+    if(option !== undefined) {
+        if(option in flattened_options) {
+            defaultValue = flattened_options[option];
         }
-    } else if(props.value !== undefined) {
-        if(Object.values(flattened_options).includes(props.value)) {
-            defaultValue = props.value;
+    } else if(value !== undefined) {
+        if(Object.values(flattened_options).includes(value)) {
+            defaultValue = value;
         }
     }
 
     return <select
         value={defaultValue}
-        onChange={(e) => props.onChange(
+        onChange={(e) => onChange(
             e.target.value, e.target.selectedOptions[0].innerText
         )}
     >
-        <option disabled value={props.customValue}>{props.customName}</option>
+        <option disabled value={customValue}>{customName}</option>
         {option_els}
     </select>;
 }

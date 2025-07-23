@@ -20,6 +20,7 @@ import {dvForDm} from "../utils/rocket";
 import './app.css'
 import {KerbalYdhmsInput} from "../components/formattedInput";
 import Tooltip from "../components/tooltip";
+import Preset from "../components/preset";
 
 function jsonParseWithDefault(defaultValue: any): (value: string) => any {
     return (valueFromHash) => {
@@ -173,6 +174,12 @@ function calcEngine(
                 m => m * fuelTankCost))
                 .reduce((acc, c) => acc + c, 0)
 
+        if(electricalExtraMass.type == "battery") {
+            cost += (solution.fuelTankEmptyMass.El ?? 0) * electricalExtraMass.batteryPrice
+        } else if(electricalExtraMass.type == "generator") {
+            cost += (solution.fuelTankEmptyMass.El ?? 0) * electricalExtraMass.generatorPrice
+        }
+
         fuelMass = Object.values(solution.fuelInEngines.mass(resourceInfo))
                 .reduce((acc, m) => acc + m, 0)
             + Object.values(solution.fuelInTanks.mass(resourceInfo))
@@ -247,11 +254,14 @@ function App() {
         o => JSON.stringify(o),
         )
     const [electricalExtraMass, setElectricalExtraMass] = useFragmentState<ElectricalExtraMass>('elm', {
-        batteries: false,
-        batteryDensity: 1.1/24000,  // B-12K battery
+        type: "battery",
         batteryDuration: 20,
-        generator: false,
-        generatorDensity: 1.8/400,  // typical nuclear reactor
+        batteryDensity: 0.6/12000,  // B-12K battery
+        // 0.05/8000 CAR-8K
+        batteryPrice: 13_500 / 0.6, // B-12K
+        // 4_500/0.05 CAR-8K
+        generatorDensity: 2.6653/625,  // "MX-1B 'Prometheus'"
+        generatorPrice: 260_280/2.6653,  // MX-1B 'Prometheus'
     })
     const [showAll, setShowAll] = useState<boolean>(false)
     const [payloadOpen, setPayloadOpen] = useState<boolean>(false)
@@ -270,6 +280,10 @@ function App() {
 
     const fuelTable = []
     for(let resource of Object.keys(resourceInfo).sort()) {
+        if(resource == "El" || resource == "SC") {
+            // Electricity is handled separately
+            continue
+        }
         fuelTable.push(<tr key={resource}><td>
             <label>
                 <input type="checkbox" checked={resource in fuelType}
@@ -335,6 +349,7 @@ function App() {
                             <td>{res}</td>
                             <td>{i.resourceMass[res].net.toFixed(2)}</td>
                             <td>{i.resourceMass[res].tare.toFixed(2)}</td>
+                            <td>{(i.resourceMass[res].net + i.resourceMass[res].tare).toFixed(2)}</td>
                         </tr>)
                         return <Tooltip
                             tooltip={<table>
@@ -342,6 +357,7 @@ function App() {
                                     <th>Resource</th>
                                     <th>Net</th>
                                     <th>Tare</th>
+                                    <th>Total</th>
                                 </tr></thead>
                                 <tbody>{resRows}</tbody>
                             </table>}
@@ -494,37 +510,60 @@ function App() {
                 <tbody>{fuelTable}</tbody>
             </table>
         </td></tr>
-        <tr><td>Electrical<br/>propulsion</td><td>
+        <tr><td>Electricity</td><td>
             <label><input
                 type="checkbox"
-                checked={electricalExtraMass.batteries}
-                onChange={e => setElectricalExtraMass(
-                    Object.assign({}, electricalExtraMass, {batteries: e.target.checked}))}
-            />Account for battery mass
-                (at <FloatInput
-                    value={electricalExtraMass.batteryDensity}
-                    decimals={5}
-                    onChange={v => setElectricalExtraMass(
-                        Object.assign({}, electricalExtraMass, {batteryDensity: v}))}
-                /> t/⚡)
-                to support <KerbalYdhmsInput
+                checked={"El" in fuelType}
+                onChange={e => {
+                    const newValue: Record<string, {cost?: number, mass?: number}> = Object.assign({}, fuelType)  // copy
+                    if(e.target.checked) {
+                        newValue["El"] = {}
+                    } else {
+                        delete newValue["El"]
+                    }
+                    setFuelType(newValue)
+                }}
+            />Allow Electricity as resource</label><br/>
+            <label><input
+                type="radio"
+                name="batOrGen"
+                checked={electricalExtraMass.type == "battery"}
+                onChange={v => setElectricalExtraMass(
+                    Object.assign({}, electricalExtraMass, {type: "battery"}))}
+            />Account for storage mass to support <KerbalYdhmsInput
                     value={electricalExtraMass.batteryDuration}
                     onChange={v => setElectricalExtraMass(
                         Object.assign({}, electricalExtraMass, {batteryDuration: v}))}
-                /> burns
+                /> burns. Storage specific mass: <FloatInput
+                value={electricalExtraMass.batteryDensity}
+                decimals={5}
+                onChange={v => setElectricalExtraMass(
+                    Object.assign({}, electricalExtraMass, {batteryDensity: v}))}
+                /> t/⚡ , price: <FloatInput
+                    decimals={0}
+                    value={electricalExtraMass.batteryPrice}
+                    onChange={v => setElectricalExtraMass(
+                        Object.assign({}, electricalExtraMass, {batteryPrice: v}))}
+                /> <KspFund/>/t
             </label><br/>
             <label><input
-                type="checkbox"
-                checked={electricalExtraMass.generator}
-                onChange={e => setElectricalExtraMass(
-                    Object.assign({}, electricalExtraMass, {generator: e.target.checked}))}
+                type="radio"
+                name="batOrGen"
+                checked={electricalExtraMass.type == "generator"}
+                onChange={v => setElectricalExtraMass(
+                    Object.assign({}, electricalExtraMass, {type: "generator"}))}
             />Account for power generation mass
                 (at <FloatInput
                     value={electricalExtraMass.generatorDensity}
                     decimals={5}
                     onChange={v => setElectricalExtraMass(
                         Object.assign({}, electricalExtraMass, {generatorDensity: v}))}
-                /> t / (⚡/s))
+                /> t / (⚡/s)), price: <FloatInput
+                    decimals={0}
+                    value={electricalExtraMass.generatorPrice}
+                    onChange={v => setElectricalExtraMass(
+                        Object.assign({}, electricalExtraMass, {generatorPrice: v}))}
+                /> <KspFund/>/t
             </label>
         </td></tr>
         </tbody></table>
