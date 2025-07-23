@@ -376,7 +376,7 @@ function App() {
                 return <>{Object.keys(i.refuelable).map(
                     res => <><span
                         className={i.refuelable[res] ? "refuelable" : "nonrefuelable"}
-                        title={`${cons.amount[res].toFixed(1)} /s, ` +
+                        title={`${resourceInfo[res].name}: ${cons.amount[res].toFixed(1)} /s, ` +
                             `${formatValueSi(consTotal.amount[res])} total`}
                     >{res}</span> </>
                 )}</>
