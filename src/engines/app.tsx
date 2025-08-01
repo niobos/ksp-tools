@@ -2,6 +2,7 @@ import * as React from 'react'
 import {ReactElement, useState} from 'react'
 import ReactDOM from 'react-dom'
 import useFragmentState from 'useFragmentState'
+import useLocalStorageState from 'useLocalStorageState'
 import {resourceInfoWithMods, sizesWithMods} from "../utils/kspParts"
 import {FloatInput, formatValueSi} from "formattedInput"
 import Multiselect from "../components/multiselect"
@@ -20,7 +21,7 @@ import {dvForDm} from "../utils/rocket";
 import './app.css'
 import {KerbalYdhmsInput} from "../components/formattedInput";
 import Tooltip from "../components/tooltip";
-import Preset from "../components/preset";
+import useMultiState from "../utils/useMultiState";
 
 function jsonParseWithDefault(defaultValue: any): (value: string) => any {
     return (valueFromHash) => {
@@ -224,12 +225,26 @@ function calcEngine(
 }
 
 function App() {
-    const [activeMods, setActiveMods] = useFragmentState<Set<string>>('mod',
-        s => {
-            const v: Array<string> = JSON.parse(s)
-            return new Set(v)
-        },
-        o => JSON.stringify([...o]),
+    const [activeMods, setActiveMods] = useMultiState<Set<string>>(
+        [
+            useFragmentState<Set<string>>("mod",
+                s => {
+                    if(s == null) return null
+                    const v: Array<string> = JSON.parse(s)
+                    return new Set(v)
+                },
+                o => JSON.stringify([...o]),
+            ),
+            useLocalStorageState<Set<string>>('ksp-active-mods',
+                s => {
+                    if(s == null) return null
+                    const v: Array<string> = JSON.parse(s)
+                    return new Set(v)
+                },
+                o => JSON.stringify([...o]),
+            ),
+        ],
+        new Set(),
     )
     const availableSizes = sizesWithMods(activeMods)
     const resourceInfo = resourceInfoWithMods(activeMods)

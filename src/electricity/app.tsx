@@ -40,6 +40,8 @@ import knapsackMinimize, {Combo, ComboCost} from "../utils/knapsackMinimize";
 
 import './app.css'
 import {findZeroRegulaFalsi} from "../utils/optimize";
+import useMultiState from "../utils/useMultiState";
+import useLocalStorageState from "useLocalStorageState";
 
 function solarPanelEfficiencyFromSunDistance(system: KspSystem, d: number): number {
     const homeWorldSma = system.defaultBody.orbit.semiMajorAxis
@@ -195,12 +197,26 @@ function calcEndurance(combo: Combo<RTG>, power: number): number {
 }
 
 export default function App() {
-    const [activeMods, setActiveMods] = useFragmentState<Set<string>>('mod',
-        s => {
-            const v: Array<string> = JSON.parse(s)
-            return new Set(v)
-        },
-        o => JSON.stringify([...o]),
+    const [activeMods, setActiveMods] = useMultiState<Set<string>>(
+        [
+            useFragmentState<Set<string>>("mod",
+                s => {
+                    if(s == null) return null
+                    const v: Array<string> = JSON.parse(s)
+                    return new Set(v)
+                },
+                o => JSON.stringify([...o]),
+            ),
+            useLocalStorageState<Set<string>>('ksp-active-mods',
+                s => {
+                    if(s == null) return null
+                    const v: Array<string> = JSON.parse(s)
+                    return new Set(v)
+                },
+                o => JSON.stringify([...o]),
+            ),
+        ],
+        new Set(),
     )
     const resourceInfo = resourceInfoWithMods(activeMods)
 
