@@ -425,6 +425,11 @@ function App() {
             value: (i: EngineConfig) => i.alternator,
             classList: (i: EngineConfig) => i.alternator <= 0 ? ['number', 'zero'] : ['number'],
         },
+        activeMods.has('SH') ? {
+            title: <span>Heat<br/>[kW]</span>,
+            value: (i: EngineConfig) => i.n * i.engine.heat,
+            classList: (i: EngineConfig) => i.engine.heat == 0 ? ['number', 'zero'] : ['number'],
+        } : null,
         {title: <span>∆v [m/s]</span>,
             value: (i: EngineConfig) => i.dv.toFixed(1),
             classList: (i: EngineConfig) => (i.dv < dv*.99 || isNaN(i.dv)) ? ['number', 'outOfSpec'] : ['number'],  // .99 for rounding errors
@@ -434,7 +439,7 @@ function App() {
             if(i.burnTime == null) return ""
             return i.burnTime.toFixed(1)
         }},
-    ];
+    ].filter(c => c != null)
 
     const kspEngines = enginePartsWithMods(activeMods)
     const engineOptions: Array<EngineConfig> = []

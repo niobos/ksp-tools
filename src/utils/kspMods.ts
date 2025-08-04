@@ -9,6 +9,9 @@ const kspMods: Record<string, ModInfo> = {
     KS: {name: "Kcalbeloh System"},
     NFT: {name: "Near Future Tech"},
     FFT: {name: "Far Future Tech"},
+    SH: {name: "System Heat"},
+    RSP: {name: "RestockPlus"},
+//    CE: {name: "Cryo Engines"},
 }
 
 export default kspMods

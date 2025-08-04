@@ -7,6 +7,7 @@ export class Engine extends Part {
     gimbal: number = 0  // degrees
     ispCurve: Array<[number, number]>  // [[pressure, isp], ...] cubic spline control points, sorted!
     throttleControl: boolean = true
+    heat: number = 0  // kW
     _maxThrust?: number  // Scale consumption so that the resulting thrust is _maxThrust
     _ElAfterThrustScaling?: number  // Re-assign Electrical consumption after _maxThrust scaling
 
@@ -553,16 +554,7 @@ export const engineParts = [
     }),
 ]
 
-const nearFuture = [
-    Engine.create({
-        name: "96-85 'Hummingbird'",
-        cost: 350,
-        mass: 0.15,
-        size: new Set(["0"]),
-        gimbal: 0,
-        ispCurve: [[0, 230], [1, 220], [4, 140]],
-        consumption: new Resources({Mono: 13.301}),
-    }),
+const restockPlus = [
     Engine.create({
         name: "KR-1 'Boar'",
         cost: 7000,
@@ -582,7 +574,46 @@ const nearFuture = [
         consumption: new Resources({LF: 19.389, Ox: 23.698, El: -3}),
     }),
     Engine.create({
-        name: "KR-1E-V 'Argora'",
+        name: "LV-N410 'Cherenkov'",
+        cost: 40_000,
+        mass: 12.0,
+        size: new Set(["2"]),
+        gimbal: 5,
+        ispCurve: [[0, 820], [1, 200]],
+        consumption: new Resources({LF: 7.461, El: -4.5}),
+    }),
+    Engine.create({
+        name: "LV-T15 'Vallant'",
+        cost: 500,
+        mass: 0.75,
+        size: new Set(["1"]),
+        gimbal: 5,
+        ispCurve: [[0, 270], [1, 240]],
+        consumption: new Resources({LF: 3.399, Ox: 4.154, El: -6}),
+    }),
+    Engine.create({
+        name: "Mk-1H 'Torch'",
+        cost: 280,
+        mass: 0.29,
+        size: new Set(["0"]),
+        gimbal: 1,
+        ispCurve: [[0, 295], [1, 275]],
+        consumption: new Resources({LF: 1.711, Ox: 2.091, El: -1}),
+    }),
+]
+
+const nearFuture = [
+    Engine.create({
+        name: "96-85 'Hummingbird'",
+        cost: 350,
+        mass: 0.15,
+        size: new Set(["0"]),
+        gimbal: 0,
+        ispCurve: [[0, 230], [1, 220], [4, 140]],
+        consumption: new Resources({Mono: 13.301}),
+    }),
+    Engine.create({
+        name: "KR-1E-V 'Angora'",
         cost: 500,
         mass: 0.12,
         size: new Set(["0"]),
@@ -600,7 +631,7 @@ const nearFuture = [
         consumption: new Resources({LF: 57.193, Ox: 69.902, El: -3}),
     }),
     Engine.create({
-        name: "KR-74 'Lyx'",
+        name: "KR-74 'Lynx'",
         cost: 21_000,
         mass: 4.5,
         size: new Set(["1.5"]),
@@ -673,33 +704,6 @@ const nearFuture = [
         content: new Resources({LF: 18, Ox: 22}),
     }),
     Engine.create({
-        name: "LV-T15 'Vallant'",
-        cost: 500,
-        mass: 0.75,
-        size: new Set(["1"]),
-        gimbal: 5,
-        ispCurve: [[0, 270], [1, 240]],
-        consumption: new Resources({LF: 3.399, Ox: 4.154, El: -6}),
-    }),
-    Engine.create({
-        name: "Mk-1H 'Torch'",
-        cost: 280,
-        mass: 0.29,
-        size: new Set(["0"]),
-        gimbal: 1,
-        ispCurve: [[0, 295], [1, 275]],
-        consumption: new Resources({LF: 1.711, Ox: 2.091, El: -1}),
-    }),
-    Engine.create({
-        name: "LV-N410 'Cherenkov'",
-        cost: 40_000,
-        mass: 12.0,
-        size: new Set(["2"]),
-        gimbal: 5,
-        ispCurve: [[0, 820], [1, 200]],
-        consumption: new Resources({LF: 7.461, El: -4.5}),
-    }),
-    Engine.create({
         name: "X-7 'Asimov' [Frag]",
         cost: 275_000,
         mass: 18.0,
@@ -707,6 +711,7 @@ const nearFuture = [
         gimbal: 1,
         ispCurve: [[0, 450_000], [1, 10]],
         consumption: new Resources({Frag: 0.005, El: -150}),
+        heat: 16_000,
     }),
     Engine.create({
         name: "X-7 'Asimov' [Frag+LH2]",
@@ -716,6 +721,7 @@ const nearFuture = [
         gimbal: 1,
         ispCurve: [[0, 45_000], [1, 10]],
         consumption: new Resources({Frag: 0.002, LH2: 9.556, El: -150}),
+        heat: 12_500,
     }),
     Engine.create({
         name: "FI-1123 'HI-SNAP'",
@@ -956,7 +962,8 @@ const farFuture = [
         size: new Set(["2"]),
         gimbal: 3,
         ispCurve: [[0, 3850], [1, 3100]],
-        consumption: new Resources({El: 25.009, NSW: 45.405})
+        consumption: new Resources({El: 25.009, NSW: 45.405}),
+        heat: 8_000,
     }),
     Engine.create({
         name: "X-20 'Verne'",
@@ -966,6 +973,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 9500], [1, 50]],
         consumption: new Resources({FIP: 6.87}),
+        heat: 13_000,
     }),
     Engine.create({
         name: "X-42 'Niven'",
@@ -975,6 +983,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 120_000], [1, 60_000]],
         consumption: new Resources({El: 90.833, NSW: 3.075}),
+        heat: 50_000,
     }),
     Engine.create({
         name: "X-6 'Clarke'",
@@ -986,6 +995,7 @@ const farFuture = [
         consumption: new Resources({EnrU: 1}),
         _maxThrust: 12,
         content: new Resources({EnrU: 75}),
+        heat: 15_000,
     }),
     Engine.create({
         name: "JP-10 'Impulse' [D]",
@@ -995,6 +1005,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 5000], [1, 50]],
         consumption: new Resources({Li: 2.787, D: 0.253, El: 5.559}),
+        heat: 3_000,
     }),
     Engine.create({
         name: "JP-10 'Impulse' [D-He3]",
@@ -1004,6 +1015,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 7500], [1, 50]],
         consumption: new Resources({Li: 2.512, D: 0.046, He3: 0.183, El: 41.669}),
+        heat: 3_000,
     }),
     Engine.create({
         name: "JR-20A 'Ouroboros'",
@@ -1013,6 +1025,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 1900], [1, 1800]],
         consumption: new Resources({LH2: 1128.328, D: 1.41, He3: 5.642}),
+        heat: 8_000,
     }),
     Engine.create({
         name: "JR-15 'Discovery' [HiISP]",
@@ -1021,7 +1034,8 @@ const farFuture = [
         size: new Set(["3"]),
         gimbal: 2,
         ispCurve: [[0, 17900], [1, 190]],
-        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 15.641}),
+        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 15.641, El: -500}),
+        heat: 14_000,
     }),
     Engine.create({
         name: "JR-15 'Discovery' [HiF]",
@@ -1030,7 +1044,8 @@ const farFuture = [
         size: new Set(["3"]),
         gimbal: 2,
         ispCurve: [[0, 8000], [1, 190]],
-        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 70.965}),
+        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 70.965, El: -500}),
+        heat: 7_000,
     }),
     Engine.create({
         name: "JR-45 'Fresnel' [HiISP]",
@@ -1040,6 +1055,7 @@ const farFuture = [
         gimbal: 1,
         ispCurve: [[0, 63200], [1, 190]],
         consumption: new Resources({D: 0.304, He3: 1.215}),
+        heat: 23_500,
     }),
     Engine.create({
         name: "JR-45 'Fresnel' [HiF]",
@@ -1049,6 +1065,7 @@ const farFuture = [
         gimbal: 1,
         ispCurve: [[0, 14000], [1, 190]],
         consumption: new Resources({D: 0.304, He3: 1.215, LH2: 37.497}),
+        heat: 14_500,
     }),
     Engine.create({
         name: "JX-200 'Cascade' [HiISP]",
@@ -1058,6 +1075,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 365000], [1, 190]],
         consumption: new Resources({D: 0.771, He3: 3.085}),
+        heat: 54_000,
     }),
     Engine.create({
         name: "JX-200 'Cascade' [HiF]",
@@ -1067,6 +1085,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 85000], [1, 190]],
         consumption: new Resources({D: 0.213, He3: 0.992, LH2: 46.114}),
+        heat: 36_000,
     }),
     Engine.create({
         name: "K-80 'Hammertong' [HiISP]",
@@ -1076,6 +1095,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 520_000], [1, 50]],
         consumption: new Resources({D: 0.02, He3: 0.079}),
+        heat: 30_500,
     }),
     Engine.create({
         name: "K-80 'Hammertong' [HiF]",
@@ -1085,6 +1105,7 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 260_000], [1, 50]],
         consumption: new Resources({D: 0.164, He3: 0.082}),
+        heat: 25_500,
     }),
     Engine.create({
         name: "A-7007 'Dirac'",
@@ -1095,6 +1116,7 @@ const farFuture = [
         ispCurve: [[0, 115_000], [1, 5]],
         consumption: new Resources({Anti: 0.000028, D: 1, He3: 4}),
         _maxThrust: 45,
+        heat: 4_000,
     }),
     Engine.create({
         name: "A-134NG 'Casaba'",
@@ -1106,6 +1128,7 @@ const farFuture = [
         consumption: new Resources({Abl: 85, Anti: 0.00025, FIP: 72}),
         _maxThrust: 420,
         content: new Resources({Abl: 17000}),
+        heat: 11_200,
     }),
     Engine.create({
         name: "A-834M 'Frisbee'",
@@ -1115,11 +1138,15 @@ const farFuture = [
         gimbal: 2,
         ispCurve: [[0, 2_500_000], [1, 50_000]],
         consumption: new Resources({Anti: 2.018, LH2: 2.018}),
+        heat: 360_000,
     }),
 ]
 
 function enginePartsWithMods_(activeMods: Set<string> = new Set()): Array<Engine> {
     let parts: Array<Engine> = [...engineParts]
+    if(activeMods.has("RSP")) {
+        parts = combineWithOverride(parts, restockPlus)
+    }
     if(activeMods.has("NFT")) {
         parts = combineWithOverride(parts, nearFuture)
     }
