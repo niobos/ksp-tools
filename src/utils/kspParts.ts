@@ -11,6 +11,7 @@ export const resourceInfo: Record<string, {name: string, cost: number, mass: num
     Ore: {name: "Ore", cost: 0.02, mass: 0.010},
     Air: {name: "Air", cost: 0, mass: 0},
     Abl: {name: "Ablator", cost: 0.5, mass: 0.001},
+    Heat: {name: "Heat", cost: 0, mass: 0},
 
     Ar: {name: "Argon", cost: (140620 - 33100) / 10240000, mass: 18.27 / 10240000},
     LH2: {name: "Liquid Hydrogen", cost: (199310.4 - 135806.4) / 1728000, mass: (146.915 - 24.486) / 1728000},
@@ -34,7 +35,7 @@ export function resourceInfoWithMods(
 ): Record<string, {name: string, cost: number, mass: number}> {
     /* Note: this assumes that mods do not *change* a resource, but only add resources */
     const mods: Record<string, Array<keyof typeof resourceInfo>> = {
-        stock: ['LF', 'Ox', 'SF', 'Mono', 'Xe', 'El', 'Ore', 'Air', 'Abl'],
+        stock: ['LF', 'Ox', 'SF', 'Mono', 'Xe', 'El', 'Ore', 'Air', 'Abl', 'Heat'],
         NFT: ['Ar', 'LH2', 'LCH4', 'Li', 'EnrU', 'DeplU', 'SC'],
         FFT: ['EnrU', 'Anti', 'NSW', 'NUK', 'FIP', 'Frag', 'D', 'He3'],
     }

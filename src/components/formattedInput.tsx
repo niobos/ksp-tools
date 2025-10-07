@@ -154,3 +154,77 @@ export function DegreesInput(props: Omit<FormattedInputProps<Degrees>, "formatVa
     })
     return FormattedInput(formattedInputProps);
 }
+
+export function toSignificantDigits(n: number, sigDigits: number): string {
+    if(n == 0) return "0"
+    const digits = Math.log10(Math.abs(n))
+    const s = Math.ceil(sigDigits - digits)
+    return n.toFixed(Math.max(s, 0))
+}
+export function formatValueRate(
+    ratePerSecond: number,
+    unit: string = '',
+    baseTimeUnit: string = 's',
+    timeUnits: Array<[number, string]> = [],
+): string {
+    let rate = ratePerSecond
+    let timeUnit = baseTimeUnit
+    let unitIndex = 0
+    while(Math.abs(rate) < 1 && unitIndex < timeUnits.length) {
+        rate *= timeUnits[unitIndex][0]
+        timeUnit = timeUnits[unitIndex][1]
+        unitIndex++
+    }
+    return `${toSignificantDigits(rate, 2)} ${unit}/${timeUnit}`
+}
+export function parseValueRate(
+    s: string,
+    unit: string = '',
+    timeUnits: Record<string, number> = {'s': 1},
+): number {
+    const slash = s.indexOf('/')
+    if(slash != s.lastIndexOf('/')) {
+        // Multiple slashes
+        throw `ParseError, multiple slashes in \`${s}\`, expecting only one`
+    }
+    let timeUnit = 1
+    if(slash != -1) {  // Slash found
+        timeUnit = timeUnits[s.substring(slash+1)] || 1
+        s = s.substring(0, slash)
+    }
+
+    if(unit.length > 0 &&  s.endsWith(unit)) {
+        s = s.slice(0, -unit.length)
+    }
+
+    return parseFloat(s) / timeUnit
+}
+export interface RateInputProps {
+    unit?: string
+    baseTimeUnit?: string
+    timeUnits?: Array<[number, string]>
+}
+export function RateInput(
+    {
+        unit = '',
+        baseTimeUnit = 's',
+        timeUnits = [[60, 'm'], [60, 'h']],
+        className,
+        ...rest
+    }: Omit<FormattedInputProps<Degrees>, "formatValue" | "parseString"> & RateInputProps) {
+
+    const tu: Record<string, number> = {[baseTimeUnit]: 1}
+    let cum = 1
+    for(let u of timeUnits) {
+        cum *= u[0]
+        if(tu[u[1]] != null) throw `Duplicate Unit ${u[1]}`
+        tu[u[1]] = cum
+    }
+
+    const formattedInputProps = Object.assign({}, rest, {
+        formatValue: v => formatValueRate(v, unit, baseTimeUnit, timeUnits),
+        parseString: s => parseValueRate(s, unit, tu),
+        className: (className || '') + ' RateInput',
+    })
+    return FormattedInput(formattedInputProps)
+}

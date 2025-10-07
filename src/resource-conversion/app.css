@@ -1,0 +1,8 @@
+table.resourceTable, table.resourceTable th, table.resourceTable td {
+    border: 1px solid var(--foreground-color);
+    empty-cells: hide;
+}
+
+li {
+    margin-bottom: 2em;
+}

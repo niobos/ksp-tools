@@ -12,6 +12,7 @@ const tsxPages = {
     'planner': 'KSP - Mission planner',
     'multiengine': 'KSP - Multi-engine planner',
     'mining': 'KSP - Mining calculator',
+    'resource-conversion': 'KSP - Resource Conversion',
 };
 
 const entries = {};
