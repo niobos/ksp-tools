@@ -72,6 +72,56 @@ const converterRecipes = [
 
 const nearFuture = [
     ConversionRecipe.create({
+        name: '[Convert-o-Tron 250] Ore → LH2',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 0.45, El: 30, LH2: -63.45, Heat: -40}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 250] Ore → LH2 + Ox',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 0.50, El: 30, LH2: -12.37, Ox: -0.82, Heat: -40}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 250] Ore → LCH4',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 0.45, El: 30, LCH4: -10.57, Heat: -40}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 250] Ore → LCH4 + Ox',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 0.5, El: 30, LCH4: -2.38, Ox: 0.80, Heat: -40}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 250] Ore → Li',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 1, El: 50, Li: -18.7, Heat: -80}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 125] Ore → LH2',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 2.25, El: 30, LH2: -31.73, Heat: -20}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 125] Ore → LH2 + Ox',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 2.50, El: 30, LH2: -6.19, Ox: -0.41, Heat: -20}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 125] Ore → LCH4',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 2.25, El: 30, LCH4: -5.29, Heat: -20}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 125] Ore → LCH4 + Ox',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 2.5, El: 30, LCH4: -1.19, Ox: 0.40, Heat: -20}),
+    }),
+    ConversionRecipe.create({
+        name: '[Convert-o-Tron 125] Ore → Li',
+        engineerComment: "Efficiency: (5 + 20 × engineer level)%",
+        consumption: new Resources({Ore: 5.00, El: 50, Li: -9.30, Heat: -40}),
+    }),
+    ConversionRecipe.create({
         name: "[Nuclear Reprocessor] DeplU → EnrU",
         consumption: new Resources({DeplU: 0.10, El: 200, EnrU: -0.05, Heat: -175}),
     }),

@@ -427,8 +427,8 @@ function App() {
         },
         activeMods.has('SH') ? {
             title: <span>Heat<br/>[kW]</span>,
-            value: (i: EngineConfig) => i.n * i.engine.heat,
-            classList: (i: EngineConfig) => i.engine.heat == 0 ? ['number', 'zero'] : ['number'],
+            value: (i: EngineConfig) => i.n * (-i.engine.consumption.amount.Heat || 0),
+            classList: (i: EngineConfig) => (-i.engine.consumption.amount.Heat || 0) == 0 ? ['number', 'zero'] : ['number'],
         } : null,
         {title: <span>∆v [m/s]</span>,
             value: (i: EngineConfig) => i.dv.toFixed(1),

@@ -170,7 +170,9 @@ function App() {
     }
 
     const recipeOptions = []
-    for(let recipeName in kspRecipes) {
+    const sortedRecipeNames = Object.keys(kspRecipes)
+    sortedRecipeNames.sort()  // in-place sort
+    for(let recipeName of sortedRecipeNames) {
         recipeOptions.push(<option key={recipeName}>{recipeName}</option>)
     }
 

@@ -16,7 +16,9 @@ export class Engine extends Part {
         if(this._maxThrust != null) {
             /* If maxThrust is defined, scale this.consumption to get this maxThrust */
             const currentThrust = this.thrust(resourceInfo, 0)
+            const currentHeat = this.consumption.amount.Heat
             this.consumption = this.consumption.scaled(this._maxThrust / currentThrust)
+            this.consumption.amount.Heat = currentHeat  // Don't scale heat
             delete this._maxThrust
         }
         if(this._ElAfterThrustScaling != null) {
@@ -710,8 +712,7 @@ const nearFuture = [
         size: new Set(["3"]),
         gimbal: 1,
         ispCurve: [[0, 450_000], [1, 10]],
-        consumption: new Resources({Frag: 0.005, El: -150}),
-        heat: 16_000,
+        consumption: new Resources({Frag: 0.005, El: -150, Heat: -16_000}),
     }),
     Engine.create({
         name: "X-7 'Asimov' [Frag+LH2]",
@@ -720,8 +721,7 @@ const nearFuture = [
         size: new Set(["3"]),
         gimbal: 1,
         ispCurve: [[0, 45_000], [1, 10]],
-        consumption: new Resources({Frag: 0.002, LH2: 9.556, El: -150}),
-        heat: 12_500,
+        consumption: new Resources({Frag: 0.002, LH2: 9.556, El: -150, Heat: -12_500}),
     }),
     Engine.create({
         name: "FI-1123 'HI-SNAP'",
@@ -962,8 +962,7 @@ const farFuture = [
         size: new Set(["2"]),
         gimbal: 3,
         ispCurve: [[0, 3850], [1, 3100]],
-        consumption: new Resources({El: 25.009, NSW: 45.405}),
-        heat: 8_000,
+        consumption: new Resources({El: 25.009, NSW: 45.405, Heat: -8_000}),
     }),
     Engine.create({
         name: "X-20 'Verne'",
@@ -972,8 +971,7 @@ const farFuture = [
         size: new Set(["4"]),
         gimbal: 2,
         ispCurve: [[0, 9500], [1, 50]],
-        consumption: new Resources({FIP: 6.87}),
-        heat: 13_000,
+        consumption: new Resources({FIP: 6.87, Heat: -13_000}),
     }),
     Engine.create({
         name: "X-42 'Niven'",
@@ -982,8 +980,7 @@ const farFuture = [
         size: new Set(["4"]),
         gimbal: 2,
         ispCurve: [[0, 120_000], [1, 60_000]],
-        consumption: new Resources({El: 90.833, NSW: 3.075}),
-        heat: 50_000,
+        consumption: new Resources({El: 90.833, NSW: 3.075, Heat: -50_000}),
     }),
     Engine.create({
         name: "X-6 'Clarke'",
@@ -994,8 +991,7 @@ const farFuture = [
         ispCurve: [[0, 350_000], [1, 10], [4, 2]],
         consumption: new Resources({EnrU: 1}),
         _maxThrust: 12,
-        content: new Resources({EnrU: 75}),
-        heat: 15_000,
+        content: new Resources({EnrU: 75, Heat: -15_000}),
     }),
     Engine.create({
         name: "JP-10 'Impulse' [D]",
@@ -1004,8 +1000,7 @@ const farFuture = [
         size: new Set(["2"]),
         gimbal: 2,
         ispCurve: [[0, 5000], [1, 50]],
-        consumption: new Resources({Li: 2.787, D: 0.253, El: 5.559}),
-        heat: 3_000,
+        consumption: new Resources({Li: 2.787, D: 0.253, El: 5.559, Heat: -3_000}),
     }),
     Engine.create({
         name: "JP-10 'Impulse' [D-He3]",
@@ -1014,8 +1009,7 @@ const farFuture = [
         size: new Set(["2"]),
         gimbal: 2,
         ispCurve: [[0, 7500], [1, 50]],
-        consumption: new Resources({Li: 2.512, D: 0.046, He3: 0.183, El: 41.669}),
-        heat: 3_000,
+        consumption: new Resources({Li: 2.512, D: 0.046, He3: 0.183, El: 41.669, Heat: -3_000}),
     }),
     Engine.create({
         name: "JR-20A 'Ouroboros'",
@@ -1024,8 +1018,7 @@ const farFuture = [
         size: new Set(["2"]),
         gimbal: 2,
         ispCurve: [[0, 1900], [1, 1800]],
-        consumption: new Resources({LH2: 1128.328, D: 1.41, He3: 5.642}),
-        heat: 8_000,
+        consumption: new Resources({LH2: 1128.328, D: 1.41, He3: 5.642, Heat: -8_000}),
     }),
     Engine.create({
         name: "JR-15 'Discovery' [HiISP]",
@@ -1034,8 +1027,7 @@ const farFuture = [
         size: new Set(["3"]),
         gimbal: 2,
         ispCurve: [[0, 17900], [1, 190]],
-        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 15.641, El: -500}),
-        heat: 14_000,
+        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 15.641, El: -500, Heat: -14_000}),
     }),
     Engine.create({
         name: "JR-15 'Discovery' [HiF]",
@@ -1044,8 +1036,7 @@ const farFuture = [
         size: new Set(["3"]),
         gimbal: 2,
         ispCurve: [[0, 8000], [1, 190]],
-        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 70.965, El: -500}),
-        heat: 7_000,
+        consumption: new Resources({D: 0.078, He3: 0.313, LH2: 70.965, El: -500, Heat: -7_000}),
     }),
     Engine.create({
         name: "JR-45 'Fresnel' [HiISP]",
@@ -1054,8 +1045,7 @@ const farFuture = [
         size: new Set(["3"]),
         gimbal: 1,
         ispCurve: [[0, 63200], [1, 190]],
-        consumption: new Resources({D: 0.304, He3: 1.215}),
-        heat: 23_500,
+        consumption: new Resources({D: 0.304, He3: 1.215, Heat: -23_500}),
     }),
     Engine.create({
         name: "JR-45 'Fresnel' [HiF]",
@@ -1064,8 +1054,7 @@ const farFuture = [
         size: new Set(["3"]),
         gimbal: 1,
         ispCurve: [[0, 14000], [1, 190]],
-        consumption: new Resources({D: 0.304, He3: 1.215, LH2: 37.497}),
-        heat: 14_500,
+        consumption: new Resources({D: 0.304, He3: 1.215, LH2: 37.497, Heat: -14_500}),
     }),
     Engine.create({
         name: "JX-200 'Cascade' [HiISP]",
@@ -1074,8 +1063,7 @@ const farFuture = [
         size: new Set(["3"]),
         gimbal: 2,
         ispCurve: [[0, 365000], [1, 190]],
-        consumption: new Resources({D: 0.771, He3: 3.085}),
-        heat: 54_000,
+        consumption: new Resources({D: 0.771, He3: 3.085, Heat: -54_000}),
     }),
     Engine.create({
         name: "JX-200 'Cascade' [HiF]",
@@ -1084,8 +1072,7 @@ const farFuture = [
         size: new Set(["3"]),
         gimbal: 2,
         ispCurve: [[0, 85000], [1, 190]],
-        consumption: new Resources({D: 0.213, He3: 0.992, LH2: 46.114}),
-        heat: 36_000,
+        consumption: new Resources({D: 0.213, He3: 0.992, LH2: 46.114, Heat: -36_000}),
     }),
     Engine.create({
         name: "K-80 'Hammertong' [HiISP]",
@@ -1094,8 +1081,7 @@ const farFuture = [
         size: new Set(["4"]),
         gimbal: 2,
         ispCurve: [[0, 520_000], [1, 50]],
-        consumption: new Resources({D: 0.02, He3: 0.079}),
-        heat: 30_500,
+        consumption: new Resources({D: 0.02, He3: 0.079, Heat: -30_500}),
     }),
     Engine.create({
         name: "K-80 'Hammertong' [HiF]",
@@ -1104,8 +1090,7 @@ const farFuture = [
         size: new Set(["4"]),
         gimbal: 2,
         ispCurve: [[0, 260_000], [1, 50]],
-        consumption: new Resources({D: 0.164, He3: 0.082}),
-        heat: 25_500,
+        consumption: new Resources({D: 0.164, He3: 0.082, Heat: -25_500}),
     }),
     Engine.create({
         name: "A-7007 'Dirac'",
@@ -1114,9 +1099,8 @@ const farFuture = [
         size: new Set(["2"]),
         gimbal: 2,
         ispCurve: [[0, 115_000], [1, 5]],
-        consumption: new Resources({Anti: 0.000028, D: 1, He3: 4}),
+        consumption: new Resources({Anti: 0.000028, D: 1, He3: 4, Heat: -4_000}),
         _maxThrust: 45,
-        heat: 4_000,
     }),
     Engine.create({
         name: "A-134NG 'Casaba'",
@@ -1125,10 +1109,9 @@ const farFuture = [
         size: new Set(["4"]),
         gimbal: 2,
         ispCurve: [[0, 13500], [1, 50], [12, 0.001]],
-        consumption: new Resources({Abl: 85, Anti: 0.00025, FIP: 72}),
+        consumption: new Resources({Abl: 85, Anti: 0.00025, FIP: 72, Heat: -11_200}),
         _maxThrust: 420,
         content: new Resources({Abl: 17000}),
-        heat: 11_200,
     }),
     Engine.create({
         name: "A-834M 'Frisbee'",
@@ -1137,8 +1120,7 @@ const farFuture = [
         size: new Set(["4"]),
         gimbal: 2,
         ispCurve: [[0, 2_500_000], [1, 50_000]],
-        consumption: new Resources({Anti: 2.018, LH2: 2.018}),
-        heat: 360_000,
+        consumption: new Resources({Anti: 2.018, LH2: 2.018, Heat: -360_000}),
     }),
 ]
 
